@@ -270,3 +270,4 @@ services:
 volumes:
   opensearch-data:
   postgres-data:
+  ollama-data:
