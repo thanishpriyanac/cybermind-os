@@ -1,7 +1,7 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { IAssetRepository } from '../repositories/asset.repository';
 import { Prisma } from '@prisma/client';
-import { CybermindKafkaPublisher } from '../../../../../packages/sdk/event-client/src/kafka-publisher';
+import { CybermindKafkaPublisher } from '@cybermind-os/event-client';
 
 @Injectable()
 export class AssetDomainService {

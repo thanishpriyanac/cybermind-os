@@ -1,5 +1,5 @@
 import { SyslogPlugin } from '../syslog.plugin';
-import { CybermindAssetClient } from '../../../../../packages/sdk/asset-client/src/asset-client';
+import { CybermindAssetClient } from '@cybermind-os/asset-client';
 
 describe('SyslogPlugin', () => {
   let plugin: SyslogPlugin;

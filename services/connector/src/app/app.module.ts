@@ -6,7 +6,7 @@ import { ConnectorController } from './connector.controller';
 import { ConnectorDomainService } from '../domain/services/connector.domain.service';
 import { ExecutionEngine } from '../domain/services/execution-engine.service';
 import { ConnectorPrismaRepository } from '../infrastructure/persistence/prisma/connector.prisma.repository';
-import { EventPlatformModule } from '../../../../packages/sdk/event-client/src/nestjs-integration';
+import { EventPlatformModule } from '@cybermind-os/event-client';
 
 @Module({
   imports: [

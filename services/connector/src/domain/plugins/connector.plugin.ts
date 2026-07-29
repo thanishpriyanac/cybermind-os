@@ -1,4 +1,4 @@
-import { CanonicalEvent } from '../../../../../packages/schemas/src/connector/canonical-event';
+import { CanonicalEvent } from '@cybermind/schemas';
 
 export interface ParsedEvent {
   originalPayload: unknown;

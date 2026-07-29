@@ -4,7 +4,7 @@ import { AppService } from './app.service';
 import { AssetController } from './asset.controller';
 import { AssetDomainService } from '../domain/services/asset.domain.service';
 import { AssetPrismaRepository } from '../infrastructure/persistence/prisma/asset.prisma.repository';
-import { EventPlatformModule } from '../../../../packages/sdk/event-client/src/nestjs-integration';
+import { EventPlatformModule } from '@cybermind-os/event-client';
 
 @Module({
   imports: [

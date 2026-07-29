@@ -35,6 +35,15 @@
       ],
       "@cybermind-os/telemetry-client": [
         "./packages/sdk/telemetry-client/src/index.ts"
+      ],
+      "@cybermind-os/observability-client": [
+        "./packages/sdk/observability-client/src/index.ts"
+      ],
+      "@cybermind/schemas": [
+        "./packages/schemas/src/index.ts"
+      ],
+      "@cybermind-os/asset-client": [
+        "./packages/sdk/asset-client/src/index.ts"
       ]
     }
   },

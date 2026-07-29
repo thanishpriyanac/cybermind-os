@@ -1,4 +1,4 @@
-import { initializeOpenTelemetry, setupObservability } from '../../../packages/sdk/observability-client/src';
+import { initializeOpenTelemetry, setupObservability } from '@cybermind-os/observability-client';
 initializeOpenTelemetry('gateway-service');
 
 import { Logger } from '@nestjs/common';

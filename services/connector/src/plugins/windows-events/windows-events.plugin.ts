@@ -1,7 +1,7 @@
 import { ConnectorPlugin, ParsedEvent } from '../../domain/plugins/connector.plugin';
-import { CanonicalEvent } from '../../../../../packages/schemas/src/connector/canonical-event';
+import { CanonicalEvent } from '@cybermind/schemas';
 import { AuthenticationParser } from './parsers/authentication.parser';
-import { CybermindAssetClient } from '../../../../../packages/sdk/asset-client/src/asset-client';
+import { CybermindAssetClient } from '@cybermind-os/asset-client';
 
 export class WindowsEventPlugin implements ConnectorPlugin {
   private readonly authParser = new AuthenticationParser();

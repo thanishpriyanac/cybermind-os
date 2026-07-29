@@ -37,7 +37,7 @@ export class CybermindKafkaConsumer {
     await this.producer.disconnect();
   }
 
-  async subscribe(topic: string, fromBeginning: boolean = false) {
+  async subscribe(topic: string, fromBeginning = false) {
     await this.consumer.subscribe({ topic, fromBeginning });
   }
 

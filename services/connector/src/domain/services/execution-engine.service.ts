@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CybermindKafkaPublisher } from '../../../../../packages/sdk/event-client/src/kafka-publisher';
+import { CybermindKafkaPublisher } from '@cybermind-os/event-client';
 import { ConnectorPlugin } from '../plugins/connector.plugin';
 
 @Injectable()

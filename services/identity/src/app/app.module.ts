@@ -12,7 +12,7 @@ import { Argon2PasswordHasher } from '../domain/services/password-hasher/argon2-
 import { TenantPrismaRepository, UserPrismaRepository, RolePrismaRepository, PermissionPrismaRepository, SessionPrismaRepository, AuditPrismaRepository } from '../infrastructure/persistence/prisma';
 import { PrismaClient } from '@prisma/client';
 import { JwtStrategy } from '../infrastructure/auth/jwt.strategy';
-import { EventPlatformModule } from '../../../../packages/sdk/event-client/src/nestjs-integration';
+import { EventPlatformModule } from '@cybermind-os/event-client';
 import * as fs from 'fs';
 import * as path from 'path';
 

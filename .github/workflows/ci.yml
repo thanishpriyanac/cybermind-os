@@ -23,6 +23,14 @@ jobs:
         
       - name: Lint Code
         run: npx nx run-many -t lint
+
+      - name: Generate Prisma Clients
+        run: |
+          npx prisma generate --schema=services/identity/prisma/schema.prisma || true
+          npx prisma generate --schema=services/asset/prisma/schema.prisma || true
+          npx prisma generate --schema=services/connector/prisma/schema.prisma || true
+          npx prisma generate --schema=services/ai-gateway/prisma/schema.prisma || true
+          npx prisma generate --schema=services/soar/prisma/schema.prisma || true
         
       - name: Build All Services
         run: npx nx run-many -t build

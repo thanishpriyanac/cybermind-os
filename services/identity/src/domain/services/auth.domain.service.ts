@@ -6,7 +6,7 @@ import { ITenantRepository } from '../repositories/tenant.repository';
 import { ISessionRepository } from '../repositories/session.repository';
 import { IAuditRepository } from '../repositories/audit.repository';
 import { IPasswordHasher } from './password-hasher/password-hasher.interface';
-import { CybermindKafkaPublisher } from '../../../../../packages/sdk/event-client/src/kafka-publisher';
+import { CybermindKafkaPublisher } from '@cybermind-os/event-client';
 
 @Injectable()
 export class AuthDomainService {

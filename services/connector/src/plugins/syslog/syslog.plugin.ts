@@ -1,6 +1,6 @@
 import { ConnectorPlugin, ParsedEvent } from '../../domain/plugins/connector.plugin';
-import { CanonicalEvent } from '../../../../../packages/schemas/src/connector/canonical-event';
-import { CybermindAssetClient } from '../../../../../packages/sdk/asset-client/src/asset-client';
+import { CanonicalEvent } from '@cybermind/schemas';
+import { CybermindAssetClient } from '@cybermind-os/asset-client';
 
 import { RFC3164Parser } from './parsers/protocol/rfc3164.parser';
 import { RFC5424Parser } from './parsers/protocol/rfc5424.parser';

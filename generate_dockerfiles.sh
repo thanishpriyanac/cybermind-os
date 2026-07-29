@@ -24,15 +24,19 @@ RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 RUN npm ci --legacy-peer-deps
 COPY . .
+# Generate Prisma Client if schema exists
+RUN [ -f "services/${service}/prisma/schema.prisma" ] && npx prisma generate --schema=services/${service}/prisma/schema.prisma || true
 RUN npx nx build ${service}-service || npx nx build ${service}
 
 FROM docker.io/node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV production
 # We also might need build tools in runner if dependencies are installed there
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ openssl
 COPY --from=builder /app/package*.json ./
 RUN npm ci --only=production --legacy-peer-deps
+# Copy generated Prisma clients
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma || true
 # Try both common output paths from Nx
 COPY --from=builder /app/dist/services/${service} ./dist || true
 COPY --from=builder /app/services/${service}/dist ./dist || true

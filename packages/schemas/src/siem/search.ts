@@ -1,4 +1,4 @@
-import { FieldFilter, TimeRange, SortField } from '../../../packages/sdk/search-client/src/search-client';
+import { FieldFilter, TimeRange, SortField } from '@cybermind-os/search-client';
 
 export interface SavedSearch {
   id: string;
