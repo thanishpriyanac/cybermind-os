@@ -1,0 +1,111 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// CYBERMIND SOAR — Prisma Schema
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("SOAR_DATABASE_URL")
+}
+
+// ── Playbook Definitions ──────────────────────────────────────────────────────
+
+model Playbook {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  status      String   // 'DRAFT' | 'PUBLISHED' | 'ENABLED'
+  
+  triggerType String   // 'ALERT' | 'MANUAL' | 'SCHEDULED'
+  triggerRule Json?    // Rule criteria for triggering (e.g., { "severity": "CRITICAL" })
+
+  steps       Json     // Sequential steps for v0.8.0. Stored as JSON array of Action config objects
+                       // e.g., [{ "stepId": "s1", "action": "webhook", "config": {...} }]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  executions  PlaybookExecution[]
+
+  @@index([tenantId, status])
+}
+
+// ── Execution Tracking (Designed for future DAG support) ──────────────────────
+
+model PlaybookExecution {
+  id                String    @id @default(uuid())
+  tenantId          String
+  playbookId        String
+  parentExecutionId String?   // Null for root execution, populated for future parallel branching
+  
+  triggerSource     String    // 'SYSTEM' or userId
+  triggerEventId    String?   // SIEM Alert ID or Event ID that triggered this
+
+  status            String    // 'RUNNING' | 'WAITING_APPROVAL' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'TIMED_OUT'
+  
+  currentStepId     String?   // ID of the step currently executing
+  state             Json      // Context/variables accumulated during execution
+
+  startedAt         DateTime  @default(now())
+  completedAt       DateTime?
+
+  playbook          Playbook  @relation(fields: [playbookId], references: [id])
+  actionLogs        ActionExecutionLog[]
+  approvals         ApprovalRequest[]
+
+  @@index([tenantId, playbookId])
+  @@index([status])
+}
+
+// ── Action Execution Audit Log ────────────────────────────────────────────────
+
+model ActionExecutionLog {
+  id          String    @id @default(uuid())
+  tenantId    String
+  executionId String
+  stepId      String
+  
+  actionName  String    // e.g., 'email', 'webhook', 'slack'
+  actor       String    // 'system' or userId
+  target      String?   // The integration target (e.g., 'slack-channel-id')
+  
+  inputs      Json      // Inputs passed to the action
+  outputs     Json?     // Outputs or response from the action
+  
+  status      String    // 'SUCCESS' | 'FAILED'
+  retryCount  Int       @default(0)
+  durationMs  Int       @default(0)
+
+  createdAt   DateTime  @default(now())
+
+  execution   PlaybookExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+  @@index([tenantId])
+}
+
+// ── First-Class Human Approval ────────────────────────────────────────────────
+
+model ApprovalRequest {
+  id          String    @id @default(uuid())
+  tenantId    String
+  executionId String
+  stepId      String
+  
+  approver    String    // userId or role assigned to approve
+  status      String    // 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
+  comment     String?   // Analyst's justification
+  
+  expiresAt   DateTime  // When the approval times out automatically
+  approvedAt  DateTime? // When it was resolved
+  createdAt   DateTime  @default(now())
+
+  execution   PlaybookExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([executionId])
+  @@index([tenantId, approver, status])
+}

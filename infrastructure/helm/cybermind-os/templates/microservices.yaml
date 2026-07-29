@@ -1,0 +1,60 @@
+{{- range $name, $config := .Values.services }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    app: {{ $name }}
+spec:
+  replicas: {{ $config.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: "{{ $.Values.global.imageRegistry }}/{{ $name }}:{{ $.Values.global.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: {{ $config.port }}
+          env:
+            - name: PORT
+              value: "{{ $config.port }}"
+            - name: DATABASE_URL
+              value: "postgresql://cybermind:cybermind_secret@postgres:5432/cybermind"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: KAFKA_BROKERS
+              value: "redpanda:9092"
+            - name: OLLAMA_URL
+              value: "http://ollama:11434"
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: {{ $config.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ $config.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+spec:
+  selector:
+    app: {{ $name }}
+  ports:
+    - protocol: TCP
+      port: {{ $config.port }}
+      targetPort: {{ $config.port }}
+{{- end }}

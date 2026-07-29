@@ -1,0 +1,79 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Connector {
+  id               String   @id @default(uuid())
+  tenantId         String
+  name             String
+  description      String?
+  connectorType    String   // REST, SYSLOG, WEBHOOK, etc.
+  lifecycleState   String   @default("CREATED") // CREATED, CONFIGURED, VALIDATED, ACTIVE, PAUSED, FAILED, DISABLED
+
+  configuration    ConnectorConfiguration?
+  schedule         ConnectorSchedule?
+  credentialRef    ConnectorCredentialReference?
+  health           ConnectorHealth?
+  
+  executions       ConnectorExecution[]
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+model ConnectorConfiguration {
+  id               String    @id @default(uuid())
+  connectorId      String    @unique
+  connector        Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  
+  configPayload    Json      // Plugin-specific settings (URLs, ports, paths, etc.)
+}
+
+model ConnectorCredentialReference {
+  id               String    @id @default(uuid())
+  connectorId      String    @unique
+  connector        Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  
+  secretEngine     String    // E.g., 'HASHICORP_VAULT', 'AWS_SECRETS_MANAGER'
+  secretReference  String    // Identifier to pull the secret during execution
+}
+
+model ConnectorSchedule {
+  id               String    @id @default(uuid())
+  connectorId      String    @unique
+  connector        Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  
+  mode             String    // MANUAL, CRON, STREAMING, WEBHOOK
+  cronExpression   String?   // e.g., '*/5 * * * *'
+}
+
+model ConnectorExecution {
+  id               String    @id @default(uuid())
+  connectorId      String
+  connector        Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  
+  status           String    // RUNNING, SUCCESS, FAILED
+  startedAt        DateTime  @default(now())
+  completedAt      DateTime?
+  
+  recordsCollected Int       @default(0)
+  recordsPublished Int       @default(0)
+  errorPayload     String?
+}
+
+model ConnectorHealth {
+  id               String    @id @default(uuid())
+  connectorId      String    @unique
+  connector        Connector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  
+  status           String    // HEALTHY, DEGRADED, UNHEALTHY
+  lastCheckAt      DateTime  @default(now())
+  errorReason      String?
+}

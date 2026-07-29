@@ -1,0 +1,272 @@
+version: '3.9'
+
+services:
+  # ─── Infrastructure ─────────────────────────────────────────────────────────
+
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: cybermind-redpanda
+    command:
+      - redpanda start
+      - --smp 1
+      - --reserve-memory 0M
+      - --overprovisioned
+      - --node-id 0
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  opensearch:
+    image: opensearchproject/opensearch:2.13.0
+    container_name: cybermind-opensearch
+    environment:
+      - discovery.type=single-node
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=CybermindOs1!
+      - plugins.security.disabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sk -u admin:CybermindOs1! https://localhost:9200/_cluster/health | grep -v red"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: cybermind-postgres
+    environment:
+      POSTGRES_USER: cybermind
+      POSTGRES_PASSWORD: cybermind_secret
+      POSTGRES_DB: cybermind_identity
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cybermind"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: cybermind-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── Platform Services ───────────────────────────────────────────────────────
+
+  identity:
+    build:
+      context: .
+      dockerfile: services/identity/Dockerfile
+    container_name: cybermind-identity
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://cybermind:cybermind_secret@postgres:5432/cybermind_identity
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      KAFKA_BROKER: redpanda:29092
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: cybermind-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      IDENTITY_JWKS_URL: http://identity:3001/api/auth/jwks
+      KAFKA_BROKER: redpanda:29092
+    depends_on:
+      - identity
+
+  # ─── Data Pipeline ────────────────────────────────────────────────────────
+
+  normalization:
+    build:
+      context: .
+      dockerfile: services/normalization/Dockerfile
+    container_name: cybermind-normalization
+    ports:
+      - "3003:3003"
+    environment:
+      PORT: 3003
+      KAFKA_BROKER: redpanda:29092
+    depends_on:
+      redpanda: { condition: service_healthy }
+
+  connector:
+    build:
+      context: .
+      dockerfile: services/connector/Dockerfile
+    container_name: cybermind-connector
+    ports:
+      - "3002:3002"
+    environment:
+      PORT: 3002
+      KAFKA_BROKER: redpanda:29092
+      REDIS_HOST: redis
+    depends_on:
+      redpanda: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  # ─── SIEM Platform ────────────────────────────────────────────────────────
+
+  siem-ingestion:
+    build:
+      context: .
+      dockerfile: services/siem-ingestion/Dockerfile
+    container_name: cybermind-siem-ingestion
+    ports:
+      - "3004:3004"
+    environment:
+      PORT: 3004
+      KAFKA_BROKER: redpanda:29092
+      OPENSEARCH_NODE: https://opensearch:9200
+      OPENSEARCH_USER: admin
+      OPENSEARCH_PASSWORD: CybermindOs1!
+      SIEM_BULK_BATCH_SIZE: 500
+      SIEM_BULK_FLUSH_INTERVAL_MS: 5000
+      SIEM_BULK_MAX_CONCURRENT: 3
+    depends_on:
+      opensearch: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+
+  search-api:
+    build:
+      context: .
+      dockerfile: services/search-api/Dockerfile
+    container_name: cybermind-search-api
+    ports:
+      - "3005:3005"
+    environment:
+      PORT: 3005
+      OPENSEARCH_NODE: https://opensearch:9200
+      OPENSEARCH_USER: admin
+      OPENSEARCH_PASSWORD: CybermindOs1!
+    depends_on:
+      opensearch: { condition: service_healthy }
+
+  detection-engine:
+    build:
+      context: .
+      dockerfile: services/detection-engine/Dockerfile
+    container_name: cybermind-detection-engine
+    ports:
+      - "3006:3006"
+    environment:
+      PORT: 3006
+      KAFKA_BROKER: redpanda:29092
+      OPENSEARCH_NODE: https://opensearch:9200
+      OPENSEARCH_USER: admin
+      OPENSEARCH_PASSWORD: CybermindOs1!
+    depends_on:
+      opensearch: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+
+  correlation-engine:
+    build:
+      context: .
+      dockerfile: services/correlation-engine/Dockerfile
+    container_name: cybermind-correlation-engine
+    ports:
+      - "3007:3007"
+    environment:
+      PORT: 3007
+      KAFKA_BROKER: redpanda:29092
+    depends_on:
+      redpanda: { condition: service_healthy }
+
+  alert-management:
+    build:
+      context: .
+      dockerfile: services/alert-management/Dockerfile
+    container_name: cybermind-alert-management
+    ports:
+      - "3008:3008"
+    environment:
+      PORT: 3008
+      KAFKA_BROKER: redpanda:29092
+    depends_on:
+      redpanda: { condition: service_healthy }
+
+  investigation:
+    build:
+      context: .
+      dockerfile: services/investigation/Dockerfile
+    container_name: cybermind-investigation
+    ports:
+      - "3009:3009"
+    environment:
+      PORT: 3009
+    depends_on:
+      - alert-management
+
+  ai-gateway:
+    build:
+      context: .
+      dockerfile: services/ai-gateway/Dockerfile
+    container_name: cybermind-ai-gateway
+    ports:
+      - "3010:3010"
+    environment:
+      PORT: 3010
+      AI_DATABASE_URL: postgresql://cybermind:cybermind_secret@postgres:5432/cybermind_ai
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OLLAMA_BASE_URL: http://ollama:11434
+      AI_MONTHLY_BUDGET_USD: ${AI_MONTHLY_BUDGET_USD:-100}
+      AI_RATE_LIMIT_RPM: 60
+    depends_on:
+      postgres: { condition: service_healthy }
+      ollama: { condition: service_started }
+
+  soar:
+    build:
+      context: .
+      dockerfile: services/soar/Dockerfile
+    container_name: cybermind-soar
+    ports:
+      - "3011:3011"
+    environment:
+      PORT: 3011
+      SOAR_DATABASE_URL: postgresql://cybermind:cybermind_secret@postgres:5432/cybermind_soar
+      KAFKA_BROKER: redpanda:29092
+    depends_on:
+      postgres: { condition: service_healthy }
+      redpanda: { condition: service_healthy }
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: cybermind-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    # Pull default models on first start
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull llama3.1 && ollama pull qwen2.5-coder && ollama pull nomic-embed-text && wait"]
+
+volumes:
+  opensearch-data:
+  postgres-data:

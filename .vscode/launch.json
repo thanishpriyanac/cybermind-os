@@ -1,0 +1,77 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug identity-service with Nx",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["nx", "serve", "identity-service"],
+      "env": {
+        "NODE_OPTIONS": "--inspect=9229"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"],
+      "sourceMaps": true,
+      "outFiles": [
+        "${workspaceFolder}/services/identity/dist/**/*.(m|c|)js",
+        "!**/node_modules/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug asset-service with Nx",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["nx", "serve", "asset-service"],
+      "env": {
+        "NODE_OPTIONS": "--inspect=9230"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"],
+      "sourceMaps": true,
+      "outFiles": [
+        "${workspaceFolder}/services/asset/dist/**/*.(m|c|)js",
+        "!**/node_modules/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug gateway-service with Nx",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["nx", "serve", "gateway-service"],
+      "env": {
+        "NODE_OPTIONS": "--inspect=9231"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"],
+      "sourceMaps": true,
+      "outFiles": [
+        "${workspaceFolder}/services/gateway/dist/**/*.(m|c|)js",
+        "!**/node_modules/**"
+      ]
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug connector with Nx",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["nx", "serve", "connector"],
+      "env": {
+        "NODE_OPTIONS": "--inspect=9232"
+      },
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"],
+      "sourceMaps": true,
+      "outFiles": [
+        "${workspaceFolder}/services/connector/dist/**/*.(m|c|)js",
+        "!**/node_modules/**"
+      ]
+    }
+  ]
+}

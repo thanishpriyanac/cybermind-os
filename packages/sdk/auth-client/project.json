@@ -1,0 +1,19 @@
+{
+  "name": "auth-client",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/sdk/auth-client/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/sdk/auth-client",
+        "main": "packages/sdk/auth-client/src/index.ts",
+        "tsConfig": "packages/sdk/auth-client/tsconfig.lib.json",
+        "assets": ["packages/sdk/auth-client/*.md"]
+      }
+    }
+  }
+}

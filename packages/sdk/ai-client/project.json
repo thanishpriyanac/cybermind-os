@@ -1,0 +1,19 @@
+{
+  "name": "ai-client",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/sdk/ai-client/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/sdk/ai-client",
+        "main": "packages/sdk/ai-client/src/index.ts",
+        "tsConfig": "packages/sdk/ai-client/tsconfig.lib.json",
+        "assets": ["packages/sdk/ai-client/*.md"]
+      }
+    }
+  }
+}

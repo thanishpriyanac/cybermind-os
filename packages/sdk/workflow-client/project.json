@@ -1,0 +1,19 @@
+{
+  "name": "workflow-client",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/sdk/workflow-client/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/sdk/workflow-client",
+        "main": "packages/sdk/workflow-client/src/index.ts",
+        "tsConfig": "packages/sdk/workflow-client/tsconfig.lib.json",
+        "assets": ["packages/sdk/workflow-client/*.md"]
+      }
+    }
+  }
+}

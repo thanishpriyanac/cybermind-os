@@ -1,0 +1,90 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Asset {
+  id               String   @id @default(uuid())
+  tenantId         String
+  assetCategory    String   // mapped to Enum: AssetCategory
+  hostname         String?
+  fqdn             String?
+  uniqueIdentifier String
+  primaryIp        String?
+  macAddress       String?
+  operatingSystem  String?  // mapped to Enum: OperatingSystem
+  environment      String   @default("UNKNOWN") // mapped to Enum: Environment
+  lifecycleState   String   @default("PROVISIONED") // mapped to Enum: LifecycleState
+  status           String   @default("UNKNOWN") // mapped to Enum: AssetStatus
+  metadata         Json?
+  
+  // Relations
+  identities       AssetIdentity[]
+  sourceRelations  AssetRelationship[] @relation("SourceRelationships")
+  targetRelations  AssetRelationship[] @relation("TargetRelationships")
+  riskProfile      AssetRiskProfile?
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([tenantId, uniqueIdentifier])
+  @@index([tenantId])
+}
+
+model AssetIdentity {
+  id               String   @id @default(uuid())
+  assetId          String
+  asset            Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  
+  serialNumber     String?
+  biosUuid         String?
+  cloudInstanceId  String?
+  azureResourceId  String?
+  awsInstanceId    String?
+  gcpInstanceId    String?
+  kubernetesUid    String?
+  agentId          String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([assetId])
+}
+
+model AssetRelationship {
+  id               String   @id @default(uuid())
+  tenantId         String
+  type             String   // mapped to Enum: RelationshipType
+  
+  sourceAssetId    String
+  sourceAsset      Asset    @relation("SourceRelationships", fields: [sourceAssetId], references: [id], onDelete: Cascade)
+  
+  targetAssetId    String
+  targetAsset      Asset    @relation("TargetRelationships", fields: [targetAssetId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime @default(now())
+
+  @@unique([sourceAssetId, targetAssetId, type])
+  @@index([tenantId])
+}
+
+model AssetRiskProfile {
+  id                  String   @id @default(uuid())
+  assetId             String   @unique
+  asset               Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  businessCriticality String   @default("LOW") // mapped to Enum: RiskLevel
+  confidentiality     String   @default("LOW") // mapped to Enum: RiskLevel
+  integrity           String   @default("LOW") // mapped to Enum: RiskLevel
+  availability        String   @default("LOW") // mapped to Enum: RiskLevel
+  
+  exposureScore       Float    @default(0.0)
+  riskScore           Float    @default(0.0)
+  
+  lastCalculated      DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}

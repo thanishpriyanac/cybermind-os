@@ -1,0 +1,19 @@
+{
+  "name": "identity-client",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/sdk/identity-client/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/packages/sdk/identity-client",
+        "main": "packages/sdk/identity-client/src/index.ts",
+        "tsConfig": "packages/sdk/identity-client/tsconfig.lib.json",
+        "assets": ["packages/sdk/identity-client/*.md"]
+      }
+    }
+  }
+}

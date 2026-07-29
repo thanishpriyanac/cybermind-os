@@ -1,0 +1,69 @@
+{
+  "name": "asset-service",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "services/asset/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "webpack-cli build",
+        "env": {
+          "NODE_ENV": "production"
+        },
+        "cwd": "services/asset"
+      },
+      "configurations": {
+        "development": {
+          "env": {
+            "NODE_ENV": "development"
+          }
+        }
+      }
+    },
+    "prune-lockfile": {
+      "dependsOn": ["build"],
+      "cache": true,
+      "executor": "@nx/js:prune-lockfile",
+      "outputs": [
+        "{workspaceRoot}/dist/services/asset/package.json",
+        "{workspaceRoot}/dist/services/asset/package-lock.json"
+      ],
+      "options": {
+        "buildTarget": "build"
+      }
+    },
+    "copy-workspace-modules": {
+      "dependsOn": ["build"],
+      "cache": true,
+      "outputs": ["{workspaceRoot}/dist/services/asset/workspace_modules"],
+      "executor": "@nx/js:copy-workspace-modules",
+      "options": {
+        "buildTarget": "build"
+      }
+    },
+    "prune": {
+      "dependsOn": ["prune-lockfile", "copy-workspace-modules"],
+      "executor": "nx:noop"
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "asset-service:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "asset-service:build:development"
+        },
+        "production": {
+          "buildTarget": "asset-service:build:production"
+        }
+      }
+    }
+  },
+  "tags": []
+}

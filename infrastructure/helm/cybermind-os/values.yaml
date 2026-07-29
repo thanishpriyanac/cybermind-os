@@ -1,0 +1,30 @@
+global:
+  imageRegistry: "cybermindos"
+  tag: "0.8.0-alpha"
+
+services:
+  identity: { port: 3001, replicaCount: 1 }
+  asset: { port: 3002, replicaCount: 1 }
+  gateway: { port: 3000, replicaCount: 2 } # Gateway scaled
+  connector: { port: 3003, replicaCount: 1 }
+  normalization: { port: 3004, replicaCount: 1 }
+  siem-ingestion: { port: 3005, replicaCount: 1 }
+  search-api: { port: 3006, replicaCount: 1 }
+  detection-engine: { port: 3007, replicaCount: 1 }
+  correlation-engine: { port: 3008, replicaCount: 1 }
+  alert-management: { port: 3009, replicaCount: 1 }
+  investigation: { port: 3010, replicaCount: 1 }
+  soar: { port: 3011, replicaCount: 1 }
+  ai-gateway: { port: 3012, replicaCount: 1 }
+
+infrastructure:
+  postgres:
+    enabled: true
+    password: "cybermind_secret"
+  redis:
+    enabled: true
+  redpanda:
+    enabled: true
+  ollama:
+    enabled: true
+    model: "llama3"
