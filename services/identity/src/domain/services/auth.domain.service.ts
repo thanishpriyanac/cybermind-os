@@ -73,12 +73,12 @@ export class AuthDomainService {
     // 7. Audit Event
     await this.auditRepository.create({
       tenantId: tenant.id,
-      userId: user.id,
+      actorId: user.id,
       action: 'UserLoggedIn',
       resource: 'Session',
       resourceId: session.id,
       ipAddress,
-    });
+    } as any);
 
     // 8. Publish Domain Event
     await this.eventPublisher.publish(
@@ -139,12 +139,12 @@ export class AuthDomainService {
 
     await this.auditRepository.create({
       tenantId: session.tenantId,
-      userId: session.userId,
+      actorId: session.userId,
       action: 'TokenRefreshed',
       resource: 'Session',
       resourceId: newSession.id,
       ipAddress,
-    });
+    } as any);
 
     return {
       accessToken,
@@ -160,9 +160,9 @@ export class AuthDomainService {
         tenantId,
         action: 'UserLoginFailed',
         resource: 'Auth',
-        details: { email, reason },
+        after: { email, reason },
         ipAddress,
-      });
+      } as any);
     }
   }
 }

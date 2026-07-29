@@ -19,7 +19,7 @@ export class TenantPrismaRepository implements ITenantRepository {
   }
 
   async update(id: string, data: Partial<Tenant>): Promise<Tenant> {
-    return this.prisma.tenant.update({ where: { id }, data });
+    return this.prisma.tenant.update({ where: { id }, data: data as any });
   }
 
   async delete(id: string): Promise<void> {
