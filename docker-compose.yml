@@ -92,6 +92,8 @@ services:
       context: .
       dockerfile: services/gateway/Dockerfile
     container_name: cybermind-gateway
+    ports:
+      - "3000:3000"
     environment:
       PORT: 3000
       IDENTITY_JWKS_URL: http://identity:3001/api/auth/jwks
@@ -264,24 +266,6 @@ services:
       - ollama-data:/root/.ollama
     # Pull default models on first start
     entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5 && ollama pull llama3.1 && ollama pull qwen2.5-coder && ollama pull nomic-embed-text && wait"]
-
-  analyst-console:
-    build:
-      context: .
-      dockerfile: apps/analyst-console/Dockerfile
-    container_name: cybermind-analyst-console
-    ports:
-      - "4200:4200"
-    environment:
-      PORT: 4200
-      BACKEND_URL: http://gateway:3000
-    depends_on:
-      - gateway
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4200/"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
 
 volumes:
   opensearch-data:

@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  // Use relative path to leverage Next.js rewrite proxy
-  baseURL: '/api',
+  // Use environment variable for the remote backend tunnel URL
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
   headers: {
     'Content-Type': 'application/json',
   },

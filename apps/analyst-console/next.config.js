@@ -2,15 +2,8 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/:path*`,
-      },
-    ];
-  },
+  // Cloudflare Pages handles Next.js builds natively
+  // Configure NEXT_PUBLIC_API_URL in Cloudflare Pages dashboard
 };
 
 module.exports = nextConfig;

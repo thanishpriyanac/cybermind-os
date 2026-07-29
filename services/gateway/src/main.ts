@@ -14,6 +14,10 @@ async function bootstrap() {
 
   // Security Hardening (v0.8.0-alpha)
   app.use(helmet());
+  app.enableCors({
+    origin: process.env.FRONTEND_URL || '*',
+    credentials: true,
+  });
   
   app.use('/api/v1/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: 'Too many login attempts' }));
   app.use('/api/v1/ai', rateLimit({ windowMs: 60 * 1000, max: 60, message: 'AI rate limit exceeded' }));
