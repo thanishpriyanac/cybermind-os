@@ -235,6 +235,7 @@ services:
       AI_DATABASE_URL: postgresql://cybermind:cybermind_secret@postgres:5432/cybermind_ai
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       OLLAMA_BASE_URL: http://ollama:11434
       AI_MONTHLY_BUDGET_USD: ${AI_MONTHLY_BUDGET_USD:-100}
       AI_RATE_LIMIT_RPM: 60
