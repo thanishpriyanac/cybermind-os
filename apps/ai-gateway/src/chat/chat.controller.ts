@@ -16,7 +16,7 @@ export class ChatController {
     @Body('systemPrompt') systemPrompt: string = 'system',
     @Body('conversationId') conversationId: string = null
   ) {
-    const user = req.user as any; // From Passport JWT Strategy
+    const user = (req as any).user; // From Passport JWT Strategy
     await this.chatService.processChat(
       user.id,
       message,
