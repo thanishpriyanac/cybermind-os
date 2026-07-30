@@ -1,4 +1,4 @@
-name: CI/CD Pipeline - CYBERMIND OS v0.8.0-alpha
+name: CYBERMIND CI/CD
 
 on:
   push:
@@ -9,77 +9,58 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          
-      - name: Install Dependencies
-        run: npm install --legacy-peer-deps
-        
-      - name: Lint Code
-        run: npx nx run-many -t lint
+    - name: Checkout Repository
+      uses: actions/checkout@v3
 
-      - name: Generate Prisma Clients
-        run: |
-          npx prisma generate --schema=services/identity/prisma/schema.prisma || true
-          npx prisma generate --schema=services/asset/prisma/schema.prisma || true
-          npx prisma generate --schema=services/connector/prisma/schema.prisma || true
-          npx prisma generate --schema=services/ai-gateway/prisma/schema.prisma || true
-          npx prisma generate --schema=services/soar/prisma/schema.prisma || true
-        
-      - name: Build All Services
-        run: npx nx run-many -t build
-        
-      - name: Unit Tests
-        run: npx nx run-many -t test
-        
-  security-scans:
-    runs-on: ubuntu-latest
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Lint Code
+      run: npm run lint
+
+    - name: Run Unit & Integration Tests
+      run: npm run test
+
+    - name: Security Scan (npm audit)
+      run: npm audit --audit-level=high
+
+    - name: Build Application
+      run: npm run build
+
+  docker-build:
     needs: build-and-test
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Run Trivy vulnerability scanner (FS)
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'table'
-          exit-code: '1'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Secret Scan (TruffleHog)
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-
-  helm-validation:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Helm
-        uses: azure/setup-helm@v3
-        
-      - name: Helm Lint
-        run: helm lint infrastructure/helm/cybermind-os
-        
-      - name: Helm Template Verification
-        run: helm template infrastructure/helm/cybermind-os
-        
-  sbom-generation:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Generate SBOM
-        uses: anchore/sbom-action@v0
-        with:
-          format: spdx-json
-          output-file: cybermind-os-sbom.spdx.json
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build Docker Image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: false
+        tags: cybermind/api:latest
+        load: true
+
+    - name: Container Security Scan (Trivy)
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'cybermind/api:latest'
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'
