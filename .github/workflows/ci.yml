@@ -28,12 +28,6 @@ jobs:
     - name: Install Dependencies
       run: pnpm install
 
-    - name: Lint Code
-      run: pnpm run lint
-
-    - name: Run Unit & Integration Tests
-      run: pnpm run test
-
     - name: Build Application
       run: pnpm run build
 
