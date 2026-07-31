@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, LayoutDashboard, ShieldAlert, BookOpen, HeartPulse } from 'lucide-react';
+import { Activity, LayoutDashboard, ShieldAlert, BookOpen, HeartPulse, MessageSquareDot } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const navigation = [
+  { name: 'AI Chat', href: '/chat', icon: MessageSquareDot },
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Alerts', href: '/alerts', icon: ShieldAlert },
   { name: 'Investigations', href: '/investigations', icon: Activity },

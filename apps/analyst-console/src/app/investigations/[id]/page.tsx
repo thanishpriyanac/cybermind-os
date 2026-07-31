@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui
 import { Skeleton } from '../../../components/ui/skeleton';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
-import { PlayCircle, Shield } from 'lucide-react';
+import { PlayCircle, Shield, Activity } from 'lucide-react';
 import { useParams } from 'next/navigation';
 
 export default function InvestigationDetail() {
