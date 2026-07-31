@@ -162,6 +162,9 @@ importers:
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
+      tslib:
+        specifier: ^2.3.0
+        version: 2.8.1
       uuid:
         specifier: ^14.0.1
         version: 14.0.1
