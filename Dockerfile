@@ -8,7 +8,7 @@ RUN apk add --no-cache python3 py3-pip make g++ libc6-compat openssl
 RUN npm install -g pnpm@9
 COPY . .
 RUN pnpm install --frozen-lockfile
-RUN pnpm exec prisma generate
+RUN pnpm --filter ai-gateway exec prisma generate
 RUN pnpm run build
 
 # Stage 2: Production
@@ -31,7 +31,7 @@ COPY --from=builder /usr/src/app/packages ./packages
 RUN pnpm install --prod --frozen-lockfile
 
 # Generate Prisma Client
-RUN pnpm exec prisma generate
+RUN pnpm --filter ai-gateway exec prisma generate
 
 EXPOSE 3000
-CMD ["sh", "-c", "pnpm exec prisma migrate deploy && pm2-runtime start ecosystem.config.js"]
+CMD ["sh", "-c", "pnpm --filter ai-gateway exec prisma migrate deploy && pm2-runtime start ecosystem.config.js"]
