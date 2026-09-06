@@ -1,6 +1,6 @@
 import {
-  Controller, Post, Get, Body, Headers, Param, Res,
-  UnauthorizedException, BadRequestException, Logger,
+  Controller, Post, Get, Delete, Body, Headers, Param, Res,
+  UnauthorizedException, BadRequestException, NotFoundException, Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { AiGatewayService } from '../gateway/ai-gateway.service';
@@ -131,6 +131,89 @@ Use MITRE ATT&CK, CVE databases, and threat intelligence in your reasoning.${mem
   ) {
     this.requireHeaders(tenantId, userId);
     return this.knowledgeGraph.getNeighbors(nodeId);
+  }
+
+  /** GET /api/v1/ai/conversations — list active user conversations (excluding soft-deleted) */
+  @Get('conversations')
+  async listConversations(
+    @Headers('x-tenant-id') tenantId: string,
+    @Headers('x-user-id') userId: string,
+  ) {
+    this.requireHeaders(tenantId, userId);
+    return this.prisma.conversation.findMany({
+      where: {
+        tenantId,
+        userId,
+        deletedAt: null, // Exclude soft-deleted conversations from user view
+      },
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        id: true,
+        title: true,
+        modelKey: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  /** GET /api/v1/ai/conversations/audit — SOC audit endpoint (includes soft-deleted conversations) */
+  @Get('conversations/audit')
+  async auditConversations(
+    @Headers('x-tenant-id') tenantId: string,
+    @Headers('x-user-id') userId: string,
+  ) {
+    this.requireHeaders(tenantId, userId);
+    return this.prisma.conversation.findMany({
+      where: { tenantId },
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        messages: true,
+      },
+    });
+  }
+
+  /** GET /api/v1/ai/conversations/:id/messages — fetch message history */
+  @Get('conversations/:id/messages')
+  async getMessages(
+    @Headers('x-tenant-id') tenantId: string,
+    @Headers('x-user-id') userId: string,
+    @Param('id') conversationId: string,
+  ) {
+    this.requireHeaders(tenantId, userId);
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, tenantId, deletedAt: null },
+      include: {
+        messages: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+    if (!conversation) throw new NotFoundException('Conversation not found');
+    return conversation.messages;
+  }
+
+  /** DELETE /api/v1/ai/conversations/:id — soft delete (preserves data in DB for SOC compliance) */
+  @Delete('conversations/:id')
+  async softDeleteConversation(
+    @Headers('x-tenant-id') tenantId: string,
+    @Headers('x-user-id') userId: string,
+    @Param('id') conversationId: string,
+  ) {
+    this.requireHeaders(tenantId, userId);
+    const conversation = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, tenantId, userId, deletedAt: null },
+    });
+    if (!conversation) throw new NotFoundException('Conversation not found');
+
+    // SOFT-DELETE: Update deletedAt timestamp. DO NOT purge/delete row from database.
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: { deletedAt: new Date() },
+    });
+
+    this.logger.log(`Conversation ${conversationId} soft-deleted by user ${userId} (retained in DB)`);
+    return { success: true, message: 'Conversation hidden from view (retained on server for audit)' };
   }
 
   /** GET /api/v1/ai/models — list available models */

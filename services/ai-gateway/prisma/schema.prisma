@@ -52,6 +52,7 @@ model Conversation {
   systemPrompt String?
   totalTokens Int       @default(0)
   totalCostUsd Decimal  @default(0) @db.Decimal(12, 6)
+  deletedAt   DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
