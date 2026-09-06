@@ -30,10 +30,33 @@ async function main() {
 
   const tenants = [tenantMaster, tenantPlatform];
 
-  // Argon2id hashes for standard passwords
-  // admin123 hash: $argon2id$v=19$m=65536,p=4,t=3$vrHmYn3c1A8VgbzSSbA7LQ$32qEUdbbGCRvEryfwl28eO0pBZhNSvWTKgzL5tz4d6w
-  // ChangeMe123! hash: $argon2id$v=19$m=65536,p=4,t=3$NRmzuh2ci1X6dHpDH0iB/w$3gKBhOjmesmRdHL2TEUGU2+xRiR/vpOOiPzORXhgxhk
-  const admin123Hash = '$argon2id$v=19$m=65536,p=4,t=3$vrHmYn3c1A8VgbzSSbA7LQ$32qEUdbbGCRvEryfwl28eO0pBZhNSvWTKgzL5tz4d6w';
+  // Configured Users & Hashes
+  const usersToSeed = [
+    {
+      email: 'admin@cybermind.local',
+      hash: '$argon2id$v=19$m=65536,p=4,t=3$vrHmYn3c1A8VgbzSSbA7LQ$32qEUdbbGCRvEryfwl28eO0pBZhNSvWTKgzL5tz4d6w', // admin123
+    },
+    {
+      email: 'admin@cybermind.io',
+      hash: '$argon2id$v=19$m=65536,p=4,t=3$vrHmYn3c1A8VgbzSSbA7LQ$32qEUdbbGCRvEryfwl28eO0pBZhNSvWTKgzL5tz4d6w', // admin123
+    },
+    {
+      email: 'thanishpriyan@gmail.com',
+      hash: '$argon2id$v=19$m=65536,p=4,t=3$wc46DNiDheBQPfJhMetRHA$45H2Vm1l0evyHtN9xDztpJL/rpdw2x+cuTz1hVAaZFU', // thanish123
+    },
+    {
+      email: 'houshic19@gmail.com',
+      hash: '$argon2id$v=19$m=65536,p=4,t=3$cGI7g0td4v1eiJaW7uO9Nw$ZtN3+AJQsGGqHbKn11+aLBZXsDhmX5cwtpi+ZCLzdAk', // houshic123
+    },
+    {
+      email: 'guest@cybermind.local',
+      hash: '$argon2id$v=19$m=65536,p=4,t=3$3S+9rF8CwHaoIbat6ERbNw$UBdBNRfhxLAZe0IU8X1f34O2OzbXozJ0WKcKz9Y2Mh4', // dust123
+    },
+    {
+      email: 'guest@cybermind.io',
+      hash: '$argon2id$v=19$m=65536,p=4,t=3$3S+9rF8CwHaoIbat6ERbNw$UBdBNRfhxLAZe0IU8X1f34O2OzbXozJ0WKcKz9Y2Mh4', // dust123
+    },
+  ];
 
   for (const t of tenants) {
     // 2. Create Roles per Tenant
@@ -103,25 +126,24 @@ async function main() {
       });
     }
 
-    // 4. Create Admin Users (admin@cybermind.local and admin@cybermind.io)
-    const emails = ['admin@cybermind.local', 'admin@cybermind.io'];
-    for (const email of emails) {
+    // 4. Create Users
+    for (const u of usersToSeed) {
       const adminUser = await prisma.user.upsert({
         where: {
           tenantId_email: {
             tenantId: t.id,
-            email,
+            email: u.email,
           },
         },
         update: {
-          passwordHash: admin123Hash,
+          passwordHash: u.hash,
           status: 'ACTIVE',
         },
         create: {
           tenantId: t.id,
-          email,
+          email: u.email,
           status: 'ACTIVE',
-          passwordHash: admin123Hash,
+          passwordHash: u.hash,
         },
       });
 
