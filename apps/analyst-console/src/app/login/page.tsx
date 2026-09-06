@@ -35,8 +35,12 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setError(null);
     try {
-      const response = await api.post('/v1/auth/login', data);
-      const token = response.data.token || response.data.access_token;
+      const response = await api.post('/v1/identity/auth/login', {
+        tenantSlug: data.tenantId,
+        email: data.email,
+        password: data.password,
+      });
+      const token = response.data.accessToken || response.data.token || response.data.access_token;
       if (token) {
         login(token, data.email, data.tenantId);
       } else {
