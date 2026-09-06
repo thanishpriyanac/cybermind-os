@@ -1,13 +1,13 @@
 import { Injectable, NestMiddleware, UnauthorizedException, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import * as jwt from 'jsonwebtoken';
-import * as jwksClient from 'jwks-rsa';
+import jwksRsa from 'jwks-rsa';
 
 @Injectable()
 export class JwtAuthMiddleware implements NestMiddleware {
   private readonly logger = new Logger(JwtAuthMiddleware.name);
   
-  private readonly client = jwksClient({
+  private readonly client = jwksRsa({
     jwksUri: 'http://identity:3001/auth/.well-known/jwks.json',
     cache: true,
     cacheMaxEntries: 5, // Default value
@@ -17,7 +17,7 @@ export class JwtAuthMiddleware implements NestMiddleware {
   });
 
   private getKey = (header: jwt.JwtHeader, callback: jwt.SigningKeyCallback) => {
-    this.client.getSigningKey(header.kid, (err, key) => {
+    this.client.getSigningKey(header.kid, (err: any, key: any) => {
       if (err) {
         this.logger.error(`Failed to retrieve signing key for kid: ${header.kid}`, err);
         callback(err, undefined);
