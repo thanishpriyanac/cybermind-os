@@ -8,11 +8,11 @@ export class WindowsEventPlugin implements ConnectorPlugin {
   
   constructor(private readonly assetClient: CybermindAssetClient) {}
 
-  async validate(config: unknown): Promise<void> {
-    // Validate kafka topic or webhook endpoints here
+  async validate(_config: unknown): Promise<void> {
+    return Promise.resolve();
   }
 
-  async collect(config: unknown): Promise<unknown[]> {
+  async collect(_config: unknown): Promise<unknown[]> {
     // Hybrid Transport Layer logic would reside here. 
     // E.g., if Kafka, this pulls a batch from ingestion.raw.windows
     return [];
@@ -47,7 +47,7 @@ export class WindowsEventPlugin implements ConnectorPlugin {
             event.assetId = result[0].id;
             event.assetResolved = true;
           }
-        } catch (e) {
+        } catch (_e) {
           // Ignore failures, asset remains unresolved
         }
       }

@@ -21,8 +21,8 @@ export class FirewallParser implements DeviceParser {
     }
 
     // Naive IP extraction
-    const srcIpMatch = message.message.match(/SRC=([0-9\.]+)/);
-    const dstIpMatch = message.message.match(/DST=([0-9\.]+)/);
+    const srcIpMatch = message.message.match(/SRC=([0-9.]+)/);
+    const dstIpMatch = message.message.match(/DST=([0-9.]+)/);
 
     return {
       originalPayload: message.rawPayload,

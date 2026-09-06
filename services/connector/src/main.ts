@@ -1,4 +1,4 @@
-import { initializeOpenTelemetry, setupObservability } from '../../../packages/sdk/observability-client/src';
+import { initializeOpenTelemetry } from '@cybermind-os/observability-client';
 initializeOpenTelemetry('connector-service');
 
 /**

@@ -1,15 +1,13 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ConnectorDomainService {
-  constructor() {}
-
   async createConnector(tenantId: string, data: any) {
     // Fake implementation for MVP. Real one would use ConnectorRepository.
     return { id: 'mock-id', tenantId, lifecycleState: 'CREATED', ...data };
   }
 
-  async configureConnector(tenantId: string, connectorId: string, config: any) {
+  async configureConnector(tenantId: string, connectorId: string, _config: any) {
     // Fake implementation for MVP
     return { id: connectorId, lifecycleState: 'CONFIGURED' };
   }

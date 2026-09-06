@@ -2,7 +2,7 @@ import { StructuredSyslog } from '../../structured-syslog.interface';
 
 export class RFC3164Parser {
   // Very simplistic MVP regex for <PRI>TIMESTAMP HOSTNAME TAG: MSG
-  private readonly regex = /^<(\d+)>([A-Z][a-z]{2}\s+\d+\s\d+:\d+:\d+)\s+([a-zA-Z0-9_\-\.]+)\s+([^:]+):\s+(.*)$/;
+  private readonly regex = /^<(\d+)>([A-Z][a-z]{2}\s+\d+\s\d+:\d+:\d+)\s+([a-zA-Z0-9_.-]+)\s+([^:]+):\s+(.*)$/;
 
   parse(raw: string): StructuredSyslog | null {
     const match = raw.match(this.regex);

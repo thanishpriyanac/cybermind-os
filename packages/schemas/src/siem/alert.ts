@@ -1,5 +1,3 @@
-import { EnrichedEvent } from '../normalization/enriched-event';
-
 export type AlertStatus = 'OPEN' | 'IN_PROGRESS' | 'CLOSED' | 'SUPPRESSED';
 export type AlertSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 

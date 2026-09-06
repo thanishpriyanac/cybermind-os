@@ -1,6 +1,4 @@
-import { Client } from '@opensearch-project/opensearch';
-import { EnrichedEvent } from '../../../../packages/schemas/src/normalization/enriched-event';
-import { Alert } from '../../../../packages/schemas/src/siem/alert';
+import type { EnrichedEvent, Alert } from '@cybermind/schemas';
 
 // ─── Parameter Types ────────────────────────────────────────────────────────
 

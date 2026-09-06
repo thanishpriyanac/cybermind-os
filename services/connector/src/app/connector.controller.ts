@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param, Headers, UseGuards, Get } from '@nestjs/common';
+import { Controller, Post, Body, Param, Headers, Get } from '@nestjs/common';
 import { ConnectorDomainService } from '../domain/services/connector.domain.service';
 import { ExecutionEngine } from '../domain/services/execution-engine.service';
 
@@ -35,8 +35,8 @@ export class ConnectorController {
   
   @Get(':id/executions')
   async getExecutions(
-    @Headers('x-tenant-id') tenantId: string,
-    @Param('id') id: string,
+    @Headers('x-tenant-id') _tenantId: string,
+    @Param('id') _id: string,
   ) {
     // Mock response for MVP
     return [];

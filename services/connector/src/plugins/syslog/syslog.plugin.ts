@@ -15,9 +15,11 @@ export class SyslogPlugin implements ConnectorPlugin {
 
   constructor(private readonly assetClient: CybermindAssetClient) {}
 
-  async validate(config: unknown): Promise<void> {}
+  async validate(_config: unknown): Promise<void> {
+    return Promise.resolve();
+  }
 
-  async collect(config: unknown): Promise<unknown[]> {
+  async collect(_config: unknown): Promise<unknown[]> {
     return []; // Handled upstream by ingestion.raw.syslog Kafka consumer
   }
 
@@ -68,7 +70,7 @@ export class SyslogPlugin implements ConnectorPlugin {
             event.assetId = result[0].id;
             event.assetResolved = true;
           }
-        } catch (e) {
+        } catch (_e) {
           // Ignore failures
         }
       }

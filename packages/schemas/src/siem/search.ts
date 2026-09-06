@@ -1,4 +1,17 @@
-import { FieldFilter, TimeRange, SortField } from '@cybermind-os/search-client';
+export interface FieldFilter {
+  field: string;
+  value: string | string[] | boolean | number;
+}
+
+export interface TimeRange {
+  from: string;
+  to: string;
+}
+
+export interface SortField {
+  field: string;
+  order: 'asc' | 'desc';
+}
 
 export interface SavedSearch {
   id: string;
