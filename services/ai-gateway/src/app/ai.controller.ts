@@ -364,6 +364,12 @@ Use MITRE ATT&CK, CVE databases, and threat intelligence in your reasoning.${mem
     };
   }
 
+  /** POST /api/v1/ai/tools/speed-test/upload — Receives client browser speed test payload */
+  @Post('tools/speed-test/upload')
+  async speedTestUpload(@Body() body: any) {
+    return { status: 'ok', receivedAt: new Date().toISOString() };
+  }
+
   /** GET /api/v1/ai/models — list available models */
   @Get('models')
   async listModels(@Headers('x-tenant-id') tenantId: string) {
