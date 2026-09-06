@@ -1,5 +1,5 @@
 import {
-  Controller, Post, Get, Delete, Body, Headers, Param, Res,
+  Controller, Post, Get, Delete, Body, Headers, Param, Query, Res,
   UnauthorizedException, BadRequestException, NotFoundException, Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
@@ -214,6 +214,89 @@ Use MITRE ATT&CK, CVE databases, and threat intelligence in your reasoning.${mem
 
     this.logger.log(`Conversation ${conversationId} soft-deleted by user ${userId} (retained in DB)`);
     return { success: true, message: 'Conversation hidden from view (retained on server for audit)' };
+  }
+
+  /** GET /api/v1/ai/tools/ip-lookup?ip=... — IP Threat & GeoIP Intelligence Lookup */
+  @Get('tools/ip-lookup')
+  async ipLookup(
+    @Headers('x-tenant-id') tenantId: string,
+    @Headers('x-user-id') userId: string,
+    @Query('ip') ip: string,
+  ) {
+    this.requireHeaders(tenantId, userId);
+    if (!ip?.trim()) {
+      throw new BadRequestException('ip query parameter is required (e.g. ?ip=8.8.8.8)');
+    }
+
+    const targetIp = ip.trim();
+    const isPrivate = /^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|::1|fe80::)/.test(targetIp);
+
+    if (isPrivate) {
+      return {
+        ip: targetIp,
+        type: 'Private / Local Network IP',
+        threatScore: 0,
+        riskLevel: 'LOW',
+        country: 'Internal Infrastructure',
+        city: 'Local Subnet',
+        isp: 'Private Network',
+        asn: 'N/A',
+        isProxyOrVpn: false,
+        recommendation: 'Internal IP address. Check local network topology and internal SIEM logs for anomalous east-west traffic.',
+      };
+    }
+
+    try {
+      // Query GeoIP & Threat Intel service (with 3s timeout)
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+
+      const res = await fetch(`http://ip-api.com/json/${encodeURIComponent(targetIp)}?fields=status,message,country,countryCode,regionName,city,zip,lat,lon,timezone,isp,org,as,query`, {
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeout));
+
+      if (res.ok) {
+        const geo = await res.json();
+        if (geo.status === 'success') {
+          // Analyze threat score based on ISP, Org, and Location indicators
+          const isKnownDatacenter = /hosting|cloud|digitalocean|linode|aws|hetzner|ovh|vultr|leaseweb/i.test(`${geo.isp} ${geo.org}`);
+          const threatScore = isKnownDatacenter ? 65 : 15;
+          const riskLevel = threatScore > 60 ? 'MEDIUM' : 'LOW';
+
+          return {
+            ip: targetIp,
+            type: 'Public IPv4/IPv6',
+            threatScore,
+            riskLevel,
+            country: `${geo.country} (${geo.countryCode})`,
+            city: `${geo.city}, ${geo.regionName}`,
+            coordinates: { lat: geo.lat, lon: geo.lon },
+            isp: geo.isp,
+            org: geo.org,
+            asn: geo.as,
+            isDatacenter: isKnownDatacenter,
+            recommendation: isKnownDatacenter
+              ? 'Datacenter / Cloud Provider IP detected. Correlate with firewall logs for automated scanning or C2 activity.'
+              : 'Standard public IP. Monitor for brute-force or unauthorized API access attempts.',
+          };
+        }
+      }
+    } catch (e: any) {
+      this.logger.warn(`External IP lookup failed for ${targetIp}: ${e.message}`);
+    }
+
+    // Fallback response for offline or restricted environments
+    return {
+      ip: targetIp,
+      type: 'Public IPv4/IPv6',
+      threatScore: 30,
+      riskLevel: 'LOW',
+      country: 'Unknown (Offline / Local Mode)',
+      city: 'Unknown',
+      isp: 'External Network',
+      asn: 'Unknown',
+      recommendation: 'Live GeoIP lookup unreachable (offline mode). Inspect firewall & netflow logs on server.',
+    };
   }
 
   /** GET /api/v1/ai/models — list available models */
