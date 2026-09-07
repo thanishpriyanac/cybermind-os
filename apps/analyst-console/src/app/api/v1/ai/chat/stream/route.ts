@@ -625,10 +625,20 @@ export async function POST(request: Request) {
       .slice(0, -1)
       .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content }));
 
-    // ── 2. Build ordered provider chain ──────────────────────────────────────
-    const providerOrder: ProviderKey[] = [
-      'gemini', 'groq', 'nvidia_pro', 'nvidia_flash', 'xai', 'openai',
-    ];
+    // Check if RAG is disabled globally via environment or header
+    const disableLocalRAG = process.env.DISABLE_LOCAL_RAG === 'true' || request.headers.get('x-disable-rag') === 'true';
+
+    // Build targeted provider chain based on selected model dropdown
+    let providerOrder: ProviderKey[] = [];
+    if (modelKey === 'local-soc') {
+      providerOrder = []; // Skip cloud AI, go straight to local RAG
+    } else if (modelKey && PROVIDERS[modelKey as ProviderKey]) {
+      providerOrder = [modelKey as ProviderKey]; // Specific Cloud AI model selected
+    } else {
+      // Auto mode: Try Cloud AI providers in priority order
+      providerOrder = ['gemini', 'groq', 'nvidia_pro', 'nvidia_flash', 'xai', 'openai'];
+    }
+
     const availableProviders = providerOrder.filter((k) => !!PROVIDERS[k].apiKey);
 
     const encoder = new TextEncoder();
@@ -682,16 +692,25 @@ export async function POST(request: Request) {
           }
         }
 
-        // ── CyberMind Local SOC Engine Fallback (Zero-Refusal Guarantee) ──────
+        // ── Local RAG Engine Fallback ─────────────────────────────────────────
         if (!success) {
-          usedProvider = 'CyberMind Local SOC Engine';
-          send({ type: 'provider_info', provider: 'CyberMind Local SOC Engine', model: 'cybermind-soc-v1' });
+          if (disableLocalRAG && modelKey !== 'local-soc') {
+            const noKeyMsg = `### ⚠️ Cloud AI Key Unconfigured\n\nPlease add \`GEMINI_API_KEY\` or \`GROQ_API_KEY\` to \`apps/analyst-console/.env\` on your server to use direct Cloud AI models.`;
+            fullText = noKeyMsg;
+            for (const word of noKeyMsg.split(/(\s+)/)) {
+              send({ delta: word, done: false });
+              await new Promise((r) => setTimeout(r, 6));
+            }
+          } else {
+            usedProvider = 'CyberMind Local SOC Engine';
+            send({ type: 'provider_info', provider: 'CyberMind Local SOC Engine', model: 'cybermind-soc-v1' });
 
-          for await (const chunk of streamLocalSOCEngine(userMessageContent, attachments)) {
-            fullText += chunk;
-            send({ delta: chunk, done: false, provider: 'CyberMind Local SOC Engine' });
+            for await (const chunk of streamLocalSOCEngine(userMessageContent, attachments)) {
+              fullText += chunk;
+              send({ delta: chunk, done: false, provider: 'CyberMind Local SOC Engine' });
+            }
+            success = true;
           }
-          success = true;
         }
 
         if (fullText) {

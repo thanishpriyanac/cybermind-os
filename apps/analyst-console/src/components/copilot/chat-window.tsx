@@ -49,13 +49,12 @@ interface ChatWindowProps {
 }
 
 const MODELS = [
-  { id: 'auto', name: 'Auto (Smart Router)' },
-  { id: 'gpt-4o', name: 'GPT-4o' },
-  { id: 'deepseek-ai/deepseek-v4-flash', name: 'DeepSeek V4 Flash' },
-  { id: 'deepseek-ai/deepseek-v4-pro', name: 'DeepSeek V4 Pro' },
-  { id: 'grok-2-1212', name: 'Grok' },
-  { id: 'llama3.1', name: 'Local Llama 3.1' },
-  { id: 'qwen2.5-coder', name: 'Local Qwen' },
+  { id: 'auto', name: 'Auto (Smart Router + RAG Fallback)' },
+  { id: 'gemini', name: 'Google Gemini 2.5 Flash (Cloud AI Only)' },
+  { id: 'groq', name: 'Groq Llama 3.3 70B (Cloud AI Only)' },
+  { id: 'openai', name: 'OpenAI GPT-4o-mini (Cloud AI Only)' },
+  { id: 'nvidia_pro', name: 'DeepSeek R1 (NVIDIA Cloud Only)' },
+  { id: 'local-soc', name: 'Local SOC Engine (Offline RAG Only)' },
 ];
 
 function formatFileSize(bytes: number): string {
