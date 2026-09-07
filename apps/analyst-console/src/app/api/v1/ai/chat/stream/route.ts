@@ -633,10 +633,12 @@ export async function POST(request: Request) {
     if (modelKey === 'local-soc') {
       providerOrder = []; // Skip cloud AI, go straight to local RAG
     } else if (modelKey && PROVIDERS[modelKey as ProviderKey]) {
-      providerOrder = [modelKey as ProviderKey]; // Specific Cloud AI model selected
+      // Try selected model first, then cascade to all other valid cloud AI providers
+      const remaining = (['groq', 'nvidia_pro', 'nvidia_flash', 'gemini', 'openai', 'xai'] as ProviderKey[]).filter(k => k !== modelKey);
+      providerOrder = [modelKey as ProviderKey, ...remaining];
     } else {
-      // Auto mode: Try Cloud AI providers in priority order
-      providerOrder = ['gemini', 'groq', 'nvidia_pro', 'nvidia_flash', 'xai', 'openai'];
+      // Auto mode: Prioritize valid confirmed working keys (Groq & NVIDIA NIM first)
+      providerOrder = ['groq', 'nvidia_pro', 'nvidia_flash', 'gemini', 'openai', 'xai'];
     }
 
     const availableProviders = providerOrder.filter((k) => !!PROVIDERS[k].apiKey);
