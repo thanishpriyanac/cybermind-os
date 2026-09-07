@@ -97,8 +97,11 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
   const searchParams = useSearchParams();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isUserScrolledUpRef = useRef(false);
+  const animFrameIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     const alertId = searchParams?.get('alertId');
@@ -131,17 +134,30 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
       if (res.ok) {
         const data = await res.json();
         setMessages(data || []);
-        scrollToBottom();
+        scrollToBottom(true);
       }
     } catch (e) {
       console.error(e);
     }
   };
 
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    // Stop forcing auto-scroll if user manually scrolled up > 100px from bottom
+    isUserScrolledUpRef.current = scrollHeight - (scrollTop + clientHeight) > 100;
+  };
+
+  const scrollToBottom = (force = false) => {
+    if (!force && isUserScrolledUpRef.current) return;
+    if (animFrameIdRef.current) return;
+
+    animFrameIdRef.current = requestAnimationFrame(() => {
+      animFrameIdRef.current = null;
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
+    });
   };
 
   const stopGeneration = () => {
@@ -390,7 +406,7 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
       </div>
 
       {/* Message List */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center max-w-md mx-auto space-y-4">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary">

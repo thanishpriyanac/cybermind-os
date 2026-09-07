@@ -311,6 +311,91 @@ async function* streamLocalSOCEngine(
   let response = '';
 
   if (
+    query.includes('zscaler') ||
+    query.includes('zdx') ||
+    query.includes('zia') ||
+    query.includes('zpa')
+  ) {
+    response = `### 🛡️ CyberMind Threat Intelligence: Zscaler Digital Experience (ZDX) & Zero Trust Analysis
+
+**Vendor**: Zscaler Zero Trust Exchange  
+**Product Module**: Zscaler Digital Experience (ZDX) Monitoring & Telemetry  
+**Core Capability**: End-to-End User Experience Monitoring, Cloud Path Probes, Application Latency, Device Telemetry
+
+---
+
+#### 1. Technical Architecture & Component Breakdown
+
+| Feature | Technical Function | Primary Metrics / Telemetry |
+| :--- | :--- | :--- |
+| **ZDX Score** | Composite score (0-100) combining endpoint, network, and app health. | System CPU/RAM, Wi-Fi Signal, ISP Hops, Application TTFB |
+| **Cloud Path Probes** | Proactive MTR-like probes (Adaptive / Tunnel 2.0 UDP/TCP/ICMP). | Hop-by-Hop Packet Loss, RTT, Jitter, ISP Peering Bottlenecks |
+| **Zscaler Client Connector** | Lightweight endpoint agent capturing telemetry every 60 seconds. | Device Health, CPU/Disk IO, NIC Driver, Gateway RTT |
+| **Web Application Monitoring** | Synthetic HTTP/HTTPS page load probes targeting SaaS apps. | DNS Resolution Time, TCP Connect, TLS Handshake, HTTP Response Code |
+
+---
+
+#### 2. Troubleshooting & SOC Telemetry Analysis
+
+##### A. Identifying Network vs. Application Bottlenecks
+- **High Cloud Path Latency + Low App TTFB**: Indicates ISP or local Wi-Fi degradation (Layer 3/4 issue).
+- **Normal Cloud Path Latency + High App TTFB**: Indicates SaaS application server overload (Layer 7 issue).
+- **ZPA Private App Degradation**: Inspect App Connector CPU/RAM load and Microtenant connector status.
+
+##### B. SIEM Ingestion & NSS Streaming (ZDX / ZIA Log Integration):
+\`\`\`json
+{
+  "sourcetype": "zscaler:zdx:metrics",
+  "zdx_score": 38,
+  "user": "analyst.smith@cybermind.local",
+  "app_name": "Microsoft 365 / Salesforce",
+  "cloud_path_loss_pct": 14.2,
+  "gateway_ip": "104.129.192.1",
+  "isp_asn": "AS7922 Comcast Cable"
+}
+\`\`\`
+
+---
+
+#### 3. Recommended Remediation & Hardening Actions
+1. **Optimize Zscaler Client Connector**: Upgrade ZCC agent to latest stable release and enable MTU Path Discovery.
+2. **Configure Direct Peering**: Enable Sub-Location Bypass or Direct Traffic Steering for latency-sensitive VoIP/Teams streams.
+3. **Audit App Connectors**: Scale out ZPA App Connector groups if CPU utilization exceeds 75%.`;
+  } else if (
+    query.includes('crowdstrike') ||
+    query.includes('falcon') ||
+    query.includes('edr') ||
+    query.includes('rtr')
+  ) {
+    response = `### 🛡️ CyberMind Threat Intelligence: CrowdStrike Falcon EDR Analysis
+
+**Vendor**: CrowdStrike Falcon Platform  
+**Architecture**: Cloud-Native Endpoint Protection Platform (EPP/EDR) & Threat Graph  
+**Core Capability**: Kernel-level Process Ingestion, Behavioral AI Threat Detection, Real-Time Response (RTR)
+
+---
+
+#### 1. Core Platform Capabilities & Process Telemetry
+- **Falcon Sensor**: Kernel driver tracking process execution (\`ProcessRollup2\`), DNS resolution, Registry modification, and Network Connection events.
+- **Threat Graph**: Graph database correlating billions of endpoint events across global tenants to identify zero-day adversary activity.
+- **Real-Time Response (RTR)**: Remote shell execution allowing SOC analysts to isolate hosts, kill malicious PIDs, and retrieve memory dumps.
+
+---
+
+#### 2. Incident Triage & Falcon Query Language (FQL)
+\`\`\`fql
+# Query suspicious process creation with command-line obfuscation
+event_simpleName=ProcessRollup2 ImageFileName="*\\powershell.exe" CommandLine="*-enc*"
+| table _time ComputerName UserName ImageFileName CommandLine ParentBaseFileName
+\`\`\`
+
+---
+
+#### 3. Remediation & SOC Action Playbook
+1. **Host Isolation**: Trigger network isolation via Falcon Console or API (\`POST /devices/entities/devices-actions/v2?action_name=contain\`).
+2. **RTR Process Termination**: Run \`kill <PID>\` and \`rm <file_path>\` via active RTR session.
+3. **IOC Hunting**: Sweep hash across all endpoint sensors using CrowdStrike Bulk Search.`;
+  } else if (
     query.includes('mitm') ||
     query.includes('man in the middle') ||
     query.includes('man-in-the-middle') ||
@@ -383,9 +468,9 @@ I am your autonomous SOC Intelligence Analyst embedded in CyberMind OS.
 
 #### How I can assist you today:
 - 🚨 **Incident Triage & Analysis**: Ransomware, SSH brute force, phishing, malware analysis.
+- 🌐 **Vendor & Product Audits**: Zscaler (ZDX/ZIA/ZPA), CrowdStrike Falcon, Splunk, Elastic, Palo Alto, Fortinet.
 - 🔍 **Packet & Network Forensics**: PCAP inspection, ARP/DNS/TLS anomaly detection.
 - 📜 **Rule Generation**: Sigma, Suricata, Snort, YARA, KQL, and SPL detection queries.
-- 🌐 **Threat Intelligence**: IP reputation, CVE vulnerability remediation, MITRE ATT&CK mapping.
 - 📁 **File Audit**: Upload PCAP, YAML, JSON, or LOG files using the paperclip button below.
 
 What threat or security alert would you like to investigate?`;
@@ -435,28 +520,63 @@ falsepositives:
 level: critical
 \`\`\``;
   } else {
+    // Dynamic Technical Topic Synthesizer
+    const cleanTopic = userMessage.slice(0, 60).replace(/[^\w\s\-\.]/gi, '');
     response = `### 🛡️ CyberMind SOC Analysis: Technical Security Briefing
 
-**Query Target**: \`${userMessage.slice(0, 80)}\`  
-**Security Context**: Security Operations, Incident Response & Threat Telemetry
+**Analysis Focus Target**: \`${cleanTopic}\`  
+**Domain Alignment**: Security Operations Center (SOC) & Defensive Engineering
 
 ---
 
-#### 1. Overview & Operational Assessment
-CyberMind AI has evaluated your request under SOC operational standards. For query \`${userMessage.slice(0, 40)}\`, optimal SOC triage involves continuous monitoring, host-based log auditing, and protocol verification.
+#### 1. Technical Overview & Threat Landscape
+CyberMind AI has conducted an in-depth security analysis for \`${cleanTopic}\`. In modern SOC architecture, maintaining comprehensive visibility over this technology stack is crucial for early detection and threat containment.
 
 ---
 
-#### 2. Key Technical Checks
-- **SIEM / EDR Ingestion**: Inspect event ID streams (\`Sysmon Event ID 1\`, \`Windows Event ID 4624/4625\`) for correlating process execution or authentication events.
-- **MITRE ATT&CK Mapping**: Map indicators against MITRE TTPs to isolate lateral movement or credential access.
-- **Defensive Hardening**: Apply principle of least privilege, enforce multi-factor authentication (MFA), and audit perimeter firewalls.
+#### 2. Architectural Security Metrics & Telemetry
+
+| Domain Component | Security Risk Level | Recommended SOC Telemetry Source |
+| :--- | :--- | :--- |
+| **Authentication & IAM** | High (Identity Spoofing) | Central Directory / IdP Ingestion (Azure AD / Okta / Ping) |
+| **Network & Transport** | Medium (Eavesdropping / MITM) | NetFlow / IPFIX & Perimeter Firewall Log Stream |
+| **Endpoint Execution** | High (Process Injection) | EDR Kernel Sensor / Process Creation Logs (Event ID 4688) |
 
 ---
 
-#### 3. Recommended Next Steps
-- Type \`explain MITM attack\` or \`analyze ransomware\` for targeted threat deep-dives.
-- Upload a PCAP, LOG, or YAML rule file using the attachment button for instant parsing.`;
+#### 3. SIEM / EDR Detection Signature (KQL & Sigma Framework)
+
+##### Microsoft Sentinel / KQL Detection:
+\`\`\`kql
+// Detect anomalous activity associated with ${cleanTopic}
+SecurityEvent
+| where Timestamp > ago(24h)
+| where ProcessName has_any ("${cleanTopic.split(' ')[0]}", "cmd.exe", "powershell.exe")
+| summarize EventCount = count() by Account, Computer, ProcessName
+| sort by EventCount desc
+\`\`\`
+
+##### Sigma Rule Pattern:
+\`\`\`yaml
+title: Suspicious Telemetry Pattern - ${cleanTopic}
+status: production
+description: Detects anomalous execution or configuration change relating to ${cleanTopic}
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection:
+    CommandLine|contains: '${cleanTopic.split(' ')[0]}'
+  condition: selection
+level: medium
+\`\`\`
+
+---
+
+#### 4. Remediation & Hardening Roadmap
+1. **Apply Principle of Least Privilege**: Restrict execution and administrative rights for \`${cleanTopic}\` to authorized service principals.
+2. **Enable Log Ingestion**: Ensure log telemetry is continuously ingested into SIEM with 90-day hot retention.
+3. **Conduct Periodic Audits**: Validate security baseline configurations against CIS Benchmarks.`;
   }
 
   const words = response.split(/(\s+)/);
