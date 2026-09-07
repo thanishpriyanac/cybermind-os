@@ -11,8 +11,7 @@ interface FileAttachment {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  AI PROVIDER CONFIGURATION
-//  Priority: NVIDIA DeepSeek Pro → xAI Grok → OpenAI → NVIDIA DeepSeek Flash
-//            → Gemini → Groq → Offline
+//  Priority: NVIDIA DeepSeek Pro → Gemini 3.6 Flash → Groq → NVIDIA DeepSeek Flash → Offline
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const PROVIDERS = {
@@ -23,10 +22,31 @@ const PROVIDERS = {
     baseUrl: 'https://integrate.api.nvidia.com/v1',
     style: 'openai',
   },
+  gemini: {
+    name: 'Google Gemini 3.6 Flash',
+    apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
+    model: 'gemini-3.6-flash',
+    baseUrl: 'https://generativelanguage.googleapis.com',
+    style: 'gemini',
+  },
+  groq: {
+    name: 'Groq (GPT-OSS 120B)',
+    apiKey: process.env.GROQ_API_KEY || '',
+    model: 'openai/gpt-oss-120b',
+    baseUrl: 'https://api.groq.com/openai/v1',
+    style: 'openai',
+  },
+  nvidia_flash: {
+    name: 'DeepSeek V4 Flash (NVIDIA)',
+    apiKey: process.env.NVIDIA_API_KEY_FLASH || '',
+    model: 'deepseek-ai/deepseek-v4-flash-0731',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    style: 'openai',
+  },
   xai: {
     name: 'xAI Grok',
     apiKey: process.env.XAI_API_KEY || '',
-    model: 'grok-2-latest',
+    model: 'grok-beta',
     baseUrl: 'https://api.x.ai/v1',
     style: 'openai',
   },
@@ -35,27 +55,6 @@ const PROVIDERS = {
     apiKey: process.env.OPENAI_API_KEY || '',
     model: 'gpt-4o-mini',
     baseUrl: 'https://api.openai.com/v1',
-    style: 'openai',
-  },
-  nvidia_flash: {
-    name: 'DeepSeek R1 Flash (NVIDIA)',
-    apiKey: process.env.NVIDIA_API_KEY_FLASH || '',
-    model: 'deepseek-ai/deepseek-v4-flash-0731',
-    baseUrl: 'https://integrate.api.nvidia.com/v1',
-    style: 'openai',
-  },
-  gemini: {
-    name: 'Google Gemini 2.0 Flash',
-    apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
-    model: 'gemini-2.0-flash',
-    baseUrl: 'https://generativelanguage.googleapis.com',
-    style: 'gemini',
-  },
-  groq: {
-    name: 'Groq LLaMA-3 70B',
-    apiKey: process.env.GROQ_API_KEY || '',
-    model: 'llama3-70b-8192',
-    baseUrl: 'https://api.groq.com/openai/v1',
     style: 'openai',
   },
 } as const;
@@ -187,7 +186,7 @@ async function* streamGemini(
   history: Array<{ role: string; content: string }>,
   attachments: FileAttachment[]
 ): AsyncGenerator<string> {
-  const url = `${provider.baseUrl}/v1beta/models/${provider.model}:streamGenerateContent?alt=sse&key=${provider.apiKey}`;
+  const url = `${provider.baseUrl}/v1beta/models/${provider.model}:streamGenerateContent?alt=sse`;
 
   const contents = [
     ...history.slice(-10).map((m) => ({
@@ -199,7 +198,7 @@ async function* streamGemini(
 
   const response = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-goog-api-key': provider.apiKey },
     body: JSON.stringify({
       system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
       contents,
@@ -354,7 +353,7 @@ export async function POST(request: Request) {
 
     // ── 3. Build ordered provider chain (only those with API keys) ────────────
     const providerOrder: ProviderKey[] = [
-      'nvidia_pro', 'xai', 'openai', 'nvidia_flash', 'gemini', 'groq',
+      'nvidia_pro', 'gemini', 'groq', 'nvidia_flash', 'xai', 'openai',
     ];
     const availableProviders = providerOrder.filter((k) => !!PROVIDERS[k].apiKey);
 
