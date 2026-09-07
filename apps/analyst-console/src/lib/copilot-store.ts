@@ -193,8 +193,6 @@ export const copilotStore = {
     const conv = this.getConversation(conversationId, tenantId, userId);
     return conv ? conv.messages : [];
   },
-    return conv ? conv.messages : [];
-  },
 
   createConversation(params: {
     id?: string;
