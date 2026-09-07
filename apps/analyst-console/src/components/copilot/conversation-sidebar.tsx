@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MessageSquare, Plus, Search, MoreVertical, Trash2, Edit2, Loader2 } from 'lucide-react';
+import { MessageSquare, Plus, Search, MoreVertical, Trash2, Edit2, Loader2, X } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 import { useAuth } from '../../contexts/auth-context';
@@ -16,9 +16,10 @@ interface Conversation {
 interface SidebarProps {
   activeId: string | null;
   onSelect: (id: string | null) => void;
+  onCloseMobile?: () => void;
 }
 
-export function ConversationSidebar({ activeId, onSelect }: SidebarProps) {
+export function ConversationSidebar({ activeId, onSelect, onCloseMobile }: SidebarProps) {
   const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,7 +72,6 @@ export function ConversationSidebar({ activeId, onSelect }: SidebarProps) {
         headers,
       });
       if (res.ok) {
-        // Soft deleted on backend, remove from local UI list
         setConversations(prev => prev.filter(c => c.id !== id));
         if (activeId === id) {
           onSelect(null);
@@ -89,14 +89,28 @@ export function ConversationSidebar({ activeId, onSelect }: SidebarProps) {
   return (
     <div className="flex flex-col w-full h-full">
       {/* Header */}
-      <div className="p-4 border-b border-border flex flex-col gap-4">
-        <button 
-          onClick={() => onSelect(null)}
-          className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md font-medium transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          New Chat
-        </button>
+      <div className="p-4 border-b border-border flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <button 
+            onClick={() => {
+              onSelect(null);
+              if (onCloseMobile) onCloseMobile();
+            }}
+            className="flex items-center justify-center gap-2 flex-1 py-2.5 px-4 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-medium text-sm transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            New Chat
+          </button>
+          {onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              className="md:hidden p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title="Close Menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
 
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -124,7 +138,10 @@ export function ConversationSidebar({ activeId, onSelect }: SidebarProps) {
           filteredConversations.map(conv => (
             <button
               key={conv.id}
-              onClick={() => onSelect(conv.id)}
+              onClick={() => {
+                onSelect(conv.id);
+                if (onCloseMobile) onCloseMobile();
+              }}
               className={`w-full flex flex-col items-start gap-1 p-3 rounded-lg text-left transition-colors group relative ${
                 activeId === conv.id ? 'bg-secondary text-secondary-foreground' : 'hover:bg-muted text-foreground'
               }`}

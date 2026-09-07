@@ -17,6 +17,7 @@ import {
   UploadCloud,
   X,
   File as FileIcon,
+  PanelLeft,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -44,6 +45,7 @@ interface Message {
 interface ChatWindowProps {
   conversationId: string | null;
   onConversationCreated: (id: string) => void;
+  onToggleSidebar?: () => void;
 }
 
 const MODELS = [
@@ -83,7 +85,7 @@ function renderFileIcon(category: 'pcap' | 'config' | 'log' | 'doc', className: 
   }
 }
 
-export function ChatWindow({ conversationId, onConversationCreated }: ChatWindowProps) {
+export function ChatWindow({ conversationId, onConversationCreated, onToggleSidebar }: ChatWindowProps) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -356,10 +358,21 @@ export function ChatWindow({ conversationId, onConversationCreated }: ChatWindow
       )}
 
       {/* Topbar inside Chat Window */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10 md:pl-4 pl-16">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">CYBERMIND Copilot</h2>
-          <p className="text-xs text-muted-foreground">AI-assisted analysis & response</p>
+      <div className="flex items-center justify-between p-4 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          {onToggleSidebar && (
+            <button
+              onClick={onToggleSidebar}
+              className="md:hidden p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border"
+              title="Toggle Sidebar"
+            >
+              <PanelLeft className="w-5 h-5" />
+            </button>
+          )}
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">CYBERMIND Copilot</h2>
+            <p className="text-xs text-muted-foreground">AI-assisted analysis & response</p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <select
