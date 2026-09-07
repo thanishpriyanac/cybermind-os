@@ -1,20 +1,41 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ConversationSidebar } from '../../components/copilot/conversation-sidebar';
 import { ChatWindow } from '../../components/copilot/chat-window';
 import { useAuth } from '../../contexts/auth-context';
 
 export default function CopilotPage() {
   const { user } = useAuth();
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const urlId = searchParams?.get('id') || searchParams?.get('conversationId') || null;
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(urlId);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (urlId && urlId !== activeConversationId) {
+      setActiveConversationId(urlId);
+    }
+  }, [urlId]);
 
   if (!user) return null;
 
   const handleSelectConversation = (id: string | null) => {
     setActiveConversationId(id);
     setIsMobileSidebarOpen(false);
+    if (id) {
+      router.replace(`/copilot?id=${id}`, { scroll: false });
+    } else {
+      router.replace('/copilot', { scroll: false });
+    }
+  };
+
+  const handleConversationCreated = (id: string) => {
+    setActiveConversationId(id);
+    router.replace(`/copilot?id=${id}`, { scroll: false });
   };
 
   return (
@@ -46,7 +67,7 @@ export default function CopilotPage() {
         <Suspense fallback={<div className="p-4 text-muted-foreground">Loading copilot...</div>}>
           <ChatWindow 
             conversationId={activeConversationId} 
-            onConversationCreated={setActiveConversationId}
+            onConversationCreated={handleConversationCreated}
             onToggleSidebar={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
           />
         </Suspense>

@@ -11,17 +11,10 @@ interface FileAttachment {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  AI PROVIDER CONFIGURATION
-//  Priority: NVIDIA DeepSeek Pro → Gemini 3.6 Flash → Groq → NVIDIA DeepSeek Flash → Offline
+//  Priority Order: Gemini 3.6 Flash → Groq → NVIDIA DeepSeek Pro → NVIDIA DeepSeek Flash
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const PROVIDERS = {
-  nvidia_pro: {
-    name: 'DeepSeek V4 Pro (NVIDIA)',
-    apiKey: process.env.NVIDIA_API_KEY_PRO || '',
-    model: 'deepseek-ai/deepseek-v4-pro-0813',
-    baseUrl: 'https://integrate.api.nvidia.com/v1',
-    style: 'openai',
-  },
   gemini: {
     name: 'Google Gemini 3.6 Flash',
     apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
@@ -34,6 +27,13 @@ const PROVIDERS = {
     apiKey: process.env.GROQ_API_KEY || '',
     model: 'openai/gpt-oss-120b',
     baseUrl: 'https://api.groq.com/openai/v1',
+    style: 'openai',
+  },
+  nvidia_pro: {
+    name: 'DeepSeek V4 Pro (NVIDIA)',
+    apiKey: process.env.NVIDIA_API_KEY_PRO || '',
+    model: 'deepseek-ai/deepseek-v4-pro-0813',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
     style: 'openai',
   },
   nvidia_flash: {
@@ -81,20 +81,12 @@ Tone: Professional, precise, security-focused.
 Format: Always use Markdown — headers, code blocks, bullet points, tables where appropriate.
 CRITICAL: Give REAL, ACCURATE answers. Never fabricate data. Do NOT return generic responses.`;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  ERROR CLASSIFICATION
-// ═══════════════════════════════════════════════════════════════════════════════
-
 function shouldFallback(status: number, body: string): boolean {
-  if (status === 429 || status === 401 || status === 403 || status === 500 || status === 502 || status === 503 || status === 504 || status === 0) {
-    return true;
-  }
-  const lower = body.toLowerCase();
-  return lower.includes('rate limit') || lower.includes('quota') || lower.includes('insufficient_quota') || lower.includes('unreachable') || lower.includes('timeout');
+  return true; // Always failover to next provider on ANY error
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  OPENAI-COMPATIBLE STREAMING (NVIDIA NIM / xAI / OpenAI / Groq)
+//  OPENAI-COMPATIBLE STREAMING (Groq, NVIDIA NIM, xAI, OpenAI)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function* streamOpenAICompat(
@@ -118,13 +110,12 @@ async function* streamOpenAICompat(
     top_p: 0.95,
   };
 
-  // NVIDIA-specific: disable thinking mode for faster responses
   if (provider.baseUrl.includes('nvidia')) {
     body.extra_body = { chat_template_kwargs: { thinking: false } };
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
 
   try {
     const response = await fetch(`${provider.baseUrl}/chat/completions`, {
@@ -172,14 +163,14 @@ async function* streamOpenAICompat(
   } catch (err: any) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      throw { status: 504, body: 'Request timed out after 8s', provider: provider.name };
+      throw { status: 504, body: 'Request timed out after 6s', provider: provider.name };
     }
     throw err;
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  GEMINI STREAMING (REST SSE)
+//  GEMINI STREAMING (REST SSE with Alternating Role Sanitization)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function* streamGemini(
@@ -190,16 +181,26 @@ async function* streamGemini(
 ): AsyncGenerator<string> {
   const url = `${provider.baseUrl}/v1beta/models/${provider.model}:streamGenerateContent?alt=sse`;
 
-  const contents = [
-    ...history.slice(-10).map((m) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    })),
-    { role: 'user', parts: [{ text: buildUserMessage(userMessage, attachments) }] },
-  ];
+  const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
+  let lastRole = '';
+
+  for (const m of history.slice(-8)) {
+    if (!m.content || !m.content.trim()) continue;
+    const role: 'user' | 'model' = m.role === 'assistant' ? 'model' : 'user';
+    if (role !== lastRole) {
+      contents.push({ role, parts: [{ text: m.content }] });
+      lastRole = role;
+    }
+  }
+
+  if (lastRole === 'user' && contents.length > 0) {
+    contents.pop();
+  }
+
+  contents.push({ role: 'user', parts: [{ text: buildUserMessage(userMessage, attachments) }] });
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
 
   try {
     const response = await fetch(url, {
@@ -220,48 +221,48 @@ async function* streamGemini(
     });
     clearTimeout(timeoutId);
 
-  if (!response.ok || !response.body) {
-    const errText = await response.text().catch(() => '');
-    throw { status: response.status, body: errText, provider: provider.name };
-  }
-
-  const reader = response.body.getReader();
-  const dec = new TextDecoder();
-  let buffer = '';
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += dec.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
-
-      for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        const jsonStr = line.slice(5).trim();
-        if (!jsonStr) continue;
-        try {
-          const parsed = JSON.parse(jsonStr);
-          const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-          if (text) yield text;
-        } catch { /* skip */ }
-      }
+    if (!response.ok || !response.body) {
+      const errText = await response.text().catch(() => '');
+      throw { status: response.status, body: errText, provider: provider.name };
     }
-  } finally {
-    reader.releaseLock();
-  }
+
+    const reader = response.body.getReader();
+    const dec = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += dec.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const jsonStr = line.slice(5).trim();
+          if (!jsonStr) continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+            if (text) yield text;
+          } catch { /* skip */ }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
   } catch (err: any) {
     clearTimeout(timeoutId);
     if (err.name === 'AbortError') {
-      throw { status: 504, body: 'Request timed out after 8s', provider: provider.name };
+      throw { status: 504, body: 'Request timed out after 6s', provider: provider.name };
     }
     throw err;
   }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  PROVIDER DISPATCH — pick stream function based on style
+//  PROVIDER DISPATCH
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function streamProvider(
@@ -276,10 +277,6 @@ function streamProvider(
   return streamOpenAICompat(provider, userMessage, history, attachments);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  HELPER — build user message (with file context if attached)
-// ═══════════════════════════════════════════════════════════════════════════════
-
 function buildUserMessage(userMessage: string, attachments: FileAttachment[]): string {
   if (!attachments || attachments.length === 0) return userMessage;
   const file = attachments[0];
@@ -293,13 +290,13 @@ function buildUserMessage(userMessage: string, attachments: FileAttachment[]): s
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  MAIN POST HANDLER
+//  POST HANDLER — SSE Streaming Response
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { conversationId, message, modelKey = 'auto', attachments = [] } = body;
+    const { conversationId, message, modelKey, attachments = [] } = body;
 
     const userMessageContent =
       message || (attachments.length > 0 ? `Analyze uploaded file: ${attachments[0].name}` : 'Hello');
@@ -307,36 +304,7 @@ export async function POST(request: Request) {
     const tenantId = request.headers.get('x-tenant-id') || 'cybermind-master-tenant';
     const userId = request.headers.get('x-user-id') || 'admin@cybermind.local';
 
-    // ── 1. Try backend AI Gateway ONLY if process.env.AI_GATEWAY_URL is explicitly set
-    if (process.env.AI_GATEWAY_URL) {
-      try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 1200);
-        const res = await fetch(`${process.env.AI_GATEWAY_URL}/chat/stream`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-tenant-id': tenantId,
-            'x-user-id': userId,
-            Authorization: request.headers.get('authorization') || '',
-          },
-          body: JSON.stringify({ conversationId: activeConversationId, message: userMessageContent, modelKey, attachments }),
-          signal: ctrl.signal,
-        });
-        clearTimeout(t);
-        if (res.ok && res.body) {
-          return new Response(res.body, {
-            headers: {
-              'Content-Type': 'text/event-stream; charset=utf-8',
-              'Cache-Control': 'no-cache, no-transform',
-              'Connection': 'keep-alive',
-            },
-          });
-        }
-      } catch { /* fallback to local streaming engine */ }
-    }
-
-    // ── 2. Store user message & get conversation history ─────────────────────
+    // ── 1. Store user message & get conversation history ─────────────────────
     copilotStore.addMessage(
       activeConversationId,
       {
@@ -355,26 +323,25 @@ export async function POST(request: Request) {
       }
     );
 
-    const conv = copilotStore.getConversation(activeConversationId);
+    const conv = copilotStore.getConversation(activeConversationId, tenantId, userId);
     const history = (conv?.messages || [])
       .slice(0, -1)
       .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content }));
 
-    // ── 3. Build ordered provider chain (only those with API keys) ────────────
+    // ── 2. Build ordered provider chain (Gemini 3.6 Flash & Groq first) ─────────
     const providerOrder: ProviderKey[] = [
-      'nvidia_pro', 'gemini', 'groq', 'nvidia_flash', 'xai', 'openai',
+      'gemini', 'groq', 'nvidia_pro', 'nvidia_flash', 'xai', 'openai',
     ];
     const availableProviders = providerOrder.filter((k) => !!PROVIDERS[k].apiKey);
 
     const encoder = new TextEncoder();
 
-    // ── 4. SSE stream with auto-fallback ─────────────────────────────────────
+    // ── 3. SSE stream with auto-fallback ─────────────────────────────────────
     const stream = new ReadableStream({
       async start(controller) {
         const send = (data: object) =>
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 
-        // Always emit conversation ID first so frontend binds immediately
         send({ type: 'conversation_id', conversationId: activeConversationId });
 
         let fullText = '';
@@ -384,7 +351,6 @@ export async function POST(request: Request) {
         for (const key of availableProviders) {
           const provider = PROVIDERS[key];
           try {
-            // Notify frontend which model is active
             send({ type: 'provider_info', provider: provider.name, model: provider.model });
 
             for await (const chunk of streamProvider(provider, userMessageContent, history, attachments)) {
@@ -394,7 +360,7 @@ export async function POST(request: Request) {
 
             usedProvider = provider.name;
             success = true;
-            break; // ✅ Success — stop trying
+            break; // Success!
 
           } catch (err: unknown) {
             const e = err as { status?: number; body?: string };
@@ -403,28 +369,14 @@ export async function POST(request: Request) {
 
             console.error(`[CYBERMIND] ${provider.name} failed (${status}):`, errBody.slice(0, 150));
 
-            if (shouldFallback(status, errBody)) {
-              const reason =
-                status === 429
-                  ? `${provider.name} rate limit reached`
-                  : status === 401 || status === 403
-                  ? `${provider.name} auth error`
-                  : `${provider.name} unavailable (${status})`;
-
-              send({ type: 'provider_switch', reason: `${reason} — switching to next provider...` });
-              continue; // try next
-            }
-            // Unexpected error → still try next
-            send({ type: 'provider_switch', reason: `${provider.name} error — switching...` });
+            send({ type: 'provider_switch', reason: `${provider.name} unavailable — switching to next provider...` });
             continue;
           }
         }
 
-        // ── All providers exhausted ───────────────────────────────────────────
+        // ── Fallback output if all providers fail ─────────────────────────────
         if (!success) {
-          const errMsg = availableProviders.length === 0
-            ? `### ⚠️ No AI Provider Configured\n\nAdd at least one API key to \`.env.local\` and restart the server.\n\n**Supported providers:**\n- \`NVIDIA_API_KEY_PRO\` — NVIDIA NIM DeepSeek V4 Pro\n- \`XAI_API_KEY\` — xAI Grok\n- \`OPENAI_API_KEY\` — OpenAI GPT-4o\n- \`NVIDIA_API_KEY_FLASH\` — NVIDIA NIM DeepSeek V4 Flash\n- \`GEMINI_API_KEY\` — Google Gemini (free)\n- \`GROQ_API_KEY\` — Groq LLaMA-3 (free)`
-            : `### ⚠️ All AI Providers Temporarily Unavailable\n\nAll ${availableProviders.length} configured providers hit rate limits or errors:\n${availableProviders.map((k) => `- **${PROVIDERS[k].name}** (\`${PROVIDERS[k].model}\`)`).join('\n')}\n\nPlease try again in a moment. Rate limits typically reset within 60 seconds.`;
+          const errMsg = `### ⚠️ All AI Providers Temporarily Unavailable\n\nPlease try again in a moment.`;
 
           fullText = errMsg;
           for (const word of errMsg.split(/(\s+)/)) {
@@ -433,7 +385,6 @@ export async function POST(request: Request) {
           }
         }
 
-        // Persist assistant response
         if (fullText) {
           copilotStore.addMessage(activeConversationId, {
             role: 'assistant',
