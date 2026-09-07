@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  // Use environment variable for the remote backend tunnel URL
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
+  // Use environment variable for remote backend, or fallback to relative '/api'
+  baseURL: process.env.NEXT_PUBLIC_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   },
