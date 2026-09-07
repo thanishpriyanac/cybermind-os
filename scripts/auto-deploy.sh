@@ -37,8 +37,8 @@ if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
         node services/identity/prisma/seed.js || echo "Warning: Seed script returned non-zero exit code"
     fi
 
-    echo "--> 3. Rebuilding and restarting Docker containers..."
-    docker compose down && docker compose up -d --build
+    echo "--> 3. Building and updating Docker containers safely..."
+    docker compose up -d --build --remove-orphans
 
     echo "--> 4. Pruning unused Docker images..."
     docker image prune -f
