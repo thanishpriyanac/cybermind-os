@@ -64,7 +64,7 @@ export default function CopilotPage() {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-background relative h-full">
-        <Suspense fallback={<div className="p-4 text-muted-foreground">Loading copilot...</div>}>
+        <Suspense fallback={<div className="p-4 text-muted-foreground">Loading CyberAI...</div>}>
           <ChatWindow 
             conversationId={activeConversationId} 
             onConversationCreated={handleConversationCreated}

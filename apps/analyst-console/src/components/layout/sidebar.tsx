@@ -8,7 +8,7 @@ import { cn } from '../../lib/utils';
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Alerts', href: '/alerts', icon: ShieldAlert },
-  { name: 'Copilot', href: '/copilot', icon: Bot },
+  { name: 'CyberAI', href: '/copilot', icon: Bot },
   { name: 'Investigations', href: '/investigations', icon: Activity },
   { name: 'Playbooks', href: '/playbooks', icon: BookOpen },
   { name: 'System Health', href: '/health', icon: HeartPulse },

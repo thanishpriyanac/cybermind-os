@@ -370,7 +370,7 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
             </button>
           )}
           <div>
-            <h2 className="text-lg font-semibold tracking-tight">CYBERMIND Copilot</h2>
+            <h2 className="text-lg font-semibold tracking-tight">CYBERMIND AI</h2>
             <p className="text-xs text-muted-foreground">AI-assisted analysis & response</p>
           </div>
         </div>
@@ -585,7 +585,7 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
               placeholder={
                 attachedFiles.length > 0
                   ? 'Add instructions or press Send to analyze attached files...'
-                  : 'Ask Copilot anything, or attach PCAP / config files...'
+                  : 'Ask CyberAI anything, or attach PCAP / config files...'
               }
               className="w-full max-h-48 min-h-[40px] bg-transparent border-0 resize-none focus:ring-0 text-sm py-2 px-1 text-foreground placeholder:text-muted-foreground"
               rows={1}
@@ -621,7 +621,7 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
 
         <div className="flex items-center justify-between max-w-4xl mx-auto px-1 mt-2 text-[10px] text-muted-foreground">
           <span>Supported: PCAP, PCAPNG, YAML, JSON, CONF, SIGMA, LOGS</span>
-          <span>Copilot can make mistakes. Verify critical security decisions.</span>
+          <span>CyberAI can make mistakes. Verify critical security decisions.</span>
         </div>
       </div>
     </div>

@@ -48,3 +48,9 @@ Thumbs.db
 .next
 out
 apps/analyst-console/.env.local
+
+# Local Dev & Build Artifacts
+.env
+kind
+*.tsbuildinfo
+

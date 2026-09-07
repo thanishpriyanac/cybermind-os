@@ -41,7 +41,7 @@ const INITIAL_CASES: InvestigationCase[] = [
     status: 'ACTIVE',
     host: 'DB-01.corp.local',
     ip: '10.0.4.12',
-    assignee: 'CYBERMIND Autonomous Copilot',
+    assignee: 'CYBERMIND Autonomous CyberAI',
     ttps: ['T1486 Data Encrypted', 'T1059.001 PowerShell', 'T1078 Valid Accounts'],
     createdAt: '14 minutes ago',
     updatedAt: 'Just now',
@@ -80,7 +80,7 @@ const INITIAL_CASES: InvestigationCase[] = [
     status: 'CLOSED',
     host: 'WORKSTATION-44',
     ip: '10.0.8.99',
-    assignee: 'CYBERMIND Autonomous Copilot',
+    assignee: 'CYBERMIND Autonomous CyberAI',
     ttps: ['T1071.004 DNS C2', 'T1048 Exfiltration Over Alternative Protocol'],
     createdAt: '1 day ago',
     updatedAt: '18 hours ago',
@@ -145,7 +145,7 @@ export default function InvestigationsPage() {
         <Link href="/copilot">
           <Button className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2">
             <Shield className="w-4 h-4" />
-            Investigate with Copilot
+            Investigate with CyberAI
           </Button>
         </Link>
       </div>
@@ -268,7 +268,7 @@ export default function InvestigationsPage() {
                 <div className="flex items-center gap-2 self-start lg:self-center">
                   <Link href={`/copilot?alertId=${c.id}`}>
                     <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                      Analyze in Copilot <ChevronRight className="w-4 h-4" />
+                      Analyze in CyberAI <ChevronRight className="w-4 h-4" />
                     </Button>
                   </Link>
                 </div>

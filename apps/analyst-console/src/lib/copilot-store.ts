@@ -164,8 +164,9 @@ export const copilotStore = {
           return false;
         }
         if (userId && conv.userId) {
+          const isAdminOrMaster = userId === 'admin@cybermind.local' || tenantId === 'cybermind-master-tenant';
           const isSeededOrSystem = conv.id.startsWith('conv-seeded') || conv.userId === 'system';
-          if (conv.userId !== userId && !isSeededOrSystem) {
+          if (conv.userId !== userId && !isAdminOrMaster && !isSeededOrSystem) {
             return false;
           }
         }
@@ -180,6 +181,7 @@ export const copilotStore = {
         updatedAt: conv.updatedAt,
         lastMessageAt: conv.lastMessageAt,
         messageCount: conv.messages.length,
+        userId: conv.userId,
       }));
   },
 
@@ -189,8 +191,9 @@ export const copilotStore = {
     if (!conv) return null;
     if (tenantId && conv.tenantId && conv.tenantId !== tenantId) return null;
     if (userId && conv.userId) {
+      const isAdminOrMaster = userId === 'admin@cybermind.local' || tenantId === 'cybermind-master-tenant';
       const isSeededOrSystem = conv.id.startsWith('conv-seeded') || conv.userId === 'system';
-      if (conv.userId !== userId && !isSeededOrSystem) {
+      if (conv.userId !== userId && !isAdminOrMaster && !isSeededOrSystem) {
         return null;
       }
     }
