@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { MessageSquare, Plus, Search, MoreVertical, Trash2, Edit2, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
+import { useAuth } from '../../contexts/auth-context';
+
 interface Conversation {
   id: string;
   title: string;
@@ -17,6 +19,7 @@ interface SidebarProps {
 }
 
 export function ConversationSidebar({ activeId, onSelect }: SidebarProps) {
+  const { user } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,6 +36,7 @@ export function ConversationSidebar({ activeId, onSelect }: SidebarProps) {
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
       if (tenantId) headers['x-tenant-id'] = tenantId;
+      if (user?.email) headers['x-user-id'] = user.email;
 
       const res = await fetch('/api/v1/ai/conversations', { headers });
       if (res.ok) {
@@ -60,6 +64,7 @@ export function ConversationSidebar({ activeId, onSelect }: SidebarProps) {
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
       if (tenantId) headers['x-tenant-id'] = tenantId;
+      if (user?.email) headers['x-user-id'] = user.email;
 
       const res = await fetch(`/api/v1/ai/conversations/${id}`, {
         method: 'DELETE',

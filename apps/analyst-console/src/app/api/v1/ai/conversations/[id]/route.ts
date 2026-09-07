@@ -9,7 +9,10 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const conv = copilotStore.getConversation(id);
+    const tenantId = request.headers.get('x-tenant-id') || 'cybermind-master-tenant';
+    const userId = request.headers.get('x-user-id') || 'admin@cybermind.local';
+
+    const conv = copilotStore.getConversation(id, tenantId, userId);
     if (!conv) {
       return NextResponse.json({ message: 'Conversation not found' }, { status: 404 });
     }
@@ -25,7 +28,10 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    copilotStore.deleteConversation(id);
+    const tenantId = request.headers.get('x-tenant-id') || 'cybermind-master-tenant';
+    const userId = request.headers.get('x-user-id') || 'admin@cybermind.local';
+
+    copilotStore.deleteConversation(id, tenantId, userId);
     return NextResponse.json({ success: true, message: 'Conversation deleted' });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

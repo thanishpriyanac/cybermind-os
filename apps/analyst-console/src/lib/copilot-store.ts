@@ -158,26 +158,41 @@ function saveStore(store: CopilotConversation[]) {
 export const copilotStore = {
   getConversations(tenantId?: string, userId?: string) {
     const store = loadStore();
-    return store.map((conv) => ({
-      id: conv.id,
-      title: conv.title,
-      model: conv.model,
-      modelKey: conv.modelKey,
-      createdAt: conv.createdAt,
-      updatedAt: conv.updatedAt,
-      lastMessageAt: conv.lastMessageAt,
-      messageCount: conv.messages.length,
-    }));
+    return store
+      .filter((conv) => {
+        if (tenantId && conv.tenantId && conv.tenantId !== tenantId) {
+          return false;
+        }
+        if (userId && conv.userId && conv.userId !== userId) {
+          return false;
+        }
+        return true;
+      })
+      .map((conv) => ({
+        id: conv.id,
+        title: conv.title,
+        model: conv.model,
+        modelKey: conv.modelKey,
+        createdAt: conv.createdAt,
+        updatedAt: conv.updatedAt,
+        lastMessageAt: conv.lastMessageAt,
+        messageCount: conv.messages.length,
+      }));
   },
 
-  getConversation(id: string) {
+  getConversation(id: string, tenantId?: string, userId?: string) {
     const store = loadStore();
-    return store.find((c) => c.id === id) || null;
+    const conv = store.find((c) => c.id === id);
+    if (!conv) return null;
+    if (tenantId && conv.tenantId && conv.tenantId !== tenantId) return null;
+    if (userId && conv.userId && conv.userId !== userId) return null;
+    return conv;
   },
 
-  getMessages(conversationId: string): CopilotMessage[] {
-    const store = loadStore();
-    const conv = store.find((c) => c.id === conversationId);
+  getMessages(conversationId: string, tenantId?: string, userId?: string): CopilotMessage[] {
+    const conv = this.getConversation(conversationId, tenantId, userId);
+    return conv ? conv.messages : [];
+  },
     return conv ? conv.messages : [];
   },
 
@@ -264,9 +279,14 @@ export const copilotStore = {
     return newMessage;
   },
 
-  deleteConversation(id: string): boolean {
+  deleteConversation(id: string, tenantId?: string, userId?: string): boolean {
     const store = loadStore();
-    const index = store.findIndex((c) => c.id === id);
+    const index = store.findIndex((c) => {
+      if (c.id !== id) return false;
+      if (tenantId && c.tenantId && c.tenantId !== tenantId) return false;
+      if (userId && c.userId && c.userId !== userId) return false;
+      return true;
+    });
     if (index !== -1) {
       store.splice(index, 1);
       saveStore(store);
