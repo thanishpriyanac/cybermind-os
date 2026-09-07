@@ -115,11 +115,13 @@ export function ConversationSidebar({ activeId, onSelect }: SidebarProps) {
                 {/* Actions overlay */}
                 <div className="hidden group-hover:flex items-center gap-1 absolute right-2 bg-gradient-to-l from-muted via-muted to-transparent pl-4">
                   <Edit2 className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground cursor-pointer" />
-                  <Trash2 
-                    className="w-3.5 h-3.5 text-red-500 hover:text-red-400 cursor-pointer" 
-                    onClick={(e) => handleDelete(e, conv.id)}
+                  <span
                     title="Delete Conversation"
-                  />
+                    onClick={(e) => handleDelete(e, conv.id)}
+                    className="cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-500 hover:text-red-400" />
+                  </span>
                 </div>
               </div>
               
