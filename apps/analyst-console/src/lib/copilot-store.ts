@@ -164,12 +164,8 @@ export const copilotStore = {
           return false;
         }
         if (userId && conv.userId) {
-          if (
-            conv.userId !== userId &&
-            conv.userId !== 'admin@cybermind.local' &&
-            conv.userId !== 'system' &&
-            tenantId !== 'cybermind-master-tenant'
-          ) {
+          const isSeededOrSystem = conv.id.startsWith('conv-seeded') || conv.userId === 'system';
+          if (conv.userId !== userId && !isSeededOrSystem) {
             return false;
           }
         }
@@ -192,6 +188,12 @@ export const copilotStore = {
     const conv = store.find((c) => c.id === id);
     if (!conv) return null;
     if (tenantId && conv.tenantId && conv.tenantId !== tenantId) return null;
+    if (userId && conv.userId) {
+      const isSeededOrSystem = conv.id.startsWith('conv-seeded') || conv.userId === 'system';
+      if (conv.userId !== userId && !isSeededOrSystem) {
+        return null;
+      }
+    }
     return conv;
   },
 
