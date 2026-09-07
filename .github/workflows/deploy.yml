@@ -1,0 +1,46 @@
+name: CD - Auto Deploy to Server
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  deploy:
+    name: Instant Server Auto-Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            echo "================================================================="
+            echo "🚀 [GitHub Actions] Deploying latest commit to server..."
+            echo "================================================================="
+            
+            # Locate project directory on server
+            TARGET_DIR="${{ secrets.SERVER_PATH }}"
+            if [ -z "$TARGET_DIR" ]; then
+              TARGET_DIR=$(find /home /var/www /root -maxdepth 3 -name "cybermind-os" -type d 2>/dev/null | head -n 1)
+            fi
+            if [ -z "$TARGET_DIR" ]; then
+              TARGET_DIR="$HOME/cybermind-os"
+            fi
+
+            echo "Target Directory: $TARGET_DIR"
+            cd "$TARGET_DIR"
+
+            # Execute auto-deploy script
+            chmod +x scripts/auto-deploy.sh
+            bash scripts/auto-deploy.sh main
+
+            echo "================================================================="
+            echo "✅ [GitHub Actions] Auto-deployment finished successfully!"
+            echo "================================================================="
