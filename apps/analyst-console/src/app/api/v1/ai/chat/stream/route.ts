@@ -11,33 +11,57 @@ interface FileAttachment {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  AI PROVIDER CONFIGURATION
-//  Priority order: Gemini → OpenAI → Anthropic → Groq → Offline
+//  Priority: NVIDIA DeepSeek Pro → xAI Grok → OpenAI → NVIDIA DeepSeek Flash
+//            → Gemini → Groq → Offline
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const PROVIDERS = {
-  gemini: {
-    name: 'Google Gemini',
-    apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
-    model: 'gemini-2.0-flash',
+  nvidia_pro: {
+    name: 'DeepSeek V4 Pro (NVIDIA)',
+    apiKey: process.env.NVIDIA_API_KEY_PRO || '',
+    model: 'deepseek-ai/deepseek-r1',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    style: 'openai',
+  },
+  xai: {
+    name: 'xAI Grok',
+    apiKey: process.env.XAI_API_KEY || '',
+    model: 'grok-beta',
+    baseUrl: 'https://api.x.ai/v1',
+    style: 'openai',
   },
   openai: {
     name: 'OpenAI GPT-4o',
     apiKey: process.env.OPENAI_API_KEY || '',
-    model: 'gpt-4o-mini',
+    model: 'gpt-4o',
+    baseUrl: 'https://api.openai.com/v1',
+    style: 'openai',
   },
-  anthropic: {
-    name: 'Anthropic Claude',
-    apiKey: process.env.ANTHROPIC_API_KEY || '',
-    model: 'claude-3-haiku-20240307',
+  nvidia_flash: {
+    name: 'DeepSeek V4 Flash (NVIDIA)',
+    apiKey: process.env.NVIDIA_API_KEY_FLASH || '',
+    model: 'deepseek-ai/deepseek-r1',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    style: 'openai',
+  },
+  gemini: {
+    name: 'Google Gemini 2.0 Flash',
+    apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
+    model: 'gemini-2.0-flash',
+    baseUrl: 'https://generativelanguage.googleapis.com',
+    style: 'gemini',
   },
   groq: {
-    name: 'Groq LLaMA',
+    name: 'Groq LLaMA-3 70B',
     apiKey: process.env.GROQ_API_KEY || '',
     model: 'llama3-70b-8192',
+    baseUrl: 'https://api.groq.com/openai/v1',
+    style: 'openai',
   },
 } as const;
 
 type ProviderKey = keyof typeof PROVIDERS;
+type ProviderConfig = (typeof PROVIDERS)[ProviderKey];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  CYBERMIND SYSTEM PROMPT
@@ -45,28 +69,26 @@ type ProviderKey = keyof typeof PROVIDERS;
 
 const SYSTEM_PROMPT = `You are CYBERMIND Copilot, an elite autonomous Cybersecurity Intelligence Analyst AI embedded in the CyberMind OS SOC platform.
 
-Your primary functions:
-- Answer ANY cybersecurity question with expert precision (threat intel, malware analysis, network forensics, SIEM, SOAR, pentest, compliance, CVEs, vendor products, etc.)
-- Provide factually accurate, context-aware answers — NEVER give generic placeholder responses
-- When asked about specific products/technologies (e.g. Zscaler ZIA, CrowdStrike Falcon, Splunk, Elastic, Sentinel, Palo Alto, etc.) give correct, detailed explanations
-- Analyze uploaded files: PCAPs, Sigma rules, configs, logs, CSV, EVTX files
-- Map threats to MITRE ATT&CK framework with precision (technique IDs, tactics, sub-techniques)
-- Generate working Sigma/YARA/Suricata detection rules on request
-- Provide SIEM query translations: Splunk SPL, Elastic EQL, Microsoft Sentinel KQL
-- Explain vulnerabilities (CVEs), exploits, and mitigation steps clearly
+Your capabilities:
+- Answer ANY cybersecurity question with expert-level precision (threat intel, malware analysis, network forensics, SIEM, SOAR, pentest, compliance, CVEs, vendor products)
+- Provide factually accurate answers — NEVER give generic placeholder responses
+- When asked about specific products/technologies (Zscaler ZIA/ZPA, CrowdStrike Falcon, Splunk, Elastic, Sentinel, Palo Alto, FortiGate, etc.) give correct, detailed explanations
+- Analyze uploaded files: PCAPs, Sigma rules, configs, logs, CSV, EVTX
+- Map threats to MITRE ATT&CK framework with precise technique IDs
+- Generate working Sigma/YARA/Suricata/KQL/SPL/EQL detection rules on request
+- Explain vulnerabilities (CVEs), exploits, and mitigations with technical depth
 
 Tone: Professional, precise, security-focused.
 Format: Always use Markdown — headers, code blocks, bullet points, tables where appropriate.
-
-IMPORTANT: Give REAL, ACCURATE answers. Never fabricate threat data or make up IPs/hashes. If uncertain, say so clearly. Do NOT return generic "moderate risk" responses when a specific factual question is asked.`;
+CRITICAL: Give REAL, ACCURATE answers. Never fabricate data. Do NOT return generic responses.`;
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  RATE LIMIT / ERROR DETECTION HELPERS
+//  ERROR CLASSIFICATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function isRateLimitError(status: number, body: string): boolean {
-  if (status === 429) return true;
-  if (status === 503) return true;
+function shouldFallback(status: number, body: string): boolean {
+  if ([429, 503, 502, 500].includes(status)) return true;
+  if (status === 401 || status === 403) return true; // bad key → try next
   const b = body.toLowerCase();
   return (
     b.includes('quota') ||
@@ -74,57 +96,57 @@ function isRateLimitError(status: number, body: string): boolean {
     b.includes('rate limit') ||
     b.includes('too many requests') ||
     b.includes('overloaded') ||
-    b.includes('resource_exhausted')
+    b.includes('resource_exhausted') ||
+    b.includes('capacity') ||
+    b.includes('unavailable')
   );
 }
 
-function isAuthError(status: number): boolean {
-  return status === 401 || status === 403;
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
-//  GEMINI — streaming SSE via REST
+//  OPENAI-COMPATIBLE STREAMING (NVIDIA NIM / xAI / OpenAI / Groq)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-async function* streamGemini(
+async function* streamOpenAICompat(
+  provider: ProviderConfig,
   userMessage: string,
   history: Array<{ role: string; content: string }>,
   attachments: FileAttachment[]
 ): AsyncGenerator<string> {
-  const { apiKey, model } = PROVIDERS.gemini;
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...history.slice(-10).map((m) => ({
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: m.content,
+    })),
+    { role: 'user', content: buildUserMessage(userMessage, attachments) },
+  ];
 
-  const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+  const body: Record<string, unknown> = {
+    model: provider.model,
+    messages,
+    stream: true,
+    max_tokens: 4096,
+    temperature: 0.7,
+    top_p: 0.95,
+  };
 
-  for (const msg of history.slice(-10)) {
-    contents.push({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }],
-    });
+  // NVIDIA-specific: disable thinking mode for faster responses
+  if (provider.baseUrl.includes('nvidia')) {
+    body.extra_body = { chat_template_kwargs: { thinking: false } };
   }
 
-  let currentMessage = buildUserMessage(userMessage, attachments);
-  contents.push({ role: 'user', parts: [{ text: currentMessage }] });
-
-  const response = await fetch(url, {
+  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      contents,
-      generationConfig: { temperature: 0.7, topP: 0.95, maxOutputTokens: 2048 },
-      safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-      ],
-    }),
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${provider.apiKey}`,
+    },
+    body: JSON.stringify(body),
   });
 
   if (!response.ok || !response.body) {
     const errText = await response.text().catch(() => '');
-    throw { status: response.status, body: errText, provider: 'gemini' };
+    throw { status: response.status, body: errText, provider: provider.name };
   }
 
   const reader = response.body.getReader();
@@ -138,10 +160,80 @@ async function* streamGemini(
       buffer += dec.decode(value, { stream: true });
       const lines = buffer.split('\n');
       buffer = lines.pop() ?? '';
+
       for (const line of lines) {
         if (!line.startsWith('data:')) continue;
         const jsonStr = line.slice(5).trim();
         if (!jsonStr || jsonStr === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const text = parsed?.choices?.[0]?.delta?.content ?? '';
+          if (text) yield text;
+        } catch { /* skip malformed */ }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GEMINI STREAMING (REST SSE)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function* streamGemini(
+  provider: ProviderConfig,
+  userMessage: string,
+  history: Array<{ role: string; content: string }>,
+  attachments: FileAttachment[]
+): AsyncGenerator<string> {
+  const url = `${provider.baseUrl}/v1beta/models/${provider.model}:streamGenerateContent?alt=sse&key=${provider.apiKey}`;
+
+  const contents = [
+    ...history.slice(-10).map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    })),
+    { role: 'user', parts: [{ text: buildUserMessage(userMessage, attachments) }] },
+  ];
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents,
+      generationConfig: { temperature: 0.7, topP: 0.95, maxOutputTokens: 4096 },
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      ],
+    }),
+  });
+
+  if (!response.ok || !response.body) {
+    const errText = await response.text().catch(() => '');
+    throw { status: response.status, body: errText, provider: provider.name };
+  }
+
+  const reader = response.body.getReader();
+  const dec = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += dec.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const jsonStr = line.slice(5).trim();
+        if (!jsonStr) continue;
         try {
           const parsed = JSON.parse(jsonStr);
           const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
@@ -155,197 +247,23 @@ async function* streamGemini(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  OPENAI — streaming SSE via REST
+//  PROVIDER DISPATCH — pick stream function based on style
 // ═══════════════════════════════════════════════════════════════════════════════
 
-async function* streamOpenAI(
+function streamProvider(
+  provider: ProviderConfig,
   userMessage: string,
   history: Array<{ role: string; content: string }>,
   attachments: FileAttachment[]
 ): AsyncGenerator<string> {
-  const { apiKey, model } = PROVIDERS.openai;
-
-  const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    ...history.slice(-10).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
-    { role: 'user', content: buildUserMessage(userMessage, attachments) },
-  ];
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model, messages, stream: true, max_tokens: 2048, temperature: 0.7 }),
-  });
-
-  if (!response.ok || !response.body) {
-    const errText = await response.text().catch(() => '');
-    throw { status: response.status, body: errText, provider: 'openai' };
+  if (provider.style === 'gemini') {
+    return streamGemini(provider, userMessage, history, attachments);
   }
-
-  const reader = response.body.getReader();
-  const dec = new TextDecoder();
-  let buffer = '';
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += dec.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
-      for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        const jsonStr = line.slice(5).trim();
-        if (!jsonStr || jsonStr === '[DONE]') continue;
-        try {
-          const parsed = JSON.parse(jsonStr);
-          const text = parsed?.choices?.[0]?.delta?.content ?? '';
-          if (text) yield text;
-        } catch { /* skip */ }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
+  return streamOpenAICompat(provider, userMessage, history, attachments);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  ANTHROPIC CLAUDE — streaming SSE via REST
-// ═══════════════════════════════════════════════════════════════════════════════
-
-async function* streamAnthropic(
-  userMessage: string,
-  history: Array<{ role: string; content: string }>,
-  attachments: FileAttachment[]
-): AsyncGenerator<string> {
-  const { apiKey, model } = PROVIDERS.anthropic;
-
-  const messages = [
-    ...history.slice(-10).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
-    { role: 'user', content: buildUserMessage(userMessage, attachments) },
-  ];
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      system: SYSTEM_PROMPT,
-      messages,
-      max_tokens: 2048,
-      stream: true,
-    }),
-  });
-
-  if (!response.ok || !response.body) {
-    const errText = await response.text().catch(() => '');
-    throw { status: response.status, body: errText, provider: 'anthropic' };
-  }
-
-  const reader = response.body.getReader();
-  const dec = new TextDecoder();
-  let buffer = '';
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += dec.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
-      for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        const jsonStr = line.slice(5).trim();
-        if (!jsonStr) continue;
-        try {
-          const parsed = JSON.parse(jsonStr);
-          if (parsed.type === 'content_block_delta') {
-            const text = parsed?.delta?.text ?? '';
-            if (text) yield text;
-          }
-        } catch { /* skip */ }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  GROQ — OpenAI-compatible endpoint (streaming)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-async function* streamGroq(
-  userMessage: string,
-  history: Array<{ role: string; content: string }>,
-  attachments: FileAttachment[]
-): AsyncGenerator<string> {
-  const { apiKey, model } = PROVIDERS.groq;
-
-  const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    ...history.slice(-10).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
-    { role: 'user', content: buildUserMessage(userMessage, attachments) },
-  ];
-
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({ model, messages, stream: true, max_tokens: 2048, temperature: 0.7 }),
-  });
-
-  if (!response.ok || !response.body) {
-    const errText = await response.text().catch(() => '');
-    throw { status: response.status, body: errText, provider: 'groq' };
-  }
-
-  const reader = response.body.getReader();
-  const dec = new TextDecoder();
-  let buffer = '';
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += dec.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
-      for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        const jsonStr = line.slice(5).trim();
-        if (!jsonStr || jsonStr === '[DONE]') continue;
-        try {
-          const parsed = JSON.parse(jsonStr);
-          const text = parsed?.choices?.[0]?.delta?.content ?? '';
-          if (text) yield text;
-        } catch { /* skip */ }
-      }
-    }
-  } finally {
-    reader.releaseLock();
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  PROVIDER REGISTRY — ordered fallback chain
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const PROVIDER_CHAIN: Array<{
-  key: ProviderKey;
-  stream: (msg: string, hist: Array<{ role: string; content: string }>, att: FileAttachment[]) => AsyncGenerator<string>;
-}> = [
-  { key: 'gemini', stream: streamGemini },
-  { key: 'openai', stream: streamOpenAI },
-  { key: 'anthropic', stream: streamAnthropic },
-  { key: 'groq', stream: streamGroq },
-];
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  HELPERS
+//  HELPER — build user message (with file context if attached)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function buildUserMessage(userMessage: string, attachments: FileAttachment[]): string {
@@ -354,14 +272,10 @@ function buildUserMessage(userMessage: string, attachments: FileAttachment[]): s
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
   let msg = `User uploaded file: "${file.name}" (${(file.size / 1024).toFixed(1)} KB, type: ${ext})\n\n`;
   if (file.preview) {
-    msg += `File preview:\n\`\`\`\n${file.preview.slice(0, 4000)}\n\`\`\`\n\n`;
+    msg += `File content preview:\n\`\`\`\n${file.preview.slice(0, 4000)}\n\`\`\`\n\n`;
   }
   msg += `User question: ${userMessage}`;
   return msg;
-}
-
-function getAvailableProviders(): typeof PROVIDER_CHAIN {
-  return PROVIDER_CHAIN.filter((p) => !!PROVIDERS[p.key].apiKey);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -373,12 +287,13 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({}));
     const { conversationId, message, modelKey = 'auto', attachments = [] } = body;
 
-    const userMessageContent = message || (attachments.length > 0 ? `Analyze uploaded file: ${attachments[0].name}` : 'Hello');
+    const userMessageContent =
+      message || (attachments.length > 0 ? `Analyze uploaded file: ${attachments[0].name}` : 'Hello');
     const activeConversationId = conversationId || `conv-${Date.now()}`;
     const tenantId = request.headers.get('x-tenant-id') || 'cybermind-master-tenant';
     const userId = request.headers.get('x-user-id') || 'admin@cybermind.local';
 
-    // ── 1. Try backend AI Gateway first (fastest if running) ────────────────
+    // ── 1. Try backend AI Gateway if running ─────────────────────────────────
     const backendEndpoints = [
       process.env.AI_GATEWAY_URL ? `${process.env.AI_GATEWAY_URL}/chat/stream` : null,
       'http://127.0.0.1:3010/api/v1/ai/chat/stream',
@@ -403,18 +318,28 @@ export async function POST(request: Request) {
         clearTimeout(t);
         if (res.ok && res.body) {
           return new Response(res.body, {
-            headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive' },
+            headers: {
+              'Content-Type': 'text/event-stream; charset=utf-8',
+              'Cache-Control': 'no-cache, no-transform',
+              'Connection': 'keep-alive',
+            },
           });
         }
       } catch { /* offline */ }
     }
 
-    // ── 2. Store user message & get history ─────────────────────────────────
+    // ── 2. Store user message & get conversation history ─────────────────────
     copilotStore.addMessage(
       activeConversationId,
-      { role: 'user', content: userMessageContent, metadata: attachments.length > 0 ? { attachments } : undefined },
       {
-        titleIfFirst: attachments.length > 0 ? `Analysis: ${attachments[0].name}` : userMessageContent.slice(0, 60),
+        role: 'user',
+        content: userMessageContent,
+        metadata: attachments.length > 0 ? { attachments } : undefined,
+      },
+      {
+        titleIfFirst: attachments.length > 0
+          ? `Analysis: ${attachments[0].name}`
+          : userMessageContent.slice(0, 60),
         model: 'Auto (Smart Router)',
         modelKey,
         tenantId,
@@ -427,83 +352,74 @@ export async function POST(request: Request) {
       .slice(0, -1)
       .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content }));
 
-    // ── 3. Build SSE response with smart provider fallback chain ────────────
-    const encoder = new TextEncoder();
-    const availableProviders = getAvailableProviders();
+    // ── 3. Build ordered provider chain (only those with API keys) ────────────
+    const providerOrder: ProviderKey[] = [
+      'nvidia_pro', 'xai', 'openai', 'nvidia_flash', 'gemini', 'groq',
+    ];
+    const availableProviders = providerOrder.filter((k) => !!PROVIDERS[k].apiKey);
 
+    const encoder = new TextEncoder();
+
+    // ── 4. SSE stream with auto-fallback ─────────────────────────────────────
     const stream = new ReadableStream({
       async start(controller) {
-        const send = (data: object) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        const send = (data: object) =>
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 
-        // Always emit conversation ID first
+        // Always emit conversation ID first so frontend binds immediately
         send({ type: 'conversation_id', conversationId: activeConversationId });
 
         let fullText = '';
         let usedProvider = 'offline';
         let success = false;
 
-        // Try each provider in order
-        for (const provider of availableProviders) {
-          const providerInfo = PROVIDERS[provider.key];
+        for (const key of availableProviders) {
+          const provider = PROVIDERS[key];
           try {
-            // Notify frontend which provider is being used
-            send({ type: 'provider_switch', provider: providerInfo.name, model: providerInfo.model });
+            // Notify frontend which model is active
+            send({ type: 'provider_info', provider: provider.name, model: provider.model });
 
-            for await (const chunk of provider.stream(userMessageContent, history, attachments)) {
+            for await (const chunk of streamProvider(provider, userMessageContent, history, attachments)) {
               fullText += chunk;
-              send({ delta: chunk, done: false, provider: providerInfo.name });
+              send({ delta: chunk, done: false, provider: provider.name });
             }
 
-            usedProvider = providerInfo.name;
+            usedProvider = provider.name;
             success = true;
-            break; // Done — no need to try next provider
+            break; // ✅ Success — stop trying
 
           } catch (err: unknown) {
-            const e = err as { status?: number; body?: string; provider?: string };
+            const e = err as { status?: number; body?: string };
             const status = e?.status ?? 0;
-            const body = e?.body ?? '';
+            const errBody = e?.body ?? '';
 
-            console.error(`[CYBERMIND] Provider ${provider.key} failed — status ${status}:`, body.slice(0, 200));
+            console.error(`[CYBERMIND] ${provider.name} failed (${status}):`, errBody.slice(0, 150));
 
-            // Decide whether to skip to next provider or stop
-            if (isRateLimitError(status, body)) {
-              // Rate limited → try next provider automatically
-              send({
-                type: 'provider_switch',
-                reason: `${providerInfo.name} rate limit reached — switching to next provider...`,
-                fromProvider: providerInfo.name,
-              });
-              continue;
+            if (shouldFallback(status, errBody)) {
+              const reason =
+                status === 429
+                  ? `${provider.name} rate limit reached`
+                  : status === 401 || status === 403
+                  ? `${provider.name} auth error`
+                  : `${provider.name} unavailable (${status})`;
+
+              send({ type: 'provider_switch', reason: `${reason} — switching to next provider...` });
+              continue; // try next
             }
-
-            if (isAuthError(status)) {
-              // Bad API key → try next provider
-              send({
-                type: 'provider_switch',
-                reason: `${providerInfo.name} auth error (invalid key) — switching to next provider...`,
-                fromProvider: providerInfo.name,
-              });
-              continue;
-            }
-
-            // Other error (network, server error) → also try next
-            send({
-              type: 'provider_switch',
-              reason: `${providerInfo.name} unavailable — switching to next provider...`,
-              fromProvider: providerInfo.name,
-            });
+            // Unexpected error → still try next
+            send({ type: 'provider_switch', reason: `${provider.name} error — switching...` });
             continue;
           }
         }
 
-        // ── All providers exhausted → offline message ──
+        // ── All providers exhausted ───────────────────────────────────────────
         if (!success) {
-          const noProviderMsg = availableProviders.length === 0
-            ? `### ⚠️ No AI Provider Configured\n\nTo enable intelligent responses, add at least one API key to your environment:\n\n\`\`\`env\n# /apps/analyst-console/.env.local\nGEMINI_API_KEY=your_key_here      # Free at aistudio.google.com\nOPENAI_API_KEY=your_key_here      # platform.openai.com\nANTHROPIC_API_KEY=your_key_here   # console.anthropic.com\nGROQ_API_KEY=your_key_here        # console.groq.com (free)\n\`\`\`\n\nRestart the server after setting keys.`
-            : `### ⚠️ All AI Providers Temporarily Unavailable\n\nThe following providers were tried but all returned rate limit or errors:\n${availableProviders.map((p) => `- **${PROVIDERS[p.key].name}** (${PROVIDERS[p.key].model})`).join('\n')}\n\nPlease try again in a few moments. Rate limits usually reset within 60 seconds.`;
+          const errMsg = availableProviders.length === 0
+            ? `### ⚠️ No AI Provider Configured\n\nAdd at least one API key to \`.env.local\` and restart the server.\n\n**Supported providers:**\n- \`NVIDIA_API_KEY_PRO\` — NVIDIA NIM DeepSeek V4 Pro\n- \`XAI_API_KEY\` — xAI Grok\n- \`OPENAI_API_KEY\` — OpenAI GPT-4o\n- \`NVIDIA_API_KEY_FLASH\` — NVIDIA NIM DeepSeek V4 Flash\n- \`GEMINI_API_KEY\` — Google Gemini (free)\n- \`GROQ_API_KEY\` — Groq LLaMA-3 (free)`
+            : `### ⚠️ All AI Providers Temporarily Unavailable\n\nAll ${availableProviders.length} configured providers hit rate limits or errors:\n${availableProviders.map((k) => `- **${PROVIDERS[k].name}** (\`${PROVIDERS[k].model}\`)`).join('\n')}\n\nPlease try again in a moment. Rate limits typically reset within 60 seconds.`;
 
-          fullText = noProviderMsg;
-          for (const word of noProviderMsg.split(/(\s+)/)) {
+          fullText = errMsg;
+          for (const word of errMsg.split(/(\s+)/)) {
             send({ delta: word, done: false });
             await new Promise((r) => setTimeout(r, 8));
           }
