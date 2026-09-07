@@ -119,10 +119,6 @@ async function* streamOpenAICompat(
     top_p: 0.95,
   };
 
-  if (provider.baseUrl.includes('nvidia')) {
-    body.extra_body = { chat_template_kwargs: { thinking: false } };
-  }
-
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 6000);
 
@@ -179,7 +175,7 @@ async function* streamOpenAICompat(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  GEMINI STREAMING (REST SSE with Safety Disables)
+//  GEMINI STREAMING (REST SSE with Dual Key & Token Support)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function* streamGemini(
@@ -188,7 +184,10 @@ async function* streamGemini(
   history: Array<{ role: string; content: string }>,
   attachments: FileAttachment[]
 ): AsyncGenerator<string> {
-  const url = `${provider.baseUrl}/v1beta/models/${provider.model}:streamGenerateContent?alt=sse`;
+  const isToken = provider.apiKey.startsWith('AQ.') || provider.apiKey.startsWith('ya29.');
+  const url = isToken
+    ? `${provider.baseUrl}/v1beta/models/${provider.model}:streamGenerateContent?alt=sse`
+    : `${provider.baseUrl}/v1beta/models/${provider.model}:streamGenerateContent?key=${provider.apiKey}&alt=sse`;
 
   const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
   let lastRole = '';
@@ -211,10 +210,17 @@ async function* streamGemini(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 6000);
 
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (isToken) {
+    headers['Authorization'] = `Bearer ${provider.apiKey}`;
+  } else {
+    headers['X-goog-api-key'] = provider.apiKey;
+  }
+
   try {
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-goog-api-key': provider.apiKey },
+      headers,
       body: JSON.stringify({
         system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents,
