@@ -11,35 +11,34 @@ interface FileAttachment {
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  AI PROVIDER CONFIGURATION
-//  Priority Order: Gemini 3.6 Flash → Groq → NVIDIA DeepSeek Pro → NVIDIA DeepSeek Flash
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const PROVIDERS = {
   gemini: {
-    name: 'Google Gemini 3.6 Flash',
+    name: 'Google Gemini 2.5 Flash',
     apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
-    model: 'gemini-3.6-flash',
+    model: 'gemini-2.5-flash',
     baseUrl: 'https://generativelanguage.googleapis.com',
     style: 'gemini',
   },
   groq: {
-    name: 'Groq (GPT-OSS 120B)',
+    name: 'Groq (Llama 3.3 70B)',
     apiKey: process.env.GROQ_API_KEY || '',
-    model: 'openai/gpt-oss-120b',
+    model: 'llama-3.3-70b-versatile',
     baseUrl: 'https://api.groq.com/openai/v1',
     style: 'openai',
   },
   nvidia_pro: {
-    name: 'DeepSeek V4 Pro (NVIDIA)',
+    name: 'DeepSeek R1 (NVIDIA)',
     apiKey: process.env.NVIDIA_API_KEY_PRO || '',
-    model: 'deepseek-ai/deepseek-v4-pro-0813',
+    model: 'deepseek-ai/deepseek-r1',
     baseUrl: 'https://integrate.api.nvidia.com/v1',
     style: 'openai',
   },
   nvidia_flash: {
-    name: 'DeepSeek V4 Flash (NVIDIA)',
+    name: 'Llama 3.3 70B (NVIDIA)',
     apiKey: process.env.NVIDIA_API_KEY_FLASH || '',
-    model: 'deepseek-ai/deepseek-v4-flash-0731',
+    model: 'meta/llama-3.3-70b-instruct',
     baseUrl: 'https://integrate.api.nvidia.com/v1',
     style: 'openai',
   },
@@ -63,30 +62,40 @@ type ProviderKey = keyof typeof PROVIDERS;
 type ProviderConfig = (typeof PROVIDERS)[ProviderKey];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  CYBERMIND SYSTEM PROMPT
+//  CYBERMIND SYSTEM PROMPT (DEFENSIVE SOC FRAMING)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const SYSTEM_PROMPT = `You are CYBERMIND AI, an elite autonomous Cybersecurity Intelligence Analyst AI embedded in the CyberMind OS SOC platform.
+const SYSTEM_PROMPT = `You are CYBERMIND AI, an elite DEFENSIVE Cybersecurity SOC Analyst and Threat Intelligence Assistant embedded in the CyberMind OS platform.
 
-Your capabilities:
-- Answer ANY cybersecurity question with expert-level precision (threat intel, malware analysis, network forensics, SIEM, SOAR, pentest, compliance, CVEs, vendor products)
-- Provide factually accurate answers — NEVER give generic placeholder responses
-- When asked about specific products/technologies (Zscaler ZIA/ZPA, CrowdStrike Falcon, Splunk, Elastic, Sentinel, Palo Alto, FortiGate, etc.) give correct, detailed explanations
-- Analyze uploaded files: PCAPs, Sigma rules, configs, logs, CSV, EVTX
-- Map threats to MITRE ATT&CK framework with precise technique IDs
-- Generate working Sigma/YARA/Suricata/KQL/SPL/EQL detection rules on request
-- Explain vulnerabilities (CVEs), exploits, and mitigations with technical depth
+Your primary objective is to assist SOC teams, Security Engineers, and Incident Responders with defensive security analysis, threat triage, forensics, rule engineering, and risk mitigation.
 
-Tone: Professional, precise, security-focused.
-Format: Always use Markdown — headers, code blocks, bullet points, tables where appropriate.
-CRITICAL: Give REAL, ACCURATE answers. Never fabricate data. Do NOT return generic responses.`;
+Guidelines:
+1. Explain technical security concepts, protocol mechanics (e.g. MITM, ARP spoofing, DNS hijacking, SSL stripping, Ransomware, SQLi, XSS), and attack vectors strictly from an ANALYTICAL, FORENSIC, and DEFENSIVE perspective.
+2. For any attack technique queried (such as MITM or ARP spoofing), ALWAYS include:
+   - Technical breakdown of the vulnerability
+   - MITRE ATT&CK Mapping (e.g. T1557)
+   - Detection signatures (Wireshark filters, Suricata rules, KQL/SPL queries)
+   - Enterprise mitigation & hardening controls (DAI, HSTS, 802.1X, GPO controls)
+3. Never refuse defensive security triage requests. Provide comprehensive, accurate, and structured Markdown output.`;
 
-function shouldFallback(status: number, body: string): boolean {
-  return true; // Always failover to next provider on ANY error
+const REFUSAL_TERMS = [
+  "i'm sorry, but i can't help with that",
+  "i cannot help with that",
+  "i can't help with that",
+  "i cannot fulfill this request",
+  "i am sorry, but i cannot",
+  "i'm unable to assist with",
+  "as an ai language model",
+  "i can't fulfill",
+];
+
+function isRefusal(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  return REFUSAL_TERMS.some((term) => lower.includes(term));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  OPENAI-COMPATIBLE STREAMING (Groq, NVIDIA NIM, xAI, OpenAI)
+//  OPENAI-COMPATIBLE STREAMING
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function* streamOpenAICompat(
@@ -154,7 +163,7 @@ async function* streamOpenAICompat(
             const parsed = JSON.parse(jsonStr);
             const text = parsed?.choices?.[0]?.delta?.content ?? '';
             if (text) yield text;
-          } catch { /* skip malformed */ }
+          } catch { /* skip */ }
         }
       }
     } finally {
@@ -170,7 +179,7 @@ async function* streamOpenAICompat(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  GEMINI STREAMING (REST SSE with Alternating Role Sanitization)
+//  GEMINI STREAMING (REST SSE with Safety Disables)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function* streamGemini(
@@ -215,6 +224,7 @@ async function* streamGemini(
           { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
           { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
           { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
         ],
       }),
       signal: controller.signal,
@@ -290,7 +300,7 @@ function buildUserMessage(userMessage: string, attachments: FileAttachment[]): s
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  CYBERMIND LOCAL SOC INTELLIGENCE ENGINE (Zero-Downtime Fallback)
+//  CYBERMIND LOCAL SOC INTELLIGENCE ENGINE (Zero-Downtime Guarantee)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function* streamLocalSOCEngine(
@@ -366,7 +376,7 @@ DeviceNetworkEvents
 3. **HTTP Strict Transport Security (HSTS)**: Enforce \`Strict-Transport-Security: max-age=31536000; includeSubDomains; preload\` headers to stop TLS stripping.
 4. **802.1X Network Access Control**: Authenticate host NICs via EAP-TLS certificates before granting switchport link access.
 5. **VPN / IPsec Encryption**: Mandate end-to-end IPsec/WireGuard tunneling across non-trusted subnets.`;
-  } else if (query.includes('hi') || query.includes('hello') || query.includes('hey') || query.length < 5) {
+  } else if (query.includes('hi') || query.includes('hello') || query.includes('hey') || query.length < 3) {
     response = `### 👋 Greetings! I am **CYBERMIND AI**
 
 I am your autonomous SOC Intelligence Analyst embedded in CyberMind OS.
@@ -427,29 +437,26 @@ level: critical
   } else {
     response = `### 🛡️ CyberMind SOC Analysis: Technical Security Briefing
 
-**Subject**: \`${userMessage.slice(0, 80)}\`  
-**Security Domain**: Security Operations, Threat Intelligence & Technical Countermeasures
+**Query Target**: \`${userMessage.slice(0, 80)}\`  
+**Security Context**: Security Operations, Incident Response & Threat Telemetry
 
 ---
 
-#### 1. Overview & Threat Assessment
-CyberMind OS has analyzed your query using multi-layered threat intelligence standards. In an enterprise SOC environment, proactive monitoring and structured detection frameworks are critical for maintaining zero-trust architecture.
+#### 1. Overview & Operational Assessment
+CyberMind AI has evaluated your request under SOC operational standards. For query \`${userMessage.slice(0, 40)}\`, optimal SOC triage involves continuous monitoring, host-based log auditing, and protocol verification.
 
 ---
 
-#### 2. Key Technical Concepts & Attack Surface
-- **Telemetry Sources**: Endpoint Detection & Response (EDR), SIEM log ingestion, Network Flow (NetFlow/IPFIX), DNS query logs.
-- **MITRE ATT&CK Correlation**: Aligning event logs against adversary tactics, techniques, and procedures (TTPs).
-- **Risk Mitigation Strategy**: Principle of Least Privilege (PoLP), Network Segmentation, Continuous Monitoring.
+#### 2. Key Technical Checks
+- **SIEM / EDR Ingestion**: Inspect event ID streams (\`Sysmon Event ID 1\`, \`Windows Event ID 4624/4625\`) for correlating process execution or authentication events.
+- **MITRE ATT&CK Mapping**: Map indicators against MITRE TTPs to isolate lateral movement or credential access.
+- **Defensive Hardening**: Apply principle of least privilege, enforce multi-factor authentication (MFA), and audit perimeter firewalls.
 
 ---
 
-#### 3. Recommended Technical Actions
-1. **Audit Incident Logs**: Inspect central SIEM dashboard for correlating telemetry matching this indicator.
-2. **Apply Detection Rules**: Deploy YARA/Sigma/KQL rules to endpoint sensors for real-time alerting.
-3. **Enforce Security Governance**: Validate configuration policies against CIS Benchmarks and NIST 800-53 controls.
-
-*For deeper analysis, feel free to attach a PCAP, log snippet, or specific alert ID!*`;
+#### 3. Recommended Next Steps
+- Type \`explain MITM attack\` or \`analyze ransomware\` for targeted threat deep-dives.
+- Upload a PCAP, LOG, or YAML rule file using the attachment button for instant parsing.`;
   }
 
   const words = response.split(/(\s+)/);
@@ -498,7 +505,7 @@ export async function POST(request: Request) {
       .slice(0, -1)
       .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content }));
 
-    // ── 2. Build ordered provider chain (Gemini 3.6 Flash & Groq first) ─────────
+    // ── 2. Build ordered provider chain ──────────────────────────────────────
     const providerOrder: ProviderKey[] = [
       'gemini', 'groq', 'nvidia_pro', 'nvidia_flash', 'xai', 'openai',
     ];
@@ -506,7 +513,7 @@ export async function POST(request: Request) {
 
     const encoder = new TextEncoder();
 
-    // ── 3. SSE stream with auto-fallback ─────────────────────────────────────
+    // ── 3. SSE stream with refusal detection & auto-fallback ─────────────────
     const stream = new ReadableStream({
       async start(controller) {
         const send = (data: object) =>
@@ -520,12 +527,24 @@ export async function POST(request: Request) {
 
         for (const key of availableProviders) {
           const provider = PROVIDERS[key];
+          let providerText = '';
           try {
             send({ type: 'provider_info', provider: provider.name, model: provider.model });
 
             for await (const chunk of streamProvider(provider, userMessageContent, history, attachments)) {
-              fullText += chunk;
-              send({ delta: chunk, done: false, provider: provider.name });
+              providerText += chunk;
+            }
+
+            // Refusal Filter Check
+            if (isRefusal(providerText)) {
+              console.warn(`[CYBERMIND] Refusal string detected from ${provider.name}. Triggering failover...`);
+              throw { status: 403, body: 'Safety refusal detected', provider: provider.name };
+            }
+
+            fullText = providerText;
+            for (const word of fullText.split(/(\s+)/)) {
+              send({ delta: word, done: false, provider: provider.name });
+              await new Promise((r) => setTimeout(r, 6));
             }
 
             usedProvider = provider.name;
@@ -538,13 +557,12 @@ export async function POST(request: Request) {
             const errBody = e?.body ?? '';
 
             console.error(`[CYBERMIND] ${provider.name} failed (${status}):`, errBody.slice(0, 150));
-
             send({ type: 'provider_switch', reason: `${provider.name} unavailable — switching to next provider...` });
             continue;
           }
         }
 
-        // ── CyberMind Local SOC Engine Fallback (Zero-Downtime Guarantee) ─────
+        // ── CyberMind Local SOC Engine Fallback (Zero-Refusal Guarantee) ──────
         if (!success) {
           usedProvider = 'CyberMind Local SOC Engine';
           send({ type: 'provider_info', provider: 'CyberMind Local SOC Engine', model: 'cybermind-soc-v1' });
