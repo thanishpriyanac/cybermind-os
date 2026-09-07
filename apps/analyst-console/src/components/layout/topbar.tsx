@@ -17,10 +17,10 @@ export function Topbar() {
   const { user, logout } = useAuth();
 
   return (
-    <div className="sticky top-0 z-10 flex-shrink-0 flex h-16 bg-card border-b border-border shadow-sm md:ml-64">
+    <div className="sticky top-0 z-10 flex-shrink-0 flex h-16 bg-card border-b border-border shadow-sm">
       <div className="flex-1 px-4 flex justify-between">
         <div className="flex-1 flex items-center">
-          {/* Add global search or context here later */}
+          {/* Global search or header branding */}
         </div>
         <div className="ml-4 flex items-center md:ml-6 space-x-4">
           

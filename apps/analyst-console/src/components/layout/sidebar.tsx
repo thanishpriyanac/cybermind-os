@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, LayoutDashboard, ShieldAlert, BookOpen, HeartPulse } from 'lucide-react';
+import { Activity, LayoutDashboard, ShieldAlert, BookOpen, HeartPulse, Bot } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Alerts', href: '/alerts', icon: ShieldAlert },
+  { name: 'Copilot', href: '/copilot', icon: Bot },
   { name: 'Investigations', href: '/investigations', icon: Activity },
   { name: 'Playbooks', href: '/playbooks', icon: BookOpen },
   { name: 'System Health', href: '/health', icon: HeartPulse },
@@ -17,7 +18,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 bg-card border-r border-border">
+    <div className="hidden md:flex md:w-64 md:flex-col flex-shrink-0 bg-card border-r border-border">
       <div className="flex-1 flex flex-col min-h-0 bg-card">
         <div className="flex items-center h-16 flex-shrink-0 px-4 border-b border-border">
           <span className="text-lg font-bold tracking-wider text-primary">CYBERMIND OS</span>
@@ -32,9 +33,9 @@ export function Sidebar() {
                   href={item.href}
                   className={cn(
                     isActive
-                      ? 'bg-secondary text-secondary-foreground'
+                      ? 'bg-secondary text-secondary-foreground font-semibold'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors'
+                    'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors'
                   )}
                 >
                   <item.icon
