@@ -23,16 +23,27 @@ export function ConversationSidebar({ activeId, onSelect }: SidebarProps) {
 
   useEffect(() => {
     fetchConversations();
-  }, []);
+  }, [activeId]);
 
   const fetchConversations = async () => {
     setIsLoading(true);
     try {
-      // Fetch user's active conversations from AI Gateway
-      const res = await fetch('/api/v1/ai/conversations');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const tenantId = typeof window !== 'undefined' ? localStorage.getItem('tenantId') : null;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (tenantId) headers['x-tenant-id'] = tenantId;
+
+      const res = await fetch('/api/v1/ai/conversations', { headers });
       if (res.ok) {
         const data = await res.json();
-        setConversations(data || []);
+        const mapped = (data || []).map((conv: any) => ({
+          id: conv.id,
+          title: conv.title || 'Security Analysis',
+          lastMessageAt: conv.lastMessageAt || conv.updatedAt || conv.createdAt || new Date().toISOString(),
+          model: conv.model || conv.modelKey || 'auto',
+        }));
+        setConversations(mapped);
       }
     } catch (e) {
       console.error('Failed to fetch conversations', e);
@@ -44,8 +55,15 @@ export function ConversationSidebar({ activeId, onSelect }: SidebarProps) {
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const tenantId = typeof window !== 'undefined' ? localStorage.getItem('tenantId') : null;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      if (tenantId) headers['x-tenant-id'] = tenantId;
+
       const res = await fetch(`/api/v1/ai/conversations/${id}`, {
         method: 'DELETE',
+        headers,
       });
       if (res.ok) {
         // Soft deleted on backend, remove from local UI list

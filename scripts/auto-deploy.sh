@@ -11,13 +11,16 @@ export PATH="/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:$HOME/.local
 [ -s "$HOME/.bashrc" ] && \. "$HOME/.bashrc"
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-BRANCH="${1:-main}"
+cd "$REPO_DIR"
+
+# Dynamically determine the active branch (main or release/v1.0)
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+[ "$CURRENT_BRANCH" = "HEAD" ] && CURRENT_BRANCH="main"
+BRANCH="${1:-$CURRENT_BRANCH}"
 
 echo "=============================================================================="
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Deployment check on branch: $BRANCH in $REPO_DIR"
 echo "=============================================================================="
-
-cd "$REPO_DIR"
 
 # 1. Fetch latest commits from remote
 git fetch origin "$BRANCH" 2>/dev/null || true
@@ -64,7 +67,7 @@ if [ "$NEEDS_DEPLOY" = true ]; then
 
     echo "--> 5. Restarting all PM2 services..."
     if command -v pm2 &>/dev/null; then
-        pm2 restart all --update-env || pm2 start npm --name "cybermind-console" -- start || true
+        pm2 restart all --update-env || pm2 restart cybermind-console || pm2 start "pnpm --filter analyst-console start -p 3001" --name "cybermind-console" || true
         pm2 save || true
     fi
 
