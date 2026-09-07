@@ -86,19 +86,11 @@ CRITICAL: Give REAL, ACCURATE answers. Never fabricate data. Do NOT return gener
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function shouldFallback(status: number, body: string): boolean {
-  if ([429, 503, 502, 500].includes(status)) return true;
-  if (status === 401 || status === 403) return true; // bad key → try next
-  const b = body.toLowerCase();
-  return (
-    b.includes('quota') ||
-    b.includes('rate_limit') ||
-    b.includes('rate limit') ||
-    b.includes('too many requests') ||
-    b.includes('overloaded') ||
-    b.includes('resource_exhausted') ||
-    b.includes('capacity') ||
-    b.includes('unavailable')
-  );
+  if (status === 429 || status === 401 || status === 403 || status === 500 || status === 502 || status === 503 || status === 504 || status === 0) {
+    return true;
+  }
+  const lower = body.toLowerCase();
+  return lower.includes('rate limit') || lower.includes('quota') || lower.includes('insufficient_quota') || lower.includes('unreachable') || lower.includes('timeout');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -113,10 +105,7 @@ async function* streamOpenAICompat(
 ): AsyncGenerator<string> {
   const messages = [
     { role: 'system', content: SYSTEM_PROMPT },
-    ...history.slice(-10).map((m) => ({
-      role: m.role === 'assistant' ? 'assistant' : 'user',
-      content: m.content,
-    })),
+    ...history.slice(-10).map((m) => ({ role: m.role, content: m.content })),
     { role: 'user', content: buildUserMessage(userMessage, attachments) },
   ];
 
@@ -134,45 +123,58 @@ async function* streamOpenAICompat(
     body.extra_body = { chat_template_kwargs: { thinking: false } };
   }
 
-  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${provider.apiKey}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  if (!response.ok || !response.body) {
-    const errText = await response.text().catch(() => '');
-    throw { status: response.status, body: errText, provider: provider.name };
-  }
-
-  const reader = response.body.getReader();
-  const dec = new TextDecoder();
-  let buffer = '';
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
   try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += dec.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() ?? '';
+    const response = await fetch(`${provider.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${provider.apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
 
-      for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        const jsonStr = line.slice(5).trim();
-        if (!jsonStr || jsonStr === '[DONE]') continue;
-        try {
-          const parsed = JSON.parse(jsonStr);
-          const text = parsed?.choices?.[0]?.delta?.content ?? '';
-          if (text) yield text;
-        } catch { /* skip malformed */ }
-      }
+    if (!response.ok || !response.body) {
+      const errText = await response.text().catch(() => '');
+      throw { status: response.status, body: errText, provider: provider.name };
     }
-  } finally {
-    reader.releaseLock();
+
+    const reader = response.body.getReader();
+    const dec = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += dec.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const jsonStr = line.slice(5).trim();
+          if (!jsonStr || jsonStr === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const text = parsed?.choices?.[0]?.delta?.content ?? '';
+            if (text) yield text;
+          } catch { /* skip malformed */ }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw { status: 504, body: 'Request timed out after 8s', provider: provider.name };
+    }
+    throw err;
   }
 }
 
@@ -196,21 +198,27 @@ async function* streamGemini(
     { role: 'user', parts: [{ text: buildUserMessage(userMessage, attachments) }] },
   ];
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-goog-api-key': provider.apiKey },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-      contents,
-      generationConfig: { temperature: 0.7, topP: 0.95, maxOutputTokens: 4096 },
-      safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-      ],
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-goog-api-key': provider.apiKey },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents,
+        generationConfig: { temperature: 0.7, topP: 0.95, maxOutputTokens: 4096 },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        ],
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
 
   if (!response.ok || !response.body) {
     const errText = await response.text().catch(() => '');
@@ -242,6 +250,13 @@ async function* streamGemini(
     }
   } finally {
     reader.releaseLock();
+  }
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw { status: 504, body: 'Request timed out after 8s', provider: provider.name };
+    }
+    throw err;
   }
 }
 
