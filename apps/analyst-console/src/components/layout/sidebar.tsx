@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, LayoutDashboard, ShieldAlert, BookOpen, HeartPulse, Bot } from 'lucide-react';
+import { Activity, LayoutDashboard, ShieldAlert, BookOpen, HeartPulse, Bot, ShieldCheck } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const navigation = [
@@ -12,6 +12,7 @@ const navigation = [
   { name: 'Investigations', href: '/investigations', icon: Activity },
   { name: 'Playbooks', href: '/playbooks', icon: BookOpen },
   { name: 'System Health', href: '/health', icon: HeartPulse },
+  { name: 'Admin Center', href: '/admin', icon: ShieldCheck },
 ];
 
 export function Sidebar() {

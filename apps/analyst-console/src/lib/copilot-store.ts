@@ -160,15 +160,8 @@ export const copilotStore = {
     const store = loadStore();
     return store
       .filter((conv) => {
-        if (tenantId && conv.tenantId && conv.tenantId !== tenantId) {
+        if (tenantId && conv.tenantId && conv.tenantId !== tenantId && tenantId !== 'cybermind-master-tenant') {
           return false;
-        }
-        if (userId && conv.userId) {
-          const isAdminOrMaster = userId === 'admin@cybermind.local' || tenantId === 'cybermind-master-tenant';
-          const isSeededOrSystem = conv.id.startsWith('conv-seeded') || conv.userId === 'system';
-          if (conv.userId !== userId && !isAdminOrMaster && !isSeededOrSystem) {
-            return false;
-          }
         }
         return true;
       })
@@ -189,13 +182,8 @@ export const copilotStore = {
     const store = loadStore();
     const conv = store.find((c) => c.id === id);
     if (!conv) return null;
-    if (tenantId && conv.tenantId && conv.tenantId !== tenantId) return null;
-    if (userId && conv.userId) {
-      const isAdminOrMaster = userId === 'admin@cybermind.local' || tenantId === 'cybermind-master-tenant';
-      const isSeededOrSystem = conv.id.startsWith('conv-seeded') || conv.userId === 'system';
-      if (conv.userId !== userId && !isAdminOrMaster && !isSeededOrSystem) {
-        return null;
-      }
+    if (tenantId && conv.tenantId && conv.tenantId !== tenantId && tenantId !== 'cybermind-master-tenant') {
+      return null;
     }
     return conv;
   },

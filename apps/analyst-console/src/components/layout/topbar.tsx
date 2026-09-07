@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useAuth } from '../../contexts/auth-context';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { LogOut, User as UserIcon, ShieldCheck } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,6 +43,13 @@ export function Topbar() {
                   <p className="text-sm font-medium leading-none">{user?.email}</p>
                 </div>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/admin" className="flex items-center w-full cursor-pointer">
+                  <ShieldCheck className="mr-2 h-4 w-4 text-primary" />
+                  <span>Platform Admin Center</span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => logout()}>
                 <LogOut className="mr-2 h-4 w-4" />
