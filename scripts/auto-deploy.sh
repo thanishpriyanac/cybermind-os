@@ -1,13 +1,11 @@
 #!/bin/bash
 # ==============================================================================
-# CyberMind OS — Automated Git Pull & Deployment Script
+# CyberMind OS — Automated Git Poll & Deployment Script
 # Checks GitHub repository for new commits every execution.
-# If changes are found, it pulls, seeds the DB, and rebuilds containers.
 # ==============================================================================
 
 set -e
 
-# Directory configuration (adjust to repo location on server if needed)
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BRANCH="${1:-main}"
 
@@ -17,7 +15,7 @@ echo "==========================================================================
 
 cd "$REPO_DIR"
 
-# Fetch latest commits from remote without merging
+# Fetch latest commits from remote
 git fetch origin "$BRANCH"
 
 LOCAL_HASH=$(git rev-parse HEAD)
@@ -31,17 +29,19 @@ if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
     echo "--> 1. Pulling latest changes..."
     git pull origin "$BRANCH"
 
-    echo "--> 2. Seeding database credentials..."
+    echo "--> 2. Starting database containers..."
+    sudo docker-compose up -d postgres redis
+
+    echo "--> 3. Applying schema & seeding identity database..."
     if [ -f "services/identity/prisma/seed.js" ]; then
-        DATABASE_URL="${DATABASE_URL:-postgresql://cybermind:cybermind_secret@localhost:5432/cybermind_identity}" \
-        node services/identity/prisma/seed.js || echo "Warning: Seed script returned non-zero exit code"
+        npx prisma db push --schema=services/identity/prisma/schema.prisma || true
+        DATABASE_URL="${DATABASE_URL:-postgresql://cybermind:cybermind_secret@localhost:5432/cybermind_identity}"         node services/identity/prisma/seed.js || echo "Warning: Seed script returned non-zero exit code"
     fi
 
-    echo "--> 3. Rebuilding and restarting Docker containers..."
-    docker compose down && docker compose up -d --build
-
-    echo "--> 4. Pruning unused Docker images..."
-    docker image prune -f
+    echo "--> 4. Restarting PM2 services..."
+    pm2 restart cybermind-api --update-env || true
+    pm2 restart cybermind-console --update-env || true
+    pm2 save
 
     echo "=============================================================================="
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] Deployment completed successfully!"
