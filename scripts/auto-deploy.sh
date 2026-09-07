@@ -44,6 +44,9 @@ if [ "$NEEDS_DEPLOY" = true ]; then
     git reset --hard "origin/$BRANCH"
     git pull origin "$BRANCH"
 
+    echo "--> 1b. Syncing dependencies..."
+    npm install --legacy-peer-deps 2>/dev/null || pnpm install 2>/dev/null || true
+
     echo "--> 2. Ensuring database containers are running..."
     docker compose up -d postgres redis 2>/dev/null || sudo docker-compose up -d postgres redis 2>/dev/null || true
 
