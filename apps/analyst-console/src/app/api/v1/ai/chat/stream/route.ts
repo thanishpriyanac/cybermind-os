@@ -292,18 +292,12 @@ export async function POST(request: Request) {
     const tenantId = request.headers.get('x-tenant-id') || 'cybermind-master-tenant';
     const userId = request.headers.get('x-user-id') || 'admin@cybermind.local';
 
-    // ── 1. Try backend AI Gateway if running ─────────────────────────────────
-    const backendEndpoints = [
-      process.env.AI_GATEWAY_URL ? `${process.env.AI_GATEWAY_URL}/chat/stream` : null,
-      'http://127.0.0.1:3010/api/v1/ai/chat/stream',
-      'http://127.0.0.1:3002/api/v1/ai/chat/stream',
-    ].filter(Boolean) as string[];
-
-    for (const endpoint of backendEndpoints) {
+    // ── 1. Try backend AI Gateway ONLY if process.env.AI_GATEWAY_URL is explicitly set
+    if (process.env.AI_GATEWAY_URL) {
       try {
         const ctrl = new AbortController();
         const t = setTimeout(() => ctrl.abort(), 1200);
-        const res = await fetch(endpoint, {
+        const res = await fetch(`${process.env.AI_GATEWAY_URL}/chat/stream`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -324,7 +318,7 @@ export async function POST(request: Request) {
             },
           });
         }
-      } catch { /* offline */ }
+      } catch { /* fallback to local streaming engine */ }
     }
 
     // ── 2. Store user message & get conversation history ─────────────────────
