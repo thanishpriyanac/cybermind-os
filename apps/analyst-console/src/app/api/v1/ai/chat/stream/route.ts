@@ -19,7 +19,7 @@ const PROVIDERS = {
   nvidia_pro: {
     name: 'DeepSeek V4 Pro (NVIDIA)',
     apiKey: process.env.NVIDIA_API_KEY_PRO || '',
-    model: 'deepseek-ai/deepseek-r1-0528',
+    model: 'deepseek-ai/deepseek-v4-pro-0813',
     baseUrl: 'https://integrate.api.nvidia.com/v1',
     style: 'openai',
   },
@@ -40,7 +40,7 @@ const PROVIDERS = {
   nvidia_flash: {
     name: 'DeepSeek R1 Flash (NVIDIA)',
     apiKey: process.env.NVIDIA_API_KEY_FLASH || '',
-    model: 'deepseek-ai/deepseek-r1-0528-instruct',
+    model: 'deepseek-ai/deepseek-v4-flash-0731',
     baseUrl: 'https://integrate.api.nvidia.com/v1',
     style: 'openai',
   },
