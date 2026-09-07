@@ -9,324 +9,364 @@ interface FileAttachment {
   preview?: string;
 }
 
-function generateAttachmentAnalysis(file: FileAttachment, userQuery: string): string {
+// ═══════════════════════════════════════════════════════════════════════════════
+//  AI PROVIDER CONFIGURATION
+//  Priority order: Gemini → OpenAI → Anthropic → Groq → Offline
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const PROVIDERS = {
+  gemini: {
+    name: 'Google Gemini',
+    apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
+    model: 'gemini-2.0-flash',
+  },
+  openai: {
+    name: 'OpenAI GPT-4o',
+    apiKey: process.env.OPENAI_API_KEY || '',
+    model: 'gpt-4o-mini',
+  },
+  anthropic: {
+    name: 'Anthropic Claude',
+    apiKey: process.env.ANTHROPIC_API_KEY || '',
+    model: 'claude-3-haiku-20240307',
+  },
+  groq: {
+    name: 'Groq LLaMA',
+    apiKey: process.env.GROQ_API_KEY || '',
+    model: 'llama3-70b-8192',
+  },
+} as const;
+
+type ProviderKey = keyof typeof PROVIDERS;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  CYBERMIND SYSTEM PROMPT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const SYSTEM_PROMPT = `You are CYBERMIND Copilot, an elite autonomous Cybersecurity Intelligence Analyst AI embedded in the CyberMind OS SOC platform.
+
+Your primary functions:
+- Answer ANY cybersecurity question with expert precision (threat intel, malware analysis, network forensics, SIEM, SOAR, pentest, compliance, CVEs, vendor products, etc.)
+- Provide factually accurate, context-aware answers — NEVER give generic placeholder responses
+- When asked about specific products/technologies (e.g. Zscaler ZIA, CrowdStrike Falcon, Splunk, Elastic, Sentinel, Palo Alto, etc.) give correct, detailed explanations
+- Analyze uploaded files: PCAPs, Sigma rules, configs, logs, CSV, EVTX files
+- Map threats to MITRE ATT&CK framework with precision (technique IDs, tactics, sub-techniques)
+- Generate working Sigma/YARA/Suricata detection rules on request
+- Provide SIEM query translations: Splunk SPL, Elastic EQL, Microsoft Sentinel KQL
+- Explain vulnerabilities (CVEs), exploits, and mitigation steps clearly
+
+Tone: Professional, precise, security-focused.
+Format: Always use Markdown — headers, code blocks, bullet points, tables where appropriate.
+
+IMPORTANT: Give REAL, ACCURATE answers. Never fabricate threat data or make up IPs/hashes. If uncertain, say so clearly. Do NOT return generic "moderate risk" responses when a specific factual question is asked.`;
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  RATE LIMIT / ERROR DETECTION HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function isRateLimitError(status: number, body: string): boolean {
+  if (status === 429) return true;
+  if (status === 503) return true;
+  const b = body.toLowerCase();
+  return (
+    b.includes('quota') ||
+    b.includes('rate_limit') ||
+    b.includes('rate limit') ||
+    b.includes('too many requests') ||
+    b.includes('overloaded') ||
+    b.includes('resource_exhausted')
+  );
+}
+
+function isAuthError(status: number): boolean {
+  return status === 401 || status === 403;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GEMINI — streaming SSE via REST
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function* streamGemini(
+  userMessage: string,
+  history: Array<{ role: string; content: string }>,
+  attachments: FileAttachment[]
+): AsyncGenerator<string> {
+  const { apiKey, model } = PROVIDERS.gemini;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
+
+  const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+
+  for (const msg of history.slice(-10)) {
+    contents.push({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }],
+    });
+  }
+
+  let currentMessage = buildUserMessage(userMessage, attachments);
+  contents.push({ role: 'user', parts: [{ text: currentMessage }] });
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents,
+      generationConfig: { temperature: 0.7, topP: 0.95, maxOutputTokens: 2048 },
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      ],
+    }),
+  });
+
+  if (!response.ok || !response.body) {
+    const errText = await response.text().catch(() => '');
+    throw { status: response.status, body: errText, provider: 'gemini' };
+  }
+
+  const reader = response.body.getReader();
+  const dec = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += dec.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const jsonStr = line.slice(5).trim();
+        if (!jsonStr || jsonStr === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+          if (text) yield text;
+        } catch { /* skip */ }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  OPENAI — streaming SSE via REST
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function* streamOpenAI(
+  userMessage: string,
+  history: Array<{ role: string; content: string }>,
+  attachments: FileAttachment[]
+): AsyncGenerator<string> {
+  const { apiKey, model } = PROVIDERS.openai;
+
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...history.slice(-10).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
+    { role: 'user', content: buildUserMessage(userMessage, attachments) },
+  ];
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ model, messages, stream: true, max_tokens: 2048, temperature: 0.7 }),
+  });
+
+  if (!response.ok || !response.body) {
+    const errText = await response.text().catch(() => '');
+    throw { status: response.status, body: errText, provider: 'openai' };
+  }
+
+  const reader = response.body.getReader();
+  const dec = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += dec.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const jsonStr = line.slice(5).trim();
+        if (!jsonStr || jsonStr === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const text = parsed?.choices?.[0]?.delta?.content ?? '';
+          if (text) yield text;
+        } catch { /* skip */ }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ANTHROPIC CLAUDE — streaming SSE via REST
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function* streamAnthropic(
+  userMessage: string,
+  history: Array<{ role: string; content: string }>,
+  attachments: FileAttachment[]
+): AsyncGenerator<string> {
+  const { apiKey, model } = PROVIDERS.anthropic;
+
+  const messages = [
+    ...history.slice(-10).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
+    { role: 'user', content: buildUserMessage(userMessage, attachments) },
+  ];
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      system: SYSTEM_PROMPT,
+      messages,
+      max_tokens: 2048,
+      stream: true,
+    }),
+  });
+
+  if (!response.ok || !response.body) {
+    const errText = await response.text().catch(() => '');
+    throw { status: response.status, body: errText, provider: 'anthropic' };
+  }
+
+  const reader = response.body.getReader();
+  const dec = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += dec.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const jsonStr = line.slice(5).trim();
+        if (!jsonStr) continue;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          if (parsed.type === 'content_block_delta') {
+            const text = parsed?.delta?.text ?? '';
+            if (text) yield text;
+          }
+        } catch { /* skip */ }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  GROQ — OpenAI-compatible endpoint (streaming)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+async function* streamGroq(
+  userMessage: string,
+  history: Array<{ role: string; content: string }>,
+  attachments: FileAttachment[]
+): AsyncGenerator<string> {
+  const { apiKey, model } = PROVIDERS.groq;
+
+  const messages = [
+    { role: 'system', content: SYSTEM_PROMPT },
+    ...history.slice(-10).map((m) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
+    { role: 'user', content: buildUserMessage(userMessage, attachments) },
+  ];
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({ model, messages, stream: true, max_tokens: 2048, temperature: 0.7 }),
+  });
+
+  if (!response.ok || !response.body) {
+    const errText = await response.text().catch(() => '');
+    throw { status: response.status, body: errText, provider: 'groq' };
+  }
+
+  const reader = response.body.getReader();
+  const dec = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += dec.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const jsonStr = line.slice(5).trim();
+        if (!jsonStr || jsonStr === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const text = parsed?.choices?.[0]?.delta?.content ?? '';
+          if (text) yield text;
+        } catch { /* skip */ }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  PROVIDER REGISTRY — ordered fallback chain
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const PROVIDER_CHAIN: Array<{
+  key: ProviderKey;
+  stream: (msg: string, hist: Array<{ role: string; content: string }>, att: FileAttachment[]) => AsyncGenerator<string>;
+}> = [
+  { key: 'gemini', stream: streamGemini },
+  { key: 'openai', stream: streamOpenAI },
+  { key: 'anthropic', stream: streamAnthropic },
+  { key: 'groq', stream: streamGroq },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function buildUserMessage(userMessage: string, attachments: FileAttachment[]): string {
+  if (!attachments || attachments.length === 0) return userMessage;
+  const file = attachments[0];
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
-
-  if (['pcap', 'pcapng', 'cap'].includes(ext)) {
-    return `### 📦 Deep Packet Inspection (DPI) Forensic Report: \`${file.name}\`
-
-**File Size**: \`${(file.size / 1024).toFixed(1)} KB\`  
-**Capture Format**: \`${ext.toUpperCase()}\` (Ethernet / IPv4 / IPv6 / TCP / UDP)  
-**Triage Status**: **Malicious Indicators Detected (Severity: High)**  
-
----
-
-#### 📊 Packet Stream Summary
-- **Total Packets Captured**: ~4,820 packets across 12 distinct TCP/UDP sessions
-- **Top Protocols**: TLS 1.3 (64.2%), TCP (18.1%), DNS (11.5%), HTTP/1.1 (4.8%), ICMP (1.4%)
-- **Top Endpoints**:
-  - \`10.0.4.12:51244\` ↔ \`185.220.101.5:443\` (Encrypted C2 Session)
-  - \`10.0.4.12:53412\` ↔ \`1.1.1.1:53\` (High-frequency DNS queries)
-  - \`10.0.4.12:445\` ↔ \`10.0.4.25:445\` (Internal SMB Session)
-
----
-
-#### 🚨 Flagged Security Anomalies
-1. **Suspicious TLS SNI Mismatch**:
-   - SNI requested: \`cdn-updater.cloudflare.com\`
-   - Destination IP: \`185.220.101.5\` (Reverse DNS reveals known Tor Exit Relay / Bulletproof VPS)
-   - **Technique**: **T1071.001** *(Application Layer Protocol: Web Protocols)*
-
-2. **DNS Tunneling / Data Staging Indicators**:
-   - 42 queries to subdomains matching \`*.exfil.attacker-c2.net\`
-   - Query length exceeds 120 characters with high Shannon entropy (7.62)
-   - **Technique**: **T1048.003** *(Exfiltration Over Alternative Protocol: DNS)*
-
-3. **Plaintext Credential Transmission**:
-   - HTTP stream on port \`8080\` contained raw \`Authorization: Basic\` header referencing service account \`svc_dbadmin\`.
-
----
-
-#### 🔍 Wireshark / TShark Investigation Filters
-\`\`\`text
-# 1. Filter suspicious TLS session
-ip.addr == 185.220.101.5 && tls.handshake.type == 1
-
-# 2. Extract anomalous DNS tunneling queries
-dns.flags.response == 0 && dns.qry.name contains "exfil"
-
-# 3. Locate cleartext credentials
-http.authorization || http.cookie
-\`\`\`
-
----
-
-#### ⚡ Automated SOAR Containment Steps
-1. Block destination IP \`185.220.101.5\` at perimeter Palo Alto / Fortinet firewalls.
-2. Invalidate password for \`svc_dbadmin\` immediately.
-3. Isolate host \`10.0.4.12\` to prevent lateral movement.`;
+  let msg = `User uploaded file: "${file.name}" (${(file.size / 1024).toFixed(1)} KB, type: ${ext})\n\n`;
+  if (file.preview) {
+    msg += `File preview:\n\`\`\`\n${file.preview.slice(0, 4000)}\n\`\`\`\n\n`;
   }
-
-  if (['yaml', 'yml', 'json', 'conf', 'rules', 'sigma'].includes(ext)) {
-    return `### ⚙️ Security Configuration & Rule Analysis: \`${file.name}\`
-
-**File Size**: \`${file.size} bytes\`  
-**Schema Classification**: Detection Engineering Rule / Configuration Template  
-**Syntax Audit**: **Valid (0 syntax errors, 2 tuning suggestions)**  
-
----
-
-#### 🛡️ Detection Logic Review
-- **Target Platform**: Windows / Linux Event Telemetry
-- **Log Sources Analyzed**: \`Security Event Log\`, \`Sysmon (Event ID 1)\`, \`Auditd\`
-- **MITRE ATT&CK Mapping**:
-  - **T1059.001** — *Command and Scripting Interpreter: PowerShell*
-  - **T1003.001** — *OS Credential Dumping: LSASS Memory*
-  - **T1036** — *Masquerading*
-
----
-
-#### 💡 Tuning & Optimization Suggestions
-1. **False Positive Suppression**: Add condition \`and not (ParentImage endswith '\\Amazon\\SSM\\ssm-agent.exe')\` to eliminate noise from automated AWS maintenance runs.
-2. **Wildcard Index Optimization**: Replace leading wildcards \`*\\powershell.exe\` with explicit path anchors to reduce search compute by **38%**.
-
----
-
-#### 🔄 Generated SIEM Query Equivalents
-
-##### Splunk SPL:
-\`\`\`spl
-index=winsec EventCode=4688 Image="*\\powershell.exe" CommandLine="*-enc*"
-| stats count by ComputerName, AccountName, CommandLine
-\`\`\`
-
-##### Elastic EQL:
-\`\`\`eql
-process where process.name == "powershell.exe" and process.command_line : "* -enc *"
-\`\`\`
-
-##### Microsoft Sentinel KQL:
-\`\`\`kql
-SecurityEvent
-| where EventID == 4688
-| where Process has_any ("powershell.exe", "pwsh.exe") and CommandLine has "-enc"
-\`\`\``;
-  }
-
-  // Generic log or text file analysis
-  return `### 📋 Security Telemetry Ingestion & Log Analysis: \`${file.name}\`
-
-**File Size**: \`${(file.size / 1024).toFixed(1)} KB\`  
-**Log Type**: Event Audit Trail / Access Log  
-
----
-
-#### 🔍 Parsing & Anomaly Extraction
-- **Parsed Entries**: Successfully processed event records.
-- **Identified Entities**:
-  - **Internal Hosts**: \`10.0.4.10\`, \`10.0.4.12\`, \`10.0.2.5\`
-  - **External Remote IPs**: \`198.51.100.23\`, \`185.220.101.5\`
-  - **User Accounts**: \`admin\`, \`svc_db\`, \`root\`
-- **Correlation**: Spikes in HTTP 401/403 status codes correlate with brute-force attempts from IP \`198.51.100.23\`.
-
-#### Recommended SOC Actions:
-- Apply dynamic rate limiting on endpoint proxy.
-- Correlate with SIEM watchlist \`High-Risk-Entities\`.`;
+  msg += `User question: ${userMessage}`;
+  return msg;
 }
 
-function generateCyberSecurityResponse(userQuery: string, modelKey: string, attachments?: FileAttachment[]): string {
-  if (attachments && attachments.length > 0) {
-    const file = attachments[0];
-    return generateAttachmentAnalysis(file, userQuery);
-  }
-
-  const query = userQuery.toLowerCase().trim();
-
-  if (/^(hi|hello|hey|greetings|morning|afternoon|evening|help)\b/.test(query) || query === 'hi' || query === 'hello') {
-    return `### 👋 Hello! I am CYBERMIND Copilot
-
-I am your autonomous **Cybersecurity Intelligence Analyst**, continuously monitoring your enterprise attack surface, MITRE ATT&CK vectors, and network telemetry.
-
----
-
-### 🛡️ Real-Time SOC Status
-- **System Health**: **Operational** (100% telemetry ingest uptime)
-- **Active Detections**: **14** monitored events (3 critical, 5 high)
-- **Current Threat Focus**: Lateral movement detection across active subnets
-- **Integrated Engine**: Sigma Detection Engine + Redpanda Streaming + MITRE ATT&CK Matrix
-
----
-
-### 💡 What I can do for you:
-1. **Upload & Analyze Files**: Click the **📎 Paperclip** icon or drag-and-drop to upload:
-   - **PCAPs / Packet Captures** (\`.pcap\`, \`.pcapng\`) for automated Wireshark protocol breakdown & anomaly hunting.
-   - **Config / Rule Files** (\`.yaml\`, \`.json\`, \`.conf\`, \`.rules\`, \`.sigma\`) for syntax audit & SIEM translation (Splunk/Elastic/Sentinel).
-   - **Log Files** (\`.log\`, \`.csv\`, \`.txt\`, \`.evtx\`) for triage and IOC extraction.
-2. **Alert Triage & Investigation**: Ask *"Analyze alert 14"* or paste any event payload.
-3. **Sigma Rule Engineering**: Ask *"Explain Sigma rule for LSASS dump"* or request tuning to eliminate false positives.
-4. **IOC & IP Intelligence**: Ask *"Lookup threat score for 198.51.100.23"* or check any hash/domain.
-5. **Automated SOAR Playbooks**: Ask *"Trigger host isolation for DB-01"* or review containment workflows.
-
-How can I assist your investigation today?`;
-  }
-
-  if (query.includes('pcap') || query.includes('packet') || query.includes('wireshark')) {
-    return `### 📦 PCAP Network Forensics & Protocol Analysis
-
-You can upload any **\`*.pcap\`** or **\`*.pcapng\`** file directly using the **📎 Paperclip** attachment button or by dragging the file into this window!
-
----
-
-#### 🔍 What CYBERMIND PCAP Analysis Provides:
-1. **Automated Protocol Breakdown**: L2-L7 protocol hierarchy (Ethernet, IPv4/v6, TCP, UDP, TLS, DNS, HTTP, SMB).
-2. **Conversation & Top Talkers**: High-bandwidth sessions, anomalous port pairs, internal-to-external exfiltration channels.
-3. **Behavioral Anomaly Detection**:
-   - **C2 Beaconing**: Regular timing intervals with low jitter.
-   - **DNS Tunneling**: High-entropy TXT records or abnormally long hostnames.
-   - **Port Scans / Sweeps**: TCP SYN floods, half-open scans, NULL/XMAS probes.
-   - **Cleartext Secrets**: Unencrypted basic authentication, API keys, Telnet/FTP traffic.
-4. **Ready-to-Use Wireshark Filters**: Immediate display filters formatted for Wireshark and \`tshark\`.
-
-Click the **📎 Paperclip** button in the chat bar below to attach your PCAP file for instant analysis!`;
-  }
-
-  if (query.includes('config') || query.includes('upload') || query.includes('file')) {
-    return `### 📎 File Upload & Analysis Center
-
-You can upload and analyze files directly in CYBERMIND Copilot:
-
-#### Supported File Types:
-- **PCAP / Network Captures**: \`.pcap\`, \`.pcapng\`, \`.cap\`
-- **Detection & Sigma Rules**: \`.yaml\`, \`.yml\`, \`.sigma\`, \`.rules\`
-- **Configuration Files**: \`.conf\`, \`.json\`, \`.xml\`, \`.ini\`
-- **System & Security Logs**: \`.log\`, \`.txt\`, \`.csv\`, \`.evtx\`
-
-#### How to Upload:
-1. Click the **📎 Paperclip** icon next to the chat input below.
-2. Or drag and drop any file directly onto the chat area.
-3. Type any specific questions (e.g. *"Check for malicious beacons"*, *"Translate rule to Splunk"*), or click **Send** for an immediate full forensic report!`;
-  }
-
-  if (query.includes('ransomware') || query.includes('canary') || query.includes('encrypt')) {
-    return `### 🚨 Critical Alert Investigation: Ransomware Canary Detection
-
-**Severity**: **CRITICAL (Score: 9.9 / 10)**  
-**Classification**: High-Confidence Ransomware Behavioral Trigger  
-**Target Asset**: \`DB-01.corp.local\` (Subnet: \`10.0.4.0/24\`)  
-
----
-
-#### 🔍 Forensic Analysis
-1. **Canary Trap Breach**: Honey-token file \`/var/data/shared/finance_canary.xlsx\` was modified with high Shannon entropy (7.98/8.0).
-2. **Execution Vector**: \`svchost_update.exe\` spawned via WMI (\`T1047\`) with shadow copy deletion flags (\`vssadmin delete shadows /all /quiet\`).
-3. **Command & Control**: Outbound beaconing observed to \`185.220.101.5:443\` using encrypted TLS SNI spoofing.
-
----
-
-#### 🛡️ MITRE ATT&CK Mapping
-- **T1486** — *Data Encrypted for Impact*
-- **T1490** — *Inhibit System Recovery*
-- **T1047** — *Windows Management Instrumentation*
-- **T1071.001** — *Web Protocols (Tor C2)*
-
----
-
-#### ⚡ Recommended Automated Response Actions
-\`\`\`bash
-# 1. Immediate Host Quarantine (SOAR)
-cybermind-cli soar execute-playbook --name PB-ISOLATE-HOST --target 10.0.4.12
-
-# 2. Block C2 Indicator on Perimeter Firewalls
-cybermind-cli edr block-ip --ip 185.220.101.5 --ttl 86400
-
-# 3. Kill Malicious Process Hierarchy
-taskkill /S DB-01 /F /IM svchost_update.exe
-\`\`\`
-
-Would you like me to trigger the **Host Isolation Playbook** for \`DB-01\` immediately?`;
-  }
-
-  if (query.includes('alert') || query.includes('investigat')) {
-    return `### 🔍 Security Alert Triage & Correlation Report
-
-**Target**: Correlated Alert Stream (Tenant: \`cybermind-master-tenant\`)  
-**Status**: **Active Investigation (Severity: High)**  
-
----
-
-#### 📋 Correlated Detection Findings
-1. **Anomalous Process Lineage**: High-privilege PowerShell session spawned by unauthorized parent (\`cmd.exe\` via \`at.exe\`).
-2. **Credential Access Telemetry**: Memory access attempts targeting \`lsass.exe\` using MiniDumpWriteDump API call (\`T1003.001\`).
-3. **Lateral Movement Risk**: Port 445 / 135 scanning attempts against internal subnets (\`10.0.2.0/24\`).
-
----
-
-#### 🛡️ Recommended Containment Steps
-1. **Token Invalidation**: Expire all active Kerberos TGTs and session tokens for compromised accounts.
-2. **EDR Host Isolation**: Restrict network interface to SOC management subnet only.
-3. **Log Retention**: Pull forensic volatile memory dump (\`winpmem\`) before restarting services.`;
-  }
-
-  if (query.includes('sigma') || query.includes('rule') || query.includes('detect')) {
-    return `### 📜 Sigma Rule Analysis & Tuning Recommendations
-
-\`\`\`yaml
-title: Suspicious PowerShell Encoded Command Execution
-id: 569f1030-9b34-4b57-a9a7-96a6039be502
-status: production
-description: Detects base64 encoded PowerShell commands used for payload staging
-author: CYBERMIND Intelligence Unit
-references:
-  - https://attack.mitre.org/techniques/T1059/001/
-logsource:
-  category: process_creation
-  product: windows
-detection:
-  selection:
-    Image|endswith:
-      - '\\powershell.exe'
-      - '\\pwsh.exe'
-    CommandLine|contains:
-      - ' -enc '
-      - ' -EncodedCommand '
-      - ' -e '
-  filter_admin_scripts:
-    CommandLine|contains:
-      - 'C:\\ProgramData\\Amazon\\SSM'
-  condition: selection and not filter_admin_scripts
-falsepositives:
-  - Legitimate management tools (SCCM, AWS SSM)
-level: high
-\`\`\`
-
-#### Tuning Recommendation
-Add organizational whitelist for signed CI/CD runners to reduce noise by **84%** without reducing detection sensitivity.`;
-  }
-
-  // Default deep cybersecurity analysis response
-  return `### 🛡️ CYBERMIND Threat Intelligence Analysis
-
-**Query**: \`${userQuery}\`  
-**Model**: \`${modelKey || 'CyberMind Smart Router'}\`  
-**Analysis Timestamp**: \`${new Date().toISOString()}\`  
-
----
-
-#### 🔍 Analysis & Findings
-Based on continuous telemetry monitoring and threat database correlation:
-- **Risk Assessment**: Moderate to elevated vigilance recommended.
-- **MITRE ATT&CK Context**: Correlated against MITRE Enterprise Matrix v15.
-- **Threat Actor Tactics**: Common patterns observed in initial access (\`TA0001\`) and credential defense evasion (\`TA0005\`).
-
----
-
-#### 💡 Actionable Recommendations
-1. **Verify Asset Compliance**: Ensure endpoint EDR sensors are actively reporting heartbeats.
-2. **Review Firewall Egress Logs**: Validate that unusual outbound traffic spikes to external IP ranges are blocked.
-3. **Audit Privilege Escalations**: Monitor Windows Security Event ID 4672 and Linux \`sudo\` logs for abnormal activity.
-
-Feel free to upload a PCAP or config file, or ask for specific Sigma rules and incident containment workflows!`;
+function getAvailableProviders(): typeof PROVIDER_CHAIN {
+  return PROVIDER_CHAIN.filter((p) => !!PROVIDERS[p.key].apiKey);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MAIN POST HANDLER
+// ═══════════════════════════════════════════════════════════════════════════════
 
 export async function POST(request: Request) {
   try {
@@ -338,62 +378,43 @@ export async function POST(request: Request) {
     const tenantId = request.headers.get('x-tenant-id') || 'cybermind-master-tenant';
     const userId = request.headers.get('x-user-id') || 'admin@cybermind.local';
 
-    // 1. Try forwarding to backend AI Gateway if running
+    // ── 1. Try backend AI Gateway first (fastest if running) ────────────────
     const backendEndpoints = [
       process.env.AI_GATEWAY_URL ? `${process.env.AI_GATEWAY_URL}/chat/stream` : null,
       'http://127.0.0.1:3010/api/v1/ai/chat/stream',
       'http://127.0.0.1:3002/api/v1/ai/chat/stream',
-      'http://127.0.0.1:3000/api/v1/ai/chat/stream',
     ].filter(Boolean) as string[];
 
     for (const endpoint of backendEndpoints) {
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 1200);
-
-        const backendRes = await fetch(endpoint, {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 1200);
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-tenant-id': tenantId,
             'x-user-id': userId,
-            'Authorization': request.headers.get('authorization') || '',
+            Authorization: request.headers.get('authorization') || '',
           },
-          body: JSON.stringify({
-            conversationId: activeConversationId,
-            message: userMessageContent,
-            modelKey,
-            attachments,
-          }),
-          signal: controller.signal,
+          body: JSON.stringify({ conversationId: activeConversationId, message: userMessageContent, modelKey, attachments }),
+          signal: ctrl.signal,
         });
-
-        clearTimeout(timeout);
-
-        if (backendRes.ok && backendRes.body) {
-          return new Response(backendRes.body, {
-            headers: {
-              'Content-Type': 'text/event-stream; charset=utf-8',
-              'Cache-Control': 'no-cache, no-transform',
-              'Connection': 'keep-alive',
-            },
+        clearTimeout(t);
+        if (res.ok && res.body) {
+          return new Response(res.body, {
+            headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive' },
           });
         }
-      } catch (e) {
-        // Backend offline or timeout, continue to built-in autonomous engine
-      }
+      } catch { /* offline */ }
     }
 
-    // 2. Built-in CyberMind Autonomous Security AI Engine (Streaming SSE)
+    // ── 2. Store user message & get history ─────────────────────────────────
     copilotStore.addMessage(
       activeConversationId,
+      { role: 'user', content: userMessageContent, metadata: attachments.length > 0 ? { attachments } : undefined },
       {
-        role: 'user',
-        content: userMessageContent,
-        metadata: attachments.length > 0 ? { attachments } : undefined,
-      },
-      {
-        titleIfFirst: attachments.length > 0 ? `Analysis: ${attachments[0].name}` : userMessageContent.slice(0, 40),
+        titleIfFirst: attachments.length > 0 ? `Analysis: ${attachments[0].name}` : userMessageContent.slice(0, 60),
         model: 'Auto (Smart Router)',
         modelKey,
         tenantId,
@@ -401,79 +422,103 @@ export async function POST(request: Request) {
       }
     );
 
-    const fullResponse = generateCyberSecurityResponse(userMessageContent, modelKey, attachments);
+    const conv = copilotStore.getConversation(activeConversationId);
+    const history = (conv?.messages || [])
+      .slice(0, -1)
+      .map((m: { role: string; content: string }) => ({ role: m.role, content: m.content }));
 
-    // Save assistant message in store
-    setTimeout(() => {
-      copilotStore.addMessage(activeConversationId, {
-        role: 'assistant',
-        content: fullResponse,
-        metadata: {
-          model: 'Auto (Smart Router)',
-          provider: 'CYBERMIND Security Intelligence',
-          confidence: 0.99,
-          latencyMs: 85,
-        },
-      });
-    }, 100);
-
+    // ── 3. Build SSE response with smart provider fallback chain ────────────
     const encoder = new TextEncoder();
-
-    // Word/phrase chunks for smooth realistic streaming
-    const chunks: string[] = [];
-    const paragraphs = fullResponse.split('\n');
-
-    for (let p = 0; p < paragraphs.length; p++) {
-      const words = paragraphs[p].split(' ');
-      for (let w = 0; w < words.length; w++) {
-        chunks.push(words[w] + (w < words.length - 1 ? ' ' : ''));
-      }
-      if (p < paragraphs.length - 1) {
-        chunks.push('\n');
-      }
-    }
+    const availableProviders = getAvailableProviders();
 
     const stream = new ReadableStream({
       async start(controller) {
-        // First message: emit conversation_id so frontend binds immediately
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({
-              type: 'conversation_id',
-              conversationId: activeConversationId,
-            })}\n\n`
-          )
-        );
+        const send = (data: object) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 
-        // Stream text chunks
-        for (const chunk of chunks) {
-          controller.enqueue(
-            encoder.encode(
-              `data: ${JSON.stringify({
-                delta: chunk,
-                done: false,
-              })}\n\n`
-            )
-          );
-          // Small delay for natural streaming feeling
-          await new Promise((resolve) => setTimeout(resolve, 15));
+        // Always emit conversation ID first
+        send({ type: 'conversation_id', conversationId: activeConversationId });
+
+        let fullText = '';
+        let usedProvider = 'offline';
+        let success = false;
+
+        // Try each provider in order
+        for (const provider of availableProviders) {
+          const providerInfo = PROVIDERS[provider.key];
+          try {
+            // Notify frontend which provider is being used
+            send({ type: 'provider_switch', provider: providerInfo.name, model: providerInfo.model });
+
+            for await (const chunk of provider.stream(userMessageContent, history, attachments)) {
+              fullText += chunk;
+              send({ delta: chunk, done: false, provider: providerInfo.name });
+            }
+
+            usedProvider = providerInfo.name;
+            success = true;
+            break; // Done — no need to try next provider
+
+          } catch (err: unknown) {
+            const e = err as { status?: number; body?: string; provider?: string };
+            const status = e?.status ?? 0;
+            const body = e?.body ?? '';
+
+            console.error(`[CYBERMIND] Provider ${provider.key} failed — status ${status}:`, body.slice(0, 200));
+
+            // Decide whether to skip to next provider or stop
+            if (isRateLimitError(status, body)) {
+              // Rate limited → try next provider automatically
+              send({
+                type: 'provider_switch',
+                reason: `${providerInfo.name} rate limit reached — switching to next provider...`,
+                fromProvider: providerInfo.name,
+              });
+              continue;
+            }
+
+            if (isAuthError(status)) {
+              // Bad API key → try next provider
+              send({
+                type: 'provider_switch',
+                reason: `${providerInfo.name} auth error (invalid key) — switching to next provider...`,
+                fromProvider: providerInfo.name,
+              });
+              continue;
+            }
+
+            // Other error (network, server error) → also try next
+            send({
+              type: 'provider_switch',
+              reason: `${providerInfo.name} unavailable — switching to next provider...`,
+              fromProvider: providerInfo.name,
+            });
+            continue;
+          }
         }
 
-        // Final completion event
-        controller.enqueue(
-          encoder.encode(
-            `data: ${JSON.stringify({
-              done: true,
-              type: 'done',
-              metadata: {
-                model: 'Auto (Smart Router)',
-                provider: 'CYBERMIND Security Model',
-                confidence: 0.99,
-              },
-            })}\n\n`
-          )
-        );
+        // ── All providers exhausted → offline message ──
+        if (!success) {
+          const noProviderMsg = availableProviders.length === 0
+            ? `### ⚠️ No AI Provider Configured\n\nTo enable intelligent responses, add at least one API key to your environment:\n\n\`\`\`env\n# /apps/analyst-console/.env.local\nGEMINI_API_KEY=your_key_here      # Free at aistudio.google.com\nOPENAI_API_KEY=your_key_here      # platform.openai.com\nANTHROPIC_API_KEY=your_key_here   # console.anthropic.com\nGROQ_API_KEY=your_key_here        # console.groq.com (free)\n\`\`\`\n\nRestart the server after setting keys.`
+            : `### ⚠️ All AI Providers Temporarily Unavailable\n\nThe following providers were tried but all returned rate limit or errors:\n${availableProviders.map((p) => `- **${PROVIDERS[p.key].name}** (${PROVIDERS[p.key].model})`).join('\n')}\n\nPlease try again in a few moments. Rate limits usually reset within 60 seconds.`;
 
+          fullText = noProviderMsg;
+          for (const word of noProviderMsg.split(/(\s+)/)) {
+            send({ delta: word, done: false });
+            await new Promise((r) => setTimeout(r, 8));
+          }
+        }
+
+        // Persist assistant response
+        if (fullText) {
+          copilotStore.addMessage(activeConversationId, {
+            role: 'assistant',
+            content: fullText,
+            metadata: { model: usedProvider, provider: usedProvider },
+          });
+        }
+
+        send({ done: true, type: 'done', metadata: { provider: usedProvider } });
         controller.close();
       },
     });
@@ -486,13 +531,11 @@ export async function POST(request: Request) {
         'X-Accel-Buffering': 'no',
       },
     });
-  } catch (error: any) {
-    return new Response(
-      JSON.stringify({ error: error?.message || 'Streaming failure' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Streaming failure';
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
