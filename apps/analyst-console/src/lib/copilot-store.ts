@@ -28,7 +28,7 @@ export interface CopilotConversation {
   messages: CopilotMessage[];
 }
 
-const STORE_FILE = path.join(process.cwd(), '.next', 'copilot_store.json');
+const STORE_FILE = path.join(process.cwd(), 'copilot_store.json');
 
 // Default seeded conversations for security analysts
 const DEFAULT_CONVERSATIONS: CopilotConversation[] = [

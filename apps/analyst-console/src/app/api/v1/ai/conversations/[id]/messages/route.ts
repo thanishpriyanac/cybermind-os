@@ -12,20 +12,13 @@ export async function GET(
     const tenantId = request.headers.get('x-tenant-id') || 'cybermind-master-tenant';
     const userId = request.headers.get('x-user-id') || 'admin@cybermind.local';
 
-    // 1. Try forwarding to backend AI Gateway if running
-    const backendEndpoints = [
-      process.env.AI_GATEWAY_URL ? `${process.env.AI_GATEWAY_URL}/conversations/${id}/messages` : null,
-      `http://127.0.0.1:3010/api/v1/ai/conversations/${id}/messages`,
-      `http://127.0.0.1:3002/api/v1/ai/conversations/${id}/messages`,
-      `http://127.0.0.1:3000/api/v1/ai/conversations/${id}/messages`,
-    ].filter(Boolean) as string[];
-
-    for (const endpoint of backendEndpoints) {
+    // 1. Try forwarding to backend AI Gateway if explicitly configured
+    if (process.env.AI_GATEWAY_URL) {
       try {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 1000);
+        const timeout = setTimeout(() => controller.abort(), 500);
 
-        const backendRes = await fetch(endpoint, {
+        const backendRes = await fetch(`${process.env.AI_GATEWAY_URL}/conversations/${id}/messages`, {
           headers: {
             'x-tenant-id': tenantId,
             'x-user-id': userId,

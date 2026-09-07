@@ -107,8 +107,10 @@ export function ChatWindow({ conversationId, onConversationCreated }: ChatWindow
 
   useEffect(() => {
     if (conversationId) {
-      fetchMessages();
-    } else {
+      if (!isGenerating) {
+        fetchMessages();
+      }
+    } else if (!isGenerating) {
       setMessages([]);
     }
   }, [conversationId]);
