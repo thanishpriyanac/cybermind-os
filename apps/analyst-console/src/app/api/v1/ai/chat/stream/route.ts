@@ -692,16 +692,19 @@ export async function POST(request: Request) {
           }
         }
 
-        // ── Local RAG Engine Fallback ─────────────────────────────────────────
+        // ── Fallback Handling ─────────────────────────────────────────────────
         if (!success) {
-          if (disableLocalRAG && modelKey !== 'local-soc') {
-            const noKeyMsg = `### ⚠️ Cloud AI Key Unconfigured\n\nPlease add \`GEMINI_API_KEY\` or \`GROQ_API_KEY\` to \`apps/analyst-console/.env\` on your server to use direct Cloud AI models.`;
+          const isCloudOnlySelection = modelKey && ['gemini', 'groq', 'openai', 'nvidia_pro'].includes(modelKey);
+
+          if (isCloudOnlySelection) {
+            const noKeyMsg = `### ⚠️ Cloud AI Model Selected (${modelKey})\n\nUnable to reach live Cloud AI endpoint or valid API key is missing. Please check your \`GEMINI_API_KEY\` or \`GROQ_API_KEY\` in \`apps/analyst-console/.env.local\`, or switch to **Auto (Smart Router + RAG Fallback)** in the top right model menu.`;
             fullText = noKeyMsg;
             for (const word of noKeyMsg.split(/(\s+)/)) {
               send({ delta: word, done: false });
               await new Promise((r) => setTimeout(r, 6));
             }
           } else {
+            // Auto Mode & Local SOC Mode: Always provide complete technical SOC response
             usedProvider = 'CyberMind Local SOC Engine';
             send({ type: 'provider_info', provider: 'CyberMind Local SOC Engine', model: 'cybermind-soc-v1' });
 
