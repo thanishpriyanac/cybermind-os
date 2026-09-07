@@ -1,6 +1,11 @@
 {
   "name": "analyst-console",
   "version": "1.0.0",
+  "scripts": {
+    "start": "next start",
+    "dev": "next dev",
+    "build": "next build"
+  },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",
     "@radix-ui/react-dialog": "^1.1.23",
