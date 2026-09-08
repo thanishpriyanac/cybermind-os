@@ -62,6 +62,39 @@ type ProviderKey = keyof typeof PROVIDERS;
 type ProviderConfig = (typeof PROVIDERS)[ProviderKey];
 
 // ═══════════════════════════════════════════════════════════════════════════════
+//  AUTO-MODEL DISCOVERY — fetch first available model if configured one fails
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const modelCache: Record<string, string> = {};
+
+async function getWorkingModel(provider: ProviderConfig): Promise<string> {
+  const cacheKey = provider.baseUrl;
+  if (modelCache[cacheKey]) return modelCache[cacheKey];
+
+  try {
+    const res = await fetch(`${provider.baseUrl}/models`, {
+      headers: { Authorization: `Bearer ${provider.apiKey}` },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return provider.model;
+    const data = await res.json();
+    const models: string[] = (data?.data || data?.models || []).map((m: any) => m.id || m.name).filter(Boolean);
+    // Prefer chat/instruction models
+    const preferred = models.find(m =>
+      m.includes('instruct') || m.includes('chat') || m.includes('gpt') || m.includes('grok') || m.includes('llama')
+    ) || models[0];
+    if (preferred) {
+      modelCache[cacheKey] = preferred;
+      console.log(`[CYBERMIND] Auto-discovered model for ${provider.name}: ${preferred}`);
+      return preferred;
+    }
+  } catch {
+    // fallback to configured model
+  }
+  return provider.model;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 //  CYBERMIND SYSTEM PROMPT (DEFENSIVE SOC FRAMING)
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -110,8 +143,10 @@ async function* streamOpenAICompat(
     { role: 'user', content: buildUserMessage(userMessage, attachments) },
   ];
 
+  const activeModel = await getWorkingModel(provider);
+
   const body: Record<string, unknown> = {
-    model: provider.model,
+    model: activeModel,
     messages,
     stream: true,
     max_tokens: 4096,
