@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { ShieldAlert, Activity, Cpu, ServerCrash, CheckCircle2 } from 'lucide-react';
+import { ShieldAlert, Activity, Cpu, ServerCrash, CheckCircle2, Shield, Globe, Server, Bot } from 'lucide-react';
 import { Skeleton } from '../../components/ui/skeleton';
 
 export default function DashboardPage() {
@@ -33,6 +33,58 @@ export default function DashboardPage() {
       };
     },
     refetchInterval: 10000,
+  });
+
+  const { data: aiUsage, isLoading: aiLoading } = useQuery({
+    queryKey: ['ai-usage'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/v1/ai/usage');
+        return res.json();
+      } catch (err) {
+        return null;
+      }
+    },
+    refetchInterval: 30000,
+  });
+
+  const { data: cveStatus, isLoading: cveLoading } = useQuery({
+    queryKey: ['cve-status'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/v1/cve/status');
+        return res.data;
+      } catch (err) {
+        return null;
+      }
+    },
+    refetchInterval: 60000,
+  });
+
+  const { data: ipStatus, isLoading: ipLoading } = useQuery({
+    queryKey: ['ip-status'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/v1/ip/status');
+        return res.data;
+      } catch (err) {
+        return null;
+      }
+    },
+    refetchInterval: 60000,
+  });
+
+  const { data: fwAssessments, isLoading: fwLoading } = useQuery({
+    queryKey: ['fw-assessments'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/v1/firewall/assessments');
+        return res.data.length || 0;
+      } catch (err) {
+        return 0;
+      }
+    },
+    refetchInterval: 60000,
   });
 
   return (
@@ -88,6 +140,45 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {statsLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{stats?.aiRequests}</div>}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">AI Sessions (24h)</CardTitle>
+            <Bot className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {aiLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{aiUsage?.last24h || 0}</div>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">CVE Intel</CardTitle>
+            <Shield className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {cveLoading ? <Skeleton className="h-8 w-32" /> : <div className="text-2xl font-bold">{cveStatus?.totalCVEs ? cveStatus.totalCVEs.toLocaleString() : 'Sync required'}</div>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">IP Investigations</CardTitle>
+            <Globe className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {ipLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{ipStatus?.total || 0}</div>}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">FW Assessments</CardTitle>
+            <Server className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {fwLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{fwAssessments || 0}</div>}
           </CardContent>
         </Card>
       </div>
