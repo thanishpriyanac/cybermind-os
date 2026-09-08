@@ -9,6 +9,50 @@ interface FileAttachment {
   preview?: string;
 }
 
+export const usageTracker = {
+  sessions: [] as Array<{
+    timestamp: string;
+    provider: string;
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  }>,
+  addSession(provider: string, model: string, inputTokens: number, outputTokens: number) {
+    this.sessions.push({
+      timestamp: new Date().toISOString(),
+      provider,
+      model,
+      inputTokens,
+      outputTokens,
+      totalTokens: inputTokens + outputTokens,
+    });
+    if (this.sessions.length > 1000) this.sessions.shift();
+  },
+  getStats() {
+    const last24h = this.sessions.filter(s =>
+      new Date(s.timestamp) > new Date(Date.now() - 86400000)
+    );
+    return {
+      total: this.sessions.length,
+      last24h: last24h.length,
+      totalInputTokens: last24h.reduce((s, x) => s + x.inputTokens, 0),
+      totalOutputTokens: last24h.reduce((s, x) => s + x.outputTokens, 0),
+      totalTokens: last24h.reduce((s, x) => s + x.totalTokens, 0),
+      byProvider: Object.fromEntries(
+        [...new Set(last24h.map(s => s.provider))].map(p => [
+          p,
+          last24h.filter(s => s.provider === p).reduce((acc, s) => ({
+            requests: acc.requests + 1,
+            inputTokens: acc.inputTokens + s.inputTokens,
+            outputTokens: acc.outputTokens + s.outputTokens,
+          }), { requests: 0, inputTokens: 0, outputTokens: 0 })
+        ])
+      )
+    };
+  }
+};
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  AI PROVIDER CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -149,6 +193,7 @@ async function* streamOpenAICompat(
     model: activeModel,
     messages,
     stream: true,
+    stream_options: { include_usage: true },
     max_tokens: 4096,
     temperature: 0.7,
     top_p: 0.95,
@@ -194,6 +239,14 @@ async function* streamOpenAICompat(
             const parsed = JSON.parse(jsonStr);
             const text = parsed?.choices?.[0]?.delta?.content ?? '';
             if (text) yield text;
+            if (parsed?.usage) {
+              usageTracker.addSession(
+                provider.name,
+                activeModel,
+                parsed.usage.prompt_tokens || 0,
+                parsed.usage.completion_tokens || 0
+              );
+            }
           } catch { /* skip */ }
         }
       }
@@ -297,8 +350,15 @@ async function* streamGemini(
             const parsed = JSON.parse(jsonStr);
             const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
             if (text) yield text;
+            if (parsed?.usageMetadata) {
+              usageTracker.addSession(
+                provider.name,
+                provider.model,
+                parsed.usageMetadata.promptTokenCount || 0,
+                parsed.usageMetadata.candidatesTokenCount || 0
+              );
+            }
           } catch { /* skip */ }
-        }
       }
     } finally {
       reader.releaseLock();

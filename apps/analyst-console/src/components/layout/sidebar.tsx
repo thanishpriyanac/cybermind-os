@@ -2,13 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Activity, LayoutDashboard, ShieldAlert, BookOpen, HeartPulse, Bot, ShieldCheck } from 'lucide-react';
+import { Activity, LayoutDashboard, ShieldAlert, BookOpen, HeartPulse, Bot, ShieldCheck, Shield, Globe, Server } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Alerts', href: '/alerts', icon: ShieldAlert },
   { name: 'CyberAI', href: '/copilot', icon: Bot },
+  { name: 'CVE Intelligence', href: '/cve', icon: Shield },
+  { name: 'IP Intelligence', href: '/ip', icon: Globe },
+  { name: 'Firewall Health', href: '/firewall', icon: Server },
   { name: 'Investigations', href: '/investigations', icon: Activity },
   { name: 'Playbooks', href: '/playbooks', icon: BookOpen },
   { name: 'System Health', href: '/health', icon: HeartPulse },
