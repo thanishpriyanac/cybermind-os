@@ -46,19 +46,19 @@ export async function GET() {
     groqKey
       ? testProvider('Groq Llama 3.3 70B', 'https://api.groq.com/openai/v1/chat/completions',
           { Authorization: `Bearer ${groqKey}` },
-          { model: 'llama-3.3-70b-versatile', messages: simpleMsg, max_tokens: 5 })
+          { model: 'llama3-70b-8192', messages: simpleMsg, max_tokens: 5 })
       : Promise.resolve({ provider: 'Groq', status: 0, ok: false, result: '⚠️ KEY NOT SET', error: null }),
 
     nvidiaProKey
       ? testProvider('NVIDIA DeepSeek R1', 'https://integrate.api.nvidia.com/v1/chat/completions',
           { Authorization: `Bearer ${nvidiaProKey}` },
-          { model: 'deepseek-ai/deepseek-r1', messages: simpleMsg, max_tokens: 5, stream: false })
+          { model: 'meta/llama-3.3-70b-instruct', messages: simpleMsg, max_tokens: 5, stream: false })
       : Promise.resolve({ provider: 'NVIDIA Pro', status: 0, ok: false, result: '⚠️ KEY NOT SET', error: null }),
 
     xaiKey
       ? testProvider('xAI Grok', 'https://api.x.ai/v1/chat/completions',
           { Authorization: `Bearer ${xaiKey}` },
-          { model: 'grok-beta', messages: simpleMsg, max_tokens: 5 })
+          { model: 'grok-2-1212', messages: simpleMsg, max_tokens: 5 })
       : Promise.resolve({ provider: 'xAI', status: 0, ok: false, result: '⚠️ KEY NOT SET', error: null }),
 
     openaiKey
