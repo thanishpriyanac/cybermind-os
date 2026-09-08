@@ -28,7 +28,10 @@ export interface CopilotConversation {
   messages: CopilotMessage[];
 }
 
-const STORE_FILE = path.join(process.cwd(), 'copilot_store.json');
+// Store file is pinned to the project root for stable persistence across PM2 restarts
+const PROJECT_ROOT = path.resolve(__dirname, '../../../../../../');
+const DATA_DIR = path.join(PROJECT_ROOT, 'data');
+const STORE_FILE = path.join(DATA_DIR, 'copilot_store.json');
 
 // Default seeded conversations for security analysts
 const DEFAULT_CONVERSATIONS: CopilotConversation[] = [
@@ -145,9 +148,8 @@ function loadStore(): CopilotConversation[] {
 function saveStore(store: CopilotConversation[]) {
   inMemoryStore = store;
   try {
-    const dir = path.dirname(STORE_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
     }
     fs.writeFileSync(STORE_FILE, JSON.stringify(store, null, 2), 'utf-8');
   } catch (err) {
