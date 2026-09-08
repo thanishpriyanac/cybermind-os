@@ -14,10 +14,16 @@ cd "$REPO_DIR"
 # Pull latest code
 git pull origin release/v1.0 >> "$LOG_FILE" 2>&1
 
-# Restore .env.local (gitignored)
+# Ensure data directory exists for JSON stores (CVE, IP, Firewall, QBR)
+mkdir -p "$REPO_DIR/data"
+echo "[$(date)] ✅ data/ directory ready" >> "$LOG_FILE"
+
+# Restore .env.local from root .env (gitignored — must be on server manually)
 if [ -f ".env" ]; then
-  cp .env apps/analyst-console/.env.local
+  cat .env > apps/analyst-console/.env.local
   echo "[$(date)] ✅ Copied .env → apps/analyst-console/.env.local" >> "$LOG_FILE"
+else
+  echo "[$(date)] ⚠️  WARNING: No .env found! API keys may be missing." >> "$LOG_FILE"
 fi
 
 # Rebuild
