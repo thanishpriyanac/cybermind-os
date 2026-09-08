@@ -33,97 +33,9 @@ const PROJECT_ROOT = path.resolve(__dirname, '../../../../../../');
 const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 const STORE_FILE = path.join(DATA_DIR, 'copilot_store.json');
 
-// Default seeded conversations for security analysts
-const DEFAULT_CONVERSATIONS: CopilotConversation[] = [
-  {
-    id: 'conv-seeded-1',
-    title: 'Ransomware Canary Triggered - DB-01',
-    model: 'Auto (Smart Router)',
-    modelKey: 'auto',
-    createdAt: new Date(Date.now() - 3600 * 1000 * 4).toISOString(),
-    updatedAt: new Date(Date.now() - 3600 * 1000 * 3).toISOString(),
-    lastMessageAt: new Date(Date.now() - 3600 * 1000 * 3).toISOString(),
-    tenantId: 'cybermind-master-tenant',
-    userId: 'admin@cybermind.local',
-    messages: [
-      {
-        id: 'msg-1-1',
-        role: 'user',
-        content: 'Explain the Ransomware Canary alert triggered on host DB-01.',
-        createdAt: new Date(Date.now() - 3600 * 1000 * 4).toISOString(),
-      },
-      {
-        id: 'msg-1-2',
-        role: 'assistant',
-        content: `### 🚨 Incident Summary: Ransomware Canary Decoy Accessed
+// Default store is empty — seeded conversations were visible to ALL users (privacy bug)
+const DEFAULT_CONVERSATIONS: CopilotConversation[] = [];
 
-**Host**: \`DB-01.corp.local\` (10.0.4.12)  
-**Severity**: **CRITICAL** (Score: 9.8/10)  
-**MITRE ATT&CK Mapping**: 
-- **T1486** — *Data Encrypted for Impact*
-- **T1059.001** — *PowerShell Execution*
-- **T1078** — *Valid Accounts*
-
-#### Findings
-1. **Canary Trap Breach**: A honey-token file \`/var/data/shared/finance_canary.xlsx\` was opened and modified by unauthorized process \`svchost_update.exe\` (PID 4912).
-2. **Entropy Anomaly**: File modification telemetry detected high entropy (7.98/8.0), characteristic of AES-CBC encryption.
-3. **Outbound C2**: Process established outbound connection to \`185.220.101.5:443\` (Known Tor Exit Node).
-
-#### Recommended Immediate Actions:
-1. 🛡️ **Network Quarantine**: Execute SOAR playbook \`PB-ISOLATE-HOST\` to isolate DB-01.
-2. 🔑 **Revoke Credentials**: Force password reset and session invalidation for service account \`svc_backup\`.
-3. 💾 **Volume Snapshot**: Take forensic snapshot of EBS volume \`vol-098df23a\` before memory wipe.`,
-        createdAt: new Date(Date.now() - 3600 * 1000 * 3).toISOString(),
-        metadata: {
-          model: 'Auto (Smart Router)',
-          provider: 'CYBERMIND Security Model',
-          confidence: 0.98,
-          latencyMs: 142,
-        },
-      },
-    ],
-  },
-  {
-    id: 'conv-seeded-2',
-    title: 'SSH Brute Force Threat Intelligence',
-    model: 'Auto (Smart Router)',
-    modelKey: 'auto',
-    createdAt: new Date(Date.now() - 3600 * 1000 * 12).toISOString(),
-    updatedAt: new Date(Date.now() - 3600 * 1000 * 10).toISOString(),
-    lastMessageAt: new Date(Date.now() - 3600 * 1000 * 10).toISOString(),
-    tenantId: 'cybermind-master-tenant',
-    userId: 'admin@cybermind.local',
-    messages: [
-      {
-        id: 'msg-2-1',
-        role: 'user',
-        content: 'What is the risk assessment for IP 198.51.100.23 attacking edge gateway?',
-        createdAt: new Date(Date.now() - 3600 * 1000 * 12).toISOString(),
-      },
-      {
-        id: 'msg-2-2',
-        role: 'assistant',
-        content: `### 🌐 Threat Intel Report: 198.51.100.23
-
-- **Classification**: Malicious Botnet Node (Mirai / Medusa variant)
-- **Threat Score**: **88/100 (HIGH RISK)**
-- **Geo-Location**: Frankfurt, Germany (AS20473)
-- **Observed Behavior**: 1,420 failed SSH authentication attempts across 3 minutes targeting user accounts \`root\`, \`admin\`, \`ubuntu\`, \`deploy\`.
-
-#### Automated Response:
-- Edge gateway firewall dynamically injected temporary IP drop rule for 24 hours.
-- Fail2ban jail \`sshd-ddos\` active. No breaches detected.`,
-        createdAt: new Date(Date.now() - 3600 * 1000 * 10).toISOString(),
-        metadata: {
-          model: 'Auto (Smart Router)',
-          provider: 'CyberMind GeoIP & Threat Intel',
-          confidence: 0.96,
-          latencyMs: 89,
-        },
-      },
-    ],
-  },
-];
 
 let inMemoryStore: CopilotConversation[] | null = null;
 
@@ -162,9 +74,9 @@ export const copilotStore = {
     const store = loadStore();
     return store
       .filter((conv) => {
-        if (tenantId && conv.tenantId && conv.tenantId !== tenantId && tenantId !== 'cybermind-master-tenant') {
-          return false;
-        }
+        // STRICT user isolation: each user only sees their own conversations
+        if (userId && conv.userId && conv.userId !== userId) return false;
+        if (tenantId && conv.tenantId && conv.tenantId !== tenantId) return false;
         return true;
       })
       .map((conv) => ({
@@ -184,9 +96,9 @@ export const copilotStore = {
     const store = loadStore();
     const conv = store.find((c) => c.id === id);
     if (!conv) return null;
-    if (tenantId && conv.tenantId && conv.tenantId !== tenantId && tenantId !== 'cybermind-master-tenant') {
-      return null;
-    }
+    // Strict user isolation on read too
+    if (userId && conv.userId && conv.userId !== userId) return null;
+    if (tenantId && conv.tenantId && conv.tenantId !== tenantId) return null;
     return conv;
   },
 
