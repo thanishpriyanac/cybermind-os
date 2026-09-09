@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import Link from 'next/link';
 import { 
@@ -29,7 +29,11 @@ import {
   Wifi,
   Smartphone,
   Laptop,
-  MapPin
+  MapPin,
+  BookOpen,
+  Sparkles,
+  Clock,
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -40,9 +44,9 @@ interface UserRecord {
   id: string;
   name: string;
   email: string;
-  role: 'SUPER_ADMIN' | 'SOC_ANALYST' | 'READONLY_VIEWER';
+  role: 'SUPER_ADMIN' | 'SOC_ANALYST' | 'INCIDENT_RESPONDER';
   tenantId: string;
-  status: 'ACTIVE' | 'SUSPENDED';
+  status: 'ACTIVE' | 'REVOKED';
   lastLogin: string;
 }
 
@@ -59,7 +63,7 @@ const INITIAL_USERS: UserRecord[] = [
 ];
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'CONVERSATIONS' | 'AI_PROVIDERS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'CONVERSATIONS' | 'AI_PROVIDERS' | 'LEARNING'>('OVERVIEW');
   const [users] = useState<UserRecord[]>(INITIAL_USERS);
   const [toast, setToast] = useState<string | null>(null);
   const [streamData, setStreamData] = useState<any | null>(null);
@@ -70,7 +74,7 @@ export default function AdminPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Instant SSE Stream Connection (Zero-Delay Streaming without needing manual refresh)
+  // Instant SSE Stream Connection
   useEffect(() => {
     let es: EventSource | null = null;
     try {
@@ -105,7 +109,7 @@ export default function AdminPage() {
     staleTime: 200,
   });
 
-  // Live AI Usage Metrics (rapid auto-update)
+  // Live AI Usage Metrics
   const { data: aiUsage, isLoading: aiLoading } = useQuery({
     queryKey: ['admin-ai-usage'],
     queryFn: async () => {
@@ -125,14 +129,45 @@ export default function AdminPage() {
     refetchInterval: 3000,
   });
 
-  // Live Active User Sessions with IP, Device, Network & Geo Location Telemetry
-  const { data: userSessionsData } = useQuery({
+  // Live Active User Sessions (IP, network, device, location)
+  const { data: userSessions } = useQuery({
     queryKey: ['admin-user-sessions'],
     queryFn: async () => {
       const res = await fetch('/api/v1/identity/users');
       return res.json();
     },
     refetchInterval: 2000,
+  });
+
+  // Web Learning Engine Status & Learned Knowledge
+  const { data: learningStatus, refetch: refetchLearning } = useQuery({
+    queryKey: ['admin-learning-status'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/learning/status');
+      return res.json();
+    },
+    refetchInterval: 5000,
+  });
+
+  const { data: learningArticles = [] } = useQuery({
+    queryKey: ['admin-learning-articles'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/learning/articles');
+      const data = await res.json();
+      return data.data || [];
+    },
+    refetchInterval: 5000,
+  });
+
+  const triggerLearningMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/v1/learning/trigger', { method: 'POST' });
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchLearning();
+      showToast('Live Web Learning Scrape pass completed successfully.');
+    },
   });
 
   const health = streamData || fallbackHealth;
@@ -192,7 +227,18 @@ export default function AdminPage() {
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           }`}
         >
-          <Users className="w-4 h-4" /> Users & Access
+          <Users className="w-4 h-4" /> Users & Sessions ({userSessions?.activeCount ?? 1})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('LEARNING')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-medium transition-colors ${
+            activeTab === 'LEARNING'
+              ? 'bg-primary text-primary-foreground'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+        >
+          <BookOpen className="w-4 h-4 text-cyan-400" /> Web Learning Engine (18:00 - 09:00)
         </button>
 
         <button
@@ -203,7 +249,7 @@ export default function AdminPage() {
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           }`}
         >
-          <MessageSquare className="w-4 h-4" /> Global Chat Audit
+          <MessageSquare className="w-4 h-4" /> CyberAI Audit Log
         </button>
 
         <button
@@ -214,19 +260,18 @@ export default function AdminPage() {
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           }`}
         >
-          <Key className="w-4 h-4" /> AI Models & Status
+          <Key className="w-4 h-4" /> AI Models & Providers
         </button>
       </div>
 
-      {/* TAB 1: OVERVIEW */}
+      {/* TAB 1: SYSTEM OVERVIEW */}
       {activeTab === 'OVERVIEW' && (
         <div className="space-y-6">
-          {/* Key Platform Stats (REAL OS DATA) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
-                  Server CPU Load
+                  CPU Telemetry
                   <Cpu className="w-3.5 h-3.5 text-primary" />
                 </CardTitle>
               </CardHeader>
@@ -235,7 +280,7 @@ export default function AdminPage() {
                   <>
                     <div className="text-2xl font-bold text-foreground">{health?.cpu?.usagePct ?? 0}%</div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {health?.server?.cpuCount ?? 1} Cores • Load avg: {health?.server?.loadAvg?.[0] ?? '0.00'}
+                      {health?.sensors?.cpuCores ?? health?.server?.cpuCount ?? 4} Cores · {health?.sensors?.clockSpeedGHz ?? '2.30'} GHz
                     </p>
                   </>
                 )}
@@ -245,16 +290,16 @@ export default function AdminPage() {
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
-                  RAM Usage
-                  <Activity className="w-3.5 h-3.5 text-primary" />
+                  Memory (RAM)
+                  <HardDrive className="w-3.5 h-3.5 text-primary" />
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 {healthLoading ? <Skeleton className="h-8 w-20" /> : (
                   <>
-                    <div className="text-2xl font-bold text-foreground">{health?.memory?.usedPct ?? 0}%</div>
+                    <div className="text-2xl font-bold text-foreground">{health?.memory?.usedMB ?? 0} MB</div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {(health?.memory?.usedMB / 1024).toFixed(1)} GB / {(health?.memory?.totalMB / 1024).toFixed(1)} GB
+                      {health?.memory?.usedPct ?? 0}% of {health?.memory?.totalMB ?? 0} MB
                     </p>
                   </>
                 )}
@@ -264,8 +309,8 @@ export default function AdminPage() {
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
-                  Disk Storage (/)
-                  <HardDrive className="w-3.5 h-3.5 text-primary" />
+                  Storage Partition
+                  <Database className="w-3.5 h-3.5 text-primary" />
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -300,7 +345,7 @@ export default function AdminPage() {
             </Card>
           </div>
 
-          {/* Node Process Governance & File Storage */}
+          {/* Node Process Governance */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Card className="bg-card border-border lg:col-span-2">
               <CardHeader>
@@ -308,172 +353,227 @@ export default function AdminPage() {
                   <Terminal className="w-4 h-4 text-primary" /> Node.js Host Process Governance
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Live runtime metrics for the active CyberMind application instance.
+                  Process memory limits, heap allocation, and Node runtime specs.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {healthLoading ? <Skeleton className="h-32 w-full" /> : (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/40 border border-border/60">
-                      <div className="flex items-center gap-3">
-                        <Server className="w-4 h-4 text-primary" />
-                        <div>
-                          <span className="font-semibold text-sm text-foreground">cybermind-console</span>
-                          <span className="text-xs text-muted-foreground block font-mono">
-                            PID #{health?.nodeProcess?.pid} • Node {health?.nodeProcess?.nodeVersion}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs">
-                        <span className="font-mono text-muted-foreground">Heap: {health?.nodeProcess?.heapUsedMB} MB / {health?.nodeProcess?.heapTotalMB} MB</span>
-                        <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          ONLINE
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/40 border border-border/60">
-                      <div className="flex items-center gap-3">
-                        <Cpu className="w-4 h-4 text-primary" />
-                        <div>
-                          <span className="font-semibold text-sm text-foreground">Server Host Node</span>
-                          <span className="text-xs text-muted-foreground block font-mono">
-                            {health?.server?.hostname} • {health?.server?.platform} ({health?.server?.arch})
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs">
-                        <span className="font-mono text-muted-foreground">Uptime: {health?.server?.uptime}</span>
-                        <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          HEALTHY
-                        </Badge>
-                      </div>
-                    </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
+                  <div className="p-3 bg-muted/40 rounded-lg border border-border/60">
+                    <span className="text-muted-foreground block text-[11px]">Process ID</span>
+                    <span className="text-foreground font-bold text-sm">{health?.nodeProcess?.pid ?? 'N/A'}</span>
                   </div>
-                )}
+                  <div className="p-3 bg-muted/40 rounded-lg border border-border/60">
+                    <span className="text-muted-foreground block text-[11px]">Heap Used</span>
+                    <span className="text-emerald-400 font-bold text-sm">{health?.nodeProcess?.heapUsedMB ?? 0} MB</span>
+                  </div>
+                  <div className="p-3 bg-muted/40 rounded-lg border border-border/60">
+                    <span className="text-muted-foreground block text-[11px]">RSS Memory</span>
+                    <span className="text-primary font-bold text-sm">{health?.nodeProcess?.rssMB ?? 0} MB</span>
+                  </div>
+                  <div className="p-3 bg-muted/40 rounded-lg border border-border/60">
+                    <span className="text-muted-foreground block text-[11px]">Node Version</span>
+                    <span className="text-foreground font-bold text-sm">{health?.nodeProcess?.nodeVersion ?? 'v20.x'}</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
-            {/* Data Store Storage */}
             <Card className="bg-card border-border">
               <CardHeader>
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Database className="w-4 h-4 text-primary" /> System Data Stores
+                  <Flame className="w-4 h-4 text-amber-500" /> Thermal Sensors
                 </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Persistent JSON database stores in root `data/`.
-                </CardDescription>
               </CardHeader>
-              <CardContent>
-                {healthLoading ? <Skeleton className="h-32 w-full" /> : (
-                  <div className="space-y-2">
-                    {Object.entries(health?.dataStores || {}).map(([file, info]: [string, any]) => (
-                      <div key={file} className="flex items-center justify-between text-xs p-2 rounded bg-muted/30 border border-border/40">
-                        <span className="font-mono font-medium">{file}</span>
-                        <div className="flex items-center gap-2">
-                          {info.exists ? (
-                            <span className="text-muted-foreground font-mono">{info.sizeKB} KB ({info.records} items)</span>
-                          ) : (
-                            <span className="text-amber-400">Empty</span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <CardContent className="space-y-3 font-mono text-xs">
+                <div className="flex justify-between items-center p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">CPU Package</span>
+                  <span className="font-bold text-amber-400">{health?.sensors?.cpuTempC ?? 'N/A'}°C</span>
+                </div>
+                <div className="flex justify-between items-center p-2 rounded bg-muted/40">
+                  <span className="text-muted-foreground">Cooling Fan Mode</span>
+                  <span className="font-bold text-cyan-400">{health?.sensors?.fanSpeed ?? 'Auto (PWM)'}</span>
+                </div>
               </CardContent>
             </Card>
           </div>
         </div>
       )}
 
-      {/* TAB 2: USERS & ACCESS LOGINS */}
-      {activeTab === 'USERS' && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      {/* TAB 2: WEB LEARNING ENGINE */}
+      {activeTab === 'LEARNING' && (
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="p-4 bg-muted/40 border border-border rounded-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary" />
-                Active User Sessions & Login Telemetry
+              <h2 className="text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-cyan-400 animate-pulse" />
+                Autonomous Web Learning Engine
               </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Real-time active analyst sessions, client IP addresses, internet network connection types, device models & geographic locations.
+              <p className="text-xs text-muted-foreground mt-1">
+                Surfs the web overnight to scrape, study, and store cybersecurity threat content in the <code className="font-mono text-cyan-400">learning</code> DB.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 font-mono text-xs flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                {userSessionsData?.activeUsersCount || 2} Active Users Online
+            <div className="flex items-center gap-3">
+              <Badge className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-3 py-1.5 font-mono text-xs flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                Schedule: 18:00 (6 PM) - 09:00 (9 AM)
               </Badge>
-              <Button size="sm" onClick={() => showToast('User invite link copied to clipboard')} className="bg-primary gap-1.5 text-xs">
-                <UserPlus className="w-3.5 h-3.5" /> Invite Analyst
+              <Button
+                onClick={() => triggerLearningMutation.mutate()}
+                disabled={triggerLearningMutation.isPending}
+                size="sm"
+                className="bg-primary hover:bg-primary/90 gap-1.5 text-xs font-medium"
+              >
+                {triggerLearningMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Run Live Scrape Now
               </Button>
             </div>
           </div>
 
-          {/* User Sessions Telemetry List */}
-          <div className="grid grid-cols-1 gap-4">
-            {(userSessionsData?.sessions || []).map((sess: any, idx: number) => (
-              <Card key={idx} className="bg-card border-border hover:border-primary/50 transition-all">
-                <CardContent className="p-4 sm:p-5">
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                    {/* User Profile & Role */}
-                    <div className="flex items-start gap-3 min-w-[220px]">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-sm flex-shrink-0">
-                        {sess.name ? sess.name.substring(0, 2).toUpperCase() : 'US'}
+          {/* Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <Card className="bg-card border-border">
+              <CardContent className="p-4">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">Knowledge Articles Stored</span>
+                <div className="text-2xl font-bold text-cyan-400 font-mono mt-1">{learningStatus?.totalArticles ?? learningArticles.length ?? 0}</div>
+                <span className="text-[11px] text-muted-foreground font-mono">Stored in learning DB</span>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardContent className="p-4">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">Target Web Sources</span>
+                <div className="text-2xl font-bold text-emerald-400 font-mono mt-1">{learningStatus?.sourcesCrawled ?? 6} Feeds</div>
+                <span className="text-[11px] text-muted-foreground font-mono">CISA, NVD, Exploit-DB, News</span>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardContent className="p-4">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">Overnight Active Window</span>
+                <div className="text-lg font-bold text-foreground font-mono mt-1">
+                  {learningStatus?.activeWindow?.isWithinWindow ? '● Active Now' : 'Scheduled (6 PM)'}
+                </div>
+                <span className="text-[11px] text-muted-foreground font-mono">18:00 - 09:00 Daily</span>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardContent className="p-4">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">Last Web Scrape Pass</span>
+                <div className="text-xs font-bold text-muted-foreground font-mono mt-2 truncate">
+                  {learningStatus?.lastRunAt ? new Date(learningStatus.lastRunAt).toLocaleTimeString() : 'Active Daemon'}
+                </div>
+                <span className="text-[11px] text-emerald-400 font-mono">24/7 Background Cron</span>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Live Scraping Terminal Logs */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Terminal className="w-4 h-4 text-cyan-400" />
+                Live Web Learning Process Console
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
+                Real-time log stream showing active URL crawling and threat extraction.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-black/80 rounded-lg p-3 font-mono text-xs space-y-1.5 max-h-52 overflow-y-auto border border-border/80">
+                {(learningStatus?.liveLogs || []).map((log: any, idx: number) => (
+                  <div key={idx} className="flex items-start gap-2">
+                    <span className="text-muted-foreground text-[10px] whitespace-nowrap">[{new Date(log.timestamp).toLocaleTimeString()}]</span>
+                    <span className={
+                      log.level === 'success' ? 'text-emerald-400 font-semibold' :
+                      log.level === 'warn' ? 'text-amber-400' : 'text-cyan-300'
+                    }>
+                      {log.message}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Learned Articles Table */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold">Learned Cybersecurity Knowledge Database ({learningArticles.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {learningArticles.map((art: any) => (
+                  <div key={art.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/30 transition-colors">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm text-foreground">{art.title}</span>
+                        <Badge className={
+                          art.severity === 'CRITICAL' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                          art.severity === 'HIGH' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
+                          'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                        }>
+                          {art.severity || art.category}
+                        </Badge>
+                        <Badge variant="outline" className="text-[10px] font-mono text-cyan-400 border-cyan-500/30">{art.source}</Badge>
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-foreground">{sess.name || sess.email}</span>
-                          <Badge className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-mono px-2 py-0">
-                            {sess.role}
-                          </Badge>
-                        </div>
-                        <span className="text-xs text-muted-foreground font-mono block mt-0.5">{sess.email}</span>
-                        <span className="text-[10px] text-muted-foreground font-mono block">Tenant: {sess.tenantId}</span>
+                      <p className="text-xs text-muted-foreground max-w-3xl">{art.summary}</p>
+                      <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground pt-1">
+                        <span>URL: <a href={art.url} target="_blank" rel="noreferrer" className="text-primary underline">{art.url}</a></span>
+                        {art.cveId && <span>• {art.cveId}</span>}
                       </div>
                     </div>
-
-                    {/* Telemetry Metrics Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-mono bg-muted/30 p-3 rounded-lg border border-border/50 flex-1">
-                      {/* IP & Location */}
-                      <div>
-                        <span className="text-muted-foreground block text-[10px] uppercase font-sans font-semibold flex items-center gap-1">
-                          <Globe className="w-3 h-3 text-primary" /> IP & Geo Location
-                        </span>
-                        <span className="text-foreground font-bold block mt-0.5">{sess.ipAddress}</span>
-                        <span className="text-emerald-400 text-[11px] block flex items-center gap-1 mt-0.5 truncate max-w-[170px]" title={sess.location}>
-                          <MapPin className="w-2.5 h-2.5 inline" /> {sess.location}
-                        </span>
-                      </div>
-
-                      {/* Device & OS */}
-                      <div>
-                        <span className="text-muted-foreground block text-[10px] uppercase font-sans font-semibold flex items-center gap-1">
-                          <Laptop className="w-3 h-3 text-cyan-400" /> Device & OS
-                        </span>
-                        <span className="text-foreground font-semibold block mt-0.5">{sess.deviceType || 'Desktop PC'}</span>
-                        <span className="text-muted-foreground text-[11px] block mt-0.5">{sess.os} · {sess.browser}</span>
-                      </div>
-
-                      {/* Network Connection */}
-                      <div>
-                        <span className="text-muted-foreground block text-[10px] uppercase font-sans font-semibold flex items-center gap-1">
-                          <Wifi className="w-3 h-3 text-emerald-400" /> Internet Network
-                        </span>
-                        <span className="text-emerald-400 font-semibold block mt-0.5">{sess.networkType || 'Wi-Fi Broadband'}</span>
-                        <span className="text-muted-foreground text-[11px] block mt-0.5">Active Session</span>
-                      </div>
+                    <div className="text-right text-xs font-mono text-muted-foreground whitespace-nowrap">
+                      <span>{new Date(art.scrapedAt).toLocaleTimeString()}</span>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-                    {/* Status & Last Active */}
-                    <div className="flex lg:flex-col items-center lg:items-end justify-between lg:justify-center text-xs font-mono min-w-[130px]">
-                      <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1">
-                        ● {sess.status || 'ACTIVE_NOW'}
-                      </Badge>
-                      <span className="text-[11px] text-muted-foreground mt-1">
-                        Active {new Date(sess.lastActiveAt || Date.now()).toLocaleTimeString()}
-                      </span>
+      {/* TAB 3: USERS & ACTIVE SESSIONS */}
+      {activeTab === 'USERS' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold tracking-tight">Active User Sessions & Telemetry ({userSessions?.activeCount ?? 1})</h2>
+            <Button size="sm" onClick={() => showToast('New User Registration Link generated.')} className="gap-1 text-xs">
+              <UserPlus className="w-3.5 h-3.5" /> Invite User
+            </Button>
+          </div>
+
+          {/* User Sessions Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(userSessions?.users || []).map((usr: any, idx: number) => (
+              <Card key={idx} className="bg-card border-border">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-sm font-semibold">{usr.name}</CardTitle>
+                      <CardDescription className="text-xs font-mono">{usr.email}</CardDescription>
+                    </div>
+                    <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs">
+                      ● Active
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2 text-xs font-mono">
+                  <div className="p-2 rounded bg-muted/40 space-y-1">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>🌐 IP Address:</span>
+                      <span className="text-foreground font-bold">{usr.ip}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>📡 Connection:</span>
+                      <span className="text-cyan-400 font-bold">{usr.networkType}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>💻 Device OS / Browser:</span>
+                      <span className="text-foreground font-semibold truncate max-w-[200px]">{usr.deviceOS} ({usr.browser})</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>📍 Location:</span>
+                      <span className="text-emerald-400 font-bold">{usr.location}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -483,7 +583,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* TAB 3: CONVERSATIONS AUDIT */}
+      {/* TAB 4: CONVERSATIONS AUDIT */}
       {activeTab === 'CONVERSATIONS' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -517,7 +617,7 @@ export default function AdminPage() {
               <CardContent className="p-4">
                 <span className="text-xs font-semibold text-muted-foreground uppercase">AI Routing Engine</span>
                 <div className="text-xl font-bold text-foreground font-mono mt-1">Auto Router</div>
-                <span className="text-[11px] text-emerald-400 font-mono">Groq / NVIDIA / xAI</span>
+                <span className="text-[11px] text-emerald-400 font-mono">Groq / NVIDIA / OpenAI</span>
               </CardContent>
             </Card>
           </div>
@@ -556,7 +656,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* TAB 4: AI MODELS */}
+      {/* TAB 5: AI MODELS */}
       {activeTab === 'AI_PROVIDERS' && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold tracking-tight">AI Gateway & Live Provider Pings</h2>
