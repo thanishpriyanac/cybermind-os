@@ -78,6 +78,27 @@ export const usageTracker = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const PROVIDERS = {
+  groq: {
+    name: 'Groq GPT-OSS 120B (Cloud AI)',
+    apiKey: process.env.GROQ_API_KEY || '',
+    model: 'openai/gpt-oss-120b',
+    baseUrl: 'https://api.groq.com/openai/v1',
+    style: 'openai',
+  },
+  nvidia_pro: {
+    name: 'NVIDIA DeepSeek V4 Pro',
+    apiKey: process.env.NVIDIA_API_KEY_PRO || '',
+    model: 'deepseek-ai/deepseek-v4-pro-0813',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    style: 'openai',
+  },
+  nvidia_flash: {
+    name: 'NVIDIA DeepSeek V4 Flash',
+    apiKey: process.env.NVIDIA_API_KEY_FLASH || '',
+    model: 'deepseek-ai/deepseek-v4-flash-0731',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    style: 'openai',
+  },
   gemini: {
     name: 'Google Gemini 2.5 Flash',
     apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
@@ -85,31 +106,10 @@ const PROVIDERS = {
     baseUrl: 'https://generativelanguage.googleapis.com',
     style: 'gemini',
   },
-  groq: {
-    name: 'Groq (Llama 3.3 70B)',
-    apiKey: process.env.GROQ_API_KEY || '',
-    model: 'llama-3.3-70b-versatile',
-    baseUrl: 'https://api.groq.com/openai/v1',
-    style: 'openai',
-  },
-  nvidia_pro: {
-    name: 'DeepSeek R1 Distill (NVIDIA NIM)',
-    apiKey: process.env.NVIDIA_API_KEY_PRO || '',
-    model: 'deepseek-ai/deepseek-r1-distill-llama-70b',
-    baseUrl: 'https://integrate.api.nvidia.com/v1',
-    style: 'openai',
-  },
-  nvidia_flash: {
-    name: 'Llama 3.1 70B (NVIDIA NIM)',
-    apiKey: process.env.NVIDIA_API_KEY_FLASH || '',
-    model: 'meta/llama-3.1-70b-instruct',
-    baseUrl: 'https://integrate.api.nvidia.com/v1',
-    style: 'openai',
-  },
   xai: {
-    name: 'xAI Grok 4.5',
+    name: 'xAI Grok',
     apiKey: process.env.XAI_API_KEY || '',
-    model: 'grok-4.5',
+    model: 'grok-2',
     baseUrl: 'https://api.x.ai/v1',
     style: 'openai',
   },
@@ -126,12 +126,14 @@ type ProviderKey = keyof typeof PROVIDERS;
 type ProviderConfig = (typeof PROVIDERS)[ProviderKey];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  AUTO-MODEL DISCOVERY — fetch first available model if configured one fails
+//  AUTO-MODEL DISCOVERY — ensures valid chat LLM selection
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const modelCache: Record<string, string> = {};
 
 async function getWorkingModel(provider: ProviderConfig): Promise<string> {
+  if (provider.model) return provider.model;
+
   const cacheKey = provider.baseUrl;
   if (modelCache[cacheKey]) return modelCache[cacheKey];
 
@@ -143,13 +145,22 @@ async function getWorkingModel(provider: ProviderConfig): Promise<string> {
     if (!res.ok) return provider.model;
     const data = await res.json();
     const models: string[] = (data?.data || data?.models || []).map((m: any) => m.id || m.name).filter(Boolean);
-    // Prefer chat/instruction models
-    const preferred = models.find(m =>
-      m.includes('instruct') || m.includes('chat') || m.includes('gpt') || m.includes('grok') || m.includes('llama')
-    ) || models[0];
+
+    // Filter out non-chat models (guardrails, audio, vision embeds)
+    const chatModels = models.filter(m =>
+      !m.includes('guard') &&
+      !m.includes('whisper') &&
+      !m.includes('embed') &&
+      !m.includes('parse') &&
+      !m.includes('safeguard')
+    );
+
+    const preferred = chatModels.find(m =>
+      m.includes('gpt-oss') || m.includes('qwen') || m.includes('instruct') || m.includes('chat') || m.includes('llama')
+    ) || chatModels[0];
+
     if (preferred) {
       modelCache[cacheKey] = preferred;
-      console.log(`[CYBERMIND] Auto-discovered model for ${provider.name}: ${preferred}`);
       return preferred;
     }
   } catch {

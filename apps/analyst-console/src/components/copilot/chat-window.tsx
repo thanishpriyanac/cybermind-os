@@ -52,10 +52,10 @@ interface ChatWindowProps {
 
 const MODELS = [
   { id: 'auto', name: 'Auto (Smart Router + RAG Fallback)' },
+  { id: 'groq', name: 'Groq GPT-OSS 120B (Cloud AI Only)' },
+  { id: 'nvidia_pro', name: 'NVIDIA DeepSeek V4 Pro (Cloud AI Only)' },
+  { id: 'nvidia_flash', name: 'NVIDIA DeepSeek V4 Flash (Cloud AI Only)' },
   { id: 'gemini', name: 'Google Gemini 2.5 Flash (Cloud AI Only)' },
-  { id: 'groq', name: 'Groq Llama 3.3 70B (Cloud AI Only)' },
-  { id: 'openai', name: 'OpenAI GPT-4o-mini (Cloud AI Only)' },
-  { id: 'nvidia_pro', name: 'DeepSeek R1 (NVIDIA Cloud Only)' },
   { id: 'local-soc', name: 'Local SOC Engine (Offline RAG Only)' },
 ];
 
