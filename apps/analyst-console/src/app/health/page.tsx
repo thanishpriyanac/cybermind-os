@@ -5,6 +5,7 @@ import { api } from '../../lib/api';
 import {
   HeartPulse, RefreshCw, Server, Cpu, HardDrive, MemoryStick,
   Bot, Database, CheckCircle2, AlertTriangle, XCircle, Activity,
+  Wifi, ShieldAlert, Zap, Network, Flame
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -25,6 +26,27 @@ interface HealthData {
   cpu: { usagePct: number; count: number };
   memory: { totalMB: number; usedMB: number; freeMB: number; usedPct: number };
   disk: { totalGB: string; usedGB: string; freeGB: string; usedPct: number };
+  network: {
+    rxBytes: number;
+    txBytes: number;
+    rxGB: string;
+    txGB: string;
+    totalConsumptionGB: string;
+    totalConsumptionMB: number;
+    interfaces: Array<{ name: string; ip: string; rxMB: number; txMB: number }>;
+  };
+  networkSpeed: {
+    latencyMs: number;
+    status: string;
+  };
+  sensors: {
+    cpuTempC: number | string;
+    tempStatus: string;
+    clockSpeedGHz: string;
+    cpuArchitecture: string;
+    cpuCores: number;
+    cpuModel: string;
+  };
   nodeProcess: {
     pid: number;
     heapUsedMB: number;
@@ -38,11 +60,11 @@ interface HealthData {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === 'operational' || status === 'ok') {
+  if (status === 'operational' || status === 'ok' || status === 'OPTIMAL' || status === 'NORMAL') {
     return <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1">● Operational</Badge>;
   }
-  if (status === 'degraded') {
-    return <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-3 py-1">⚠ Degraded</Badge>;
+  if (status === 'degraded' || status === 'ELEVATED') {
+    return <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/30 px-3 py-1">⚠ Elevated</Badge>;
   }
   if (status === 'not_configured') {
     return <Badge variant="outline" className="text-muted-foreground px-3 py-1">Not Configured</Badge>;
@@ -74,8 +96,8 @@ export default function HealthPage() {
       const res = await api.get('/v1/health');
       return res.data;
     },
-    refetchInterval: 30000,
-    staleTime: 10000,
+    refetchInterval: 15000,
+    staleTime: 5000,
   });
 
   const storeNames: Record<string, string> = {
@@ -93,10 +115,10 @@ export default function HealthPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <HeartPulse className="w-7 h-7 text-emerald-500" />
-            System Health & Telemetry
+            System Health & Hardware Telemetry
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Real-time server metrics — CPU, memory, disk, Node.js process, and AI provider status.
+            Real-time server metrics — CPU, memory, disk, network bandwidth, thermal sensors, and AI provider status.
           </p>
         </div>
         <Button
@@ -142,7 +164,7 @@ export default function HealthPage() {
                 <div className={`text-2xl font-bold ${health && health.cpu.usagePct >= 80 ? 'text-red-400' : health && health.cpu.usagePct >= 60 ? 'text-amber-400' : 'text-emerald-400'}`}>
                   {health?.cpu.usagePct ?? '--'}%
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">{health?.server.cpuCount} cores · {health?.server.cpuModel.split('@')[0].trim()}</p>
+                <p className="text-xs text-muted-foreground mt-1">{health?.sensors?.cpuCores} Cores · {health?.sensors?.clockSpeedGHz} GHz</p>
                 {health && <UsageBar pct={health.cpu.usagePct} colorClass={getBarColor(health.cpu.usagePct)} />}
               </>
             )}
@@ -170,43 +192,139 @@ export default function HealthPage() {
           </CardContent>
         </Card>
 
-        {/* Disk */}
+        {/* Network Consumption */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Disk (Root /)</CardTitle>
-            <HardDrive className="w-4 h-4 text-muted-foreground" />
+            <CardTitle className="text-xs font-medium text-muted-foreground">Data Consumption</CardTitle>
+            <Wifi className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-24" /> : (
               <>
-                <div className={`text-2xl font-bold ${health && health.disk.usedPct >= 85 ? 'text-red-400' : health && health.disk.usedPct >= 70 ? 'text-amber-400' : 'text-foreground'}`}>
-                  {health?.disk.usedGB} GB
+                <div className="text-2xl font-bold text-foreground">
+                  {health?.network?.totalConsumptionGB} GB
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {health?.disk.usedPct}% of {health?.disk.totalGB} GB total
+                  Rx: {health?.network?.rxGB} GB · Tx: {health?.network?.txGB} GB
                 </p>
-                {health && <UsageBar pct={health.disk.usedPct} colorClass={getBarColor(health.disk.usedPct)} />}
               </>
             )}
           </CardContent>
         </Card>
 
-        {/* Node.js Process */}
+        {/* Network Latency & Speed */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Next.js Process</CardTitle>
-            <Server className="w-4 h-4 text-muted-foreground" />
+            <CardTitle className="text-xs font-medium text-muted-foreground">Internet Speed / Ping</CardTitle>
+            <Zap className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             {isLoading ? <Skeleton className="h-8 w-24" /> : (
               <>
                 <div className="text-2xl font-bold text-emerald-400 flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" /> Running
+                  {health?.networkSpeed?.latencyMs ? `${health.networkSpeed.latencyMs} ms` : 'Offline'}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Heap: {health?.nodeProcess.heapUsedMB}/{health?.nodeProcess.heapTotalMB} MB · RSS: {health?.nodeProcess.rssMB} MB
+                  Status: <span className="text-emerald-400 font-semibold">{health?.networkSpeed?.status}</span>
                 </p>
               </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Hardware Sensors & Network Interfaces Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Hardware Sensors */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Flame className="w-5 h-5 text-amber-500" />
+              Hardware Sensors & Thermal Telemetry
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              CPU temperature zones, frequency stats, and processor info.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-32 w-full" /> : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
+                  <div>
+                    <span className="text-sm font-medium">CPU Thermal Temperature</span>
+                    <span className="text-xs text-muted-foreground block font-mono">Linux Thermal Zone 0</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg font-bold font-mono">
+                      {typeof health?.sensors?.cpuTempC === 'number' ? `${health.sensors.cpuTempC}°C` : health?.sensors?.cpuTempC}
+                    </span>
+                    <Badge className={
+                      health?.sensors?.tempStatus === 'NORMAL' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
+                      health?.sensors?.tempStatus === 'ELEVATED' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' :
+                      'bg-muted text-muted-foreground'
+                    }>
+                      {health?.sensors?.tempStatus}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
+                  <div>
+                    <span className="text-sm font-medium">CPU Frequency</span>
+                    <span className="text-xs text-muted-foreground block font-mono">Clock Speed & Architecture</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold font-mono">{health?.sensors?.clockSpeedGHz} GHz</span>
+                    <span className="text-xs text-muted-foreground block font-mono">{health?.sensors?.cpuArchitecture} ({health?.sensors?.cpuCores} cores)</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
+                  <div>
+                    <span className="text-sm font-medium">CPU Model</span>
+                  </div>
+                  <span className="text-xs font-mono text-muted-foreground max-w-[250px] truncate" title={health?.sensors?.cpuModel}>
+                    {health?.sensors?.cpuModel}
+                  </span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Network Interfaces */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <Network className="w-5 h-5 text-primary" />
+              Network Interfaces & Data Consumption
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              Interface bindings and bandwidth transfer totals.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-32 w-full" /> : (
+              <div className="space-y-3">
+                {health?.network?.interfaces && health.network.interfaces.length > 0 ? (
+                  health.network.interfaces.map((iface, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
+                      <div>
+                        <span className="text-sm font-semibold text-foreground font-mono">{iface.name}</span>
+                        <span className="text-xs text-muted-foreground block font-mono">IP: {iface.ip}</span>
+                      </div>
+                      <div className="text-right text-xs font-mono">
+                        <div className="text-emerald-400 font-semibold">Rx: {iface.rxMB} MB</div>
+                        <div className="text-primary font-semibold">Tx: {iface.txMB} MB</div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-center text-xs text-muted-foreground">
+                    Total Network Data: {health?.network?.totalConsumptionGB} GB (Rx: {health?.network?.rxGB} GB, Tx: {health?.network?.txGB} GB)
+                  </div>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

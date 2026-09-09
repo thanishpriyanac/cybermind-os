@@ -62,6 +62,103 @@ function getUptimeInfo() {
   return `${days}d ${hours}h ${mins}m`;
 }
 
+function getIpForInterface(ifaceName: string): string {
+  try {
+    const nets = os.networkInterfaces();
+    const net = nets[ifaceName];
+    if (net) {
+      const ipv4 = net.find((n) => n.family === 'IPv4' && !n.internal);
+      if (ipv4) return ipv4.address;
+    }
+  } catch { /* skip */ }
+  return 'N/A';
+}
+
+function getNetworkStats() {
+  let rxBytes = 0;
+  let txBytes = 0;
+  const interfaces: Array<{ name: string; ip: string; rxMB: number; txMB: number }> = [];
+
+  try {
+    if (fs.existsSync('/proc/net/dev')) {
+      const lines = fs.readFileSync('/proc/net/dev', 'utf-8').split('\n');
+      for (const line of lines.slice(2)) {
+        const parts = line.trim().split(/\s+/);
+        if (parts.length >= 10) {
+          const iface = parts[0].replace(':', '');
+          if (iface === 'lo') continue;
+          const rx = parseInt(parts[1], 10) || 0;
+          const tx = parseInt(parts[9], 10) || 0;
+          rxBytes += rx;
+          txBytes += tx;
+          interfaces.push({
+            name: iface,
+            ip: getIpForInterface(iface),
+            rxMB: Math.round(rx / 1024 / 1024),
+            txMB: Math.round(tx / 1024 / 1024),
+          });
+        }
+      }
+    }
+  } catch { /* skip */ }
+
+  const totalBytes = rxBytes + txBytes;
+  return {
+    rxBytes,
+    txBytes,
+    rxGB: (rxBytes / 1073741824).toFixed(2),
+    txGB: (txBytes / 1073741824).toFixed(2),
+    totalConsumptionGB: (totalBytes / 1073741824).toFixed(2),
+    totalConsumptionMB: Math.round(totalBytes / 1048576),
+    interfaces,
+  };
+}
+
+function getHardwareSensors() {
+  let cpuTempC: number | null = null;
+  const cpus = os.cpus();
+  const speedMHz = cpus[0]?.speed || 0;
+
+  try {
+    if (fs.existsSync('/sys/class/thermal')) {
+      const thermalDirs = fs.readdirSync('/sys/class/thermal/').filter((d) => d.startsWith('thermal_zone'));
+      for (const dir of thermalDirs) {
+        const tempPath = path.join('/sys/class/thermal', dir, 'temp');
+        if (fs.existsSync(tempPath)) {
+          const val = parseInt(fs.readFileSync(tempPath, 'utf-8').trim(), 10);
+          if (!isNaN(val) && val > 0) {
+            const tempC = val > 1000 ? val / 1000 : val;
+            if (tempC > 10 && tempC < 120) {
+              cpuTempC = Math.round(tempC * 10) / 10;
+              break;
+            }
+          }
+        }
+      }
+    }
+  } catch { /* skip */ }
+
+  return {
+    cpuTempC: cpuTempC ?? 'N/A',
+    tempStatus: cpuTempC ? (cpuTempC > 80 ? 'CRITICAL' : cpuTempC > 70 ? 'ELEVATED' : 'NORMAL') : 'UNKNOWN',
+    clockSpeedGHz: (speedMHz / 1000).toFixed(2),
+    cpuArchitecture: os.arch(),
+    cpuCores: cpus.length,
+    cpuModel: cpus[0]?.model || 'Unknown',
+  };
+}
+
+async function measureNetworkSpeed() {
+  const start = Date.now();
+  try {
+    await fetch('https://1.1.1.1', { method: 'HEAD', signal: AbortSignal.timeout(3000) });
+    const latency = Date.now() - start;
+    return { latencyMs: latency, status: 'OPTIMAL' };
+  } catch {
+    return { latencyMs: 0, status: 'TIMEOUT' };
+  }
+}
+
 async function checkAiProviders() {
   const providers = [
     { name: 'Groq', url: 'https://api.groq.com/openai/v1/models', key: process.env.GROQ_API_KEY },
@@ -131,9 +228,10 @@ function getDataStoreInfo() {
 }
 
 export async function GET() {
-  const [cpuPct, aiProviders] = await Promise.all([
+  const [cpuPct, aiProviders, networkSpeed] = await Promise.all([
     getCpuUsage(),
     checkAiProviders(),
+    measureNetworkSpeed(),
   ]);
 
   const memory = getMemoryInfo();
@@ -141,6 +239,8 @@ export async function GET() {
   const uptime = getUptimeInfo();
   const nodeProcess = getNodeProcessInfo();
   const dataStores = getDataStoreInfo();
+  const network = getNetworkStats();
+  const sensors = getHardwareSensors();
   const loadAvg = os.loadavg();
   const cpuCount = os.cpus().length;
   const cpuModel = os.cpus()[0]?.model || 'Unknown';
@@ -159,6 +259,9 @@ export async function GET() {
     cpu: { usagePct: cpuPct, count: cpuCount },
     memory,
     disk,
+    network,
+    networkSpeed,
+    sensors,
     nodeProcess,
     aiProviders,
     dataStores,
