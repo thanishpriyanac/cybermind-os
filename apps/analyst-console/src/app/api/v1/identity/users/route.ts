@@ -24,7 +24,13 @@ export async function GET(request: Request) {
     return NextResponse.json({
       totalUsers: sessions.length,
       activeUsersCount: activeCount,
+      activeCount: activeCount,
       sessions,
+      users: sessions.map(s => ({
+        ...s,
+        ip: s.ipAddress,
+        deviceOS: s.os,
+      })),
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
