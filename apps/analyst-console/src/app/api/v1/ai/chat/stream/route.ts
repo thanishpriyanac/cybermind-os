@@ -811,16 +811,14 @@ export async function POST(request: Request) {
           }
         }
 
-        // ── Fallback Handling (Zero-Downtime Guarantee) ───────────────────────
+        // ── Fallback Handling (RAG Disabled by Request) ───────────────────────
         if (!success) {
-          usedProvider = 'CyberMind Local SOC Engine';
-          send({ type: 'provider_info', provider: 'CyberMind Local SOC Engine', model: 'cybermind-soc-v1' });
-
-          for await (const chunk of streamLocalSOCEngine(userMessageContent, attachments)) {
-            fullText += chunk;
-            send({ delta: chunk, done: false, provider: 'CyberMind Local SOC Engine' });
+          fullText = "⚠️ Unable to connect to Cloud AI Providers (Groq / OpenAI / NVIDIA / Gemini). Please check your API keys in `.env.local` or server outbound network connectivity.";
+          for (const word of fullText.split(/(\s+)/)) {
+            send({ delta: word, done: false, provider: 'Cloud AI Error' });
+            await new Promise((r) => setTimeout(r, 6));
           }
-          success = true;
+          usedProvider = 'Cloud AI Error';
         }
 
         if (fullText) {
