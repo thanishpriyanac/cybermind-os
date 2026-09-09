@@ -52,6 +52,20 @@ export async function POST(request: Request) {
     const isValid = expectedPassword && (expectedPassword === cleanPassword || expectedPassword === password);
 
     if (isValid) {
+      const forwardedFor = request.headers.get('x-forwarded-for');
+      const realIp = request.headers.get('x-real-ip');
+      const ip = (forwardedFor ? forwardedFor.split(',')[0] : realIp) || '127.0.0.1';
+      const userAgent = request.headers.get('user-agent') || '';
+
+      const { userStore } = await import('@/lib/user-store');
+      userStore.recordSession({
+        email: cleanEmail,
+        tenantId: cleanTenant,
+        role: 'SUPER_ADMIN',
+        ipAddress: ip,
+        userAgent,
+      });
+
       const secret = process.env.JWT_SECRET || 'cybermind-secret-jwt-key-2026';
       const token = jwt.sign(
         {

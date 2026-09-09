@@ -24,7 +24,12 @@ import {
   Terminal,
   Zap,
   Flame,
-  Fan
+  Fan,
+  Globe,
+  Wifi,
+  Smartphone,
+  Laptop,
+  MapPin
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -101,7 +106,7 @@ export default function AdminPage() {
   });
 
   // Live AI Usage Metrics (rapid auto-update)
-  const { data: aiUsage, isLoading: aiLoading } = useQuery({
+  const { data: aiUsage } = useQuery({
     queryKey: ['admin-ai-usage'],
     queryFn: async () => {
       const res = await fetch('/api/v1/ai/usage');
@@ -118,6 +123,16 @@ export default function AdminPage() {
       return res.json();
     },
     refetchInterval: 3000,
+  });
+
+  // Live Active User Sessions with IP, Device, Network & Geo Location Telemetry
+  const { data: userSessionsData } = useQuery({
+    queryKey: ['admin-user-sessions'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/identity/users');
+      return res.json();
+    },
+    refetchInterval: 2000,
   });
 
   const health = streamData || fallbackHealth;
@@ -372,40 +387,99 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* TAB 2: USERS */}
+      {/* TAB 2: USERS & ACCESS LOGINS */}
       {activeTab === 'USERS' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">User Directory & Role Access</h2>
-            <Button size="sm" onClick={() => showToast('User invite link copied to clipboard')} className="bg-primary gap-1.5 text-xs">
-              <UserPlus className="w-3.5 h-3.5" /> Invite New Analyst
-            </Button>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                Active User Sessions & Login Telemetry
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Real-time active analyst sessions, client IP addresses, internet network connection types, device models & geographic locations.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 font-mono text-xs flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                {userSessionsData?.activeUsersCount || 2} Active Users Online
+              </Badge>
+              <Button size="sm" onClick={() => showToast('User invite link copied to clipboard')} className="bg-primary gap-1.5 text-xs">
+                <UserPlus className="w-3.5 h-3.5" /> Invite Analyst
+              </Button>
+            </div>
           </div>
 
-          <Card className="bg-card border-border">
-            <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {users.map((u) => (
-                  <div key={u.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-foreground">{u.name}</span>
-                        <Badge variant="outline" className="text-[10px] font-mono">{u.role}</Badge>
+          {/* User Sessions Telemetry List */}
+          <div className="grid grid-cols-1 gap-4">
+            {(userSessionsData?.sessions || []).map((sess: any, idx: number) => (
+              <Card key={idx} className="bg-card border-border hover:border-primary/50 transition-all">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    {/* User Profile & Role */}
+                    <div className="flex items-start gap-3 min-w-[220px]">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary text-sm flex-shrink-0">
+                        {sess.name ? sess.name.substring(0, 2).toUpperCase() : 'US'}
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono">{u.email}</p>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-foreground">{sess.name || sess.email}</span>
+                          <Badge className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-mono px-2 py-0">
+                            {sess.role}
+                          </Badge>
+                        </div>
+                        <span className="text-xs text-muted-foreground font-mono block mt-0.5">{sess.email}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono block">Tenant: {sess.tenantId}</span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="text-muted-foreground">Last login: {u.lastLogin}</span>
-                      <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        {u.status}
+                    {/* Telemetry Metrics Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs font-mono bg-muted/30 p-3 rounded-lg border border-border/50 flex-1">
+                      {/* IP & Location */}
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] uppercase font-sans font-semibold flex items-center gap-1">
+                          <Globe className="w-3 h-3 text-primary" /> IP & Geo Location
+                        </span>
+                        <span className="text-foreground font-bold block mt-0.5">{sess.ipAddress}</span>
+                        <span className="text-emerald-400 text-[11px] block flex items-center gap-1 mt-0.5 truncate max-w-[170px]" title={sess.location}>
+                          <MapPin className="w-2.5 h-2.5 inline" /> {sess.location}
+                        </span>
+                      </div>
+
+                      {/* Device & OS */}
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] uppercase font-sans font-semibold flex items-center gap-1">
+                          <Laptop className="w-3 h-3 text-cyan-400" /> Device & OS
+                        </span>
+                        <span className="text-foreground font-semibold block mt-0.5">{sess.deviceType || 'Desktop PC'}</span>
+                        <span className="text-muted-foreground text-[11px] block mt-0.5">{sess.os} · {sess.browser}</span>
+                      </div>
+
+                      {/* Network Connection */}
+                      <div>
+                        <span className="text-muted-foreground block text-[10px] uppercase font-sans font-semibold flex items-center gap-1">
+                          <Wifi className="w-3 h-3 text-emerald-400" /> Internet Network
+                        </span>
+                        <span className="text-emerald-400 font-semibold block mt-0.5">{sess.networkType || 'Wi-Fi Broadband'}</span>
+                        <span className="text-muted-foreground text-[11px] block mt-0.5">Active Session</span>
+                      </div>
+                    </div>
+
+                    {/* Status & Last Active */}
+                    <div className="flex lg:flex-col items-center lg:items-end justify-between lg:justify-center text-xs font-mono min-w-[130px]">
+                      <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1">
+                        ● {sess.status || 'ACTIVE_NOW'}
                       </Badge>
+                      <span className="text-[11px] text-muted-foreground mt-1">
+                        Active {new Date(sess.lastActiveAt || Date.now()).toLocaleTimeString()}
+                      </span>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
 
