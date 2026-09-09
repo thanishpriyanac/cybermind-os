@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../lib/api';
 import Link from 'next/link';
 import { 
   ShieldCheck, 
@@ -8,24 +10,24 @@ import {
   Server, 
   MessageSquare, 
   Key, 
-  Settings, 
   Activity, 
   CheckCircle2, 
   AlertTriangle, 
   RefreshCw, 
-  Trash2, 
   UserPlus, 
   ExternalLink,
   Cpu,
   HardDrive,
   Database,
-  Lock,
-  Search,
-  Shield
+  Shield,
+  Bot,
+  Terminal,
+  Zap
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import { Skeleton } from '../../components/ui/skeleton';
 
 interface UserRecord {
   id: string;
@@ -45,82 +47,39 @@ const INITIAL_USERS: UserRecord[] = [
     role: 'SUPER_ADMIN',
     tenantId: 'cybermind-master-tenant',
     status: 'ACTIVE',
-    lastLogin: 'Just now',
-  },
-  {
-    id: 'usr-2',
-    name: 'Alex Smith (SOC Lead)',
-    email: 'analyst.smith@cybermind.local',
-    role: 'SOC_ANALYST',
-    tenantId: 'cybermind-master-tenant',
-    status: 'ACTIVE',
-    lastLogin: '2 hours ago',
-  },
-  {
-    id: 'usr-3',
-    name: 'Jane Doe (Compliance)',
-    email: 'viewer.doe@cybermind.local',
-    role: 'READONLY_VIEWER',
-    tenantId: 'cybermind-master-tenant',
-    status: 'ACTIVE',
-    lastLogin: 'Yesterday',
-  },
-];
-
-interface ProviderStatus {
-  name: string;
-  model: string;
-  keyConfigured: boolean;
-  status: 'ACTIVE' | 'BACKUP' | 'OFFLINE';
-  latency: string;
-  style: string;
-}
-
-const INITIAL_PROVIDERS: ProviderStatus[] = [
-  {
-    name: 'Google Gemini 3.6 Flash',
-    model: 'gemini-3.6-flash',
-    keyConfigured: true,
-    status: 'ACTIVE',
-    latency: '340ms',
-    style: 'Primary Stream Engine',
-  },
-  {
-    name: 'Groq (GPT-OSS 120B)',
-    model: 'openai/gpt-oss-120b',
-    keyConfigured: true,
-    status: 'ACTIVE',
-    latency: '110ms',
-    style: 'Fast Sub-second Engine',
-  },
-  {
-    name: 'NVIDIA NIM (DeepSeek V4 Pro)',
-    model: 'deepseek-ai/deepseek-v4-pro-0813',
-    keyConfigured: true,
-    status: 'ACTIVE',
-    latency: '820ms',
-    style: 'Deep Reasoning Engine',
-  },
-  {
-    name: 'NVIDIA NIM (DeepSeek V4 Flash)',
-    model: 'deepseek-ai/deepseek-v4-flash-0731',
-    keyConfigured: true,
-    status: 'BACKUP',
-    latency: '450ms',
-    style: 'Backup Engine',
+    lastLogin: 'Active Session',
   },
 ];
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'CONVERSATIONS' | 'AI_PROVIDERS'>('OVERVIEW');
-  const [users, setUsers] = useState<UserRecord[]>(INITIAL_USERS);
-  const [providers] = useState<ProviderStatus[]>(INITIAL_PROVIDERS);
+  const [users] = useState<UserRecord[]>(INITIAL_USERS);
   const [toast, setToast] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
+
+  // Live System Health Metrics
+  const { data: health, isLoading: healthLoading, refetch: refetchHealth, isRefetching } = useQuery({
+    queryKey: ['admin-system-health'],
+    queryFn: async () => {
+      const res = await api.get('/v1/health');
+      return res.data;
+    },
+    refetchInterval: 10000,
+  });
+
+  // Live AI Usage Metrics
+  const { data: aiUsage, isLoading: aiLoading } = useQuery({
+    queryKey: ['admin-ai-usage'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/ai/usage');
+      return res.json();
+    },
+    refetchInterval: 15000,
+  });
 
   return (
     <div className="space-y-6 p-6">
@@ -139,12 +98,17 @@ export default function AdminPage() {
             Platform Administration & Control Center
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Global governance, user access management, system health, and AI provider orchestration.
+            Real-time server governance, process telemetry, and AI model health.
           </p>
         </div>
-        <Badge className="bg-primary/10 text-primary border border-primary/20 self-start sm:self-center px-3 py-1 text-xs">
-          Tenant: cybermind-master-tenant
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetchHealth()} disabled={isRefetching} className="gap-1 text-xs">
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} /> Refresh
+          </Button>
+          <Badge className="bg-primary/10 text-primary border border-primary/20 text-xs py-1 px-3">
+            Tenant: cybermind-master-tenant
+          </Badge>
+        </div>
       </div>
 
       {/* Admin Tabs */}
@@ -168,7 +132,7 @@ export default function AdminPage() {
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           }`}
         >
-          <Users className="w-4 h-4" /> Users & Permissions
+          <Users className="w-4 h-4" /> Users & Access
         </button>
 
         <button
@@ -190,91 +154,176 @@ export default function AdminPage() {
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           }`}
         >
-          <Key className="w-4 h-4" /> AI Models & Keys
+          <Key className="w-4 h-4" /> AI Models & Status
         </button>
       </div>
 
       {/* TAB 1: OVERVIEW */}
       {activeTab === 'OVERVIEW' && (
         <div className="space-y-6">
-          {/* Key Platform Stats */}
+          {/* Key Platform Stats (REAL OS DATA) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Server CPU Utilization</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+                  Server CPU Load
+                  <Cpu className="w-3.5 h-3.5 text-primary" />
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-foreground">25.4%</div>
-                <p className="text-xs text-emerald-400 mt-1">Normal load (4 cores)</p>
+                {healthLoading ? <Skeleton className="h-8 w-20" /> : (
+                  <>
+                    <div className="text-2xl font-bold text-foreground">{health?.cpu?.usagePct ?? 0}%</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {health?.server?.cpuCount ?? 1} Cores • Load avg: {health?.server?.loadAvg?.[0] ?? '0.00'}
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
 
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">RAM Memory Usage</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+                  RAM Usage
+                  <Activity className="w-3.5 h-3.5 text-primary" />
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-foreground">48.9%</div>
-                <p className="text-xs text-muted-foreground mt-1">7.8 GB / 16.0 GB</p>
+                {healthLoading ? <Skeleton className="h-8 w-20" /> : (
+                  <>
+                    <div className="text-2xl font-bold text-foreground">{health?.memory?.usedPct ?? 0}%</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {(health?.memory?.usedMB / 1024).toFixed(1)} GB / {(health?.memory?.totalMB / 1024).toFixed(1)} GB
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
 
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Active Microservices</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+                  Disk Storage (/)
+                  <HardDrive className="w-3.5 h-3.5 text-primary" />
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-emerald-400">4 / 4 Online</div>
-                <p className="text-xs text-muted-foreground mt-1">PM2 cluster healthy</p>
+                {healthLoading ? <Skeleton className="h-8 w-20" /> : (
+                  <>
+                    <div className="text-2xl font-bold text-foreground">{health?.disk?.usedPct ?? 0}%</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {health?.disk?.usedGB ?? '0'} GB / {health?.disk?.totalGB ?? '0'} GB
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
 
             <Card className="bg-card border-border">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground">Telemetry Pipeline</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+                  AI Activity (24h)
+                  <Zap className="w-3.5 h-3.5 text-primary" />
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-primary">14.2k eps</div>
-                <p className="text-xs text-emerald-400 mt-1">⚡ Redpanda Ingestion Active</p>
+                {aiLoading ? <Skeleton className="h-8 w-20" /> : (
+                  <>
+                    <div className="text-2xl font-bold text-emerald-400">{aiUsage?.last24h ?? 0} Sessions</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {(aiUsage?.totalTokens ?? 0).toLocaleString()} tokens processed
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Microservices Status Grid */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">PM2 Process & Microservice Governance</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Managed daemon processes running on current host node.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {[
-                  { id: '3', name: 'cybermind-console', mode: 'fork', status: 'online', memory: '49.9mb', cpu: '0%' },
-                  { id: '2', name: 'cybermind-api', mode: 'fork', status: 'online', memory: '104.8mb', cpu: '0%' },
-                  { id: '0', name: 'vellprint-api', mode: 'fork', status: 'online', memory: '58.7mb', cpu: '0%' },
-                  { id: '1', name: 'redpanda-kafka-stream', mode: 'cluster', status: 'online', memory: '142.0mb', cpu: '1.2%' },
-                ].map((proc) => (
-                  <div key={proc.id} className="flex items-center justify-between p-3.5 rounded-xl bg-muted/40 border border-border/60">
-                    <div className="flex items-center gap-3">
-                      <Server className="w-4 h-4 text-primary" />
-                      <div>
-                        <span className="font-semibold text-sm text-foreground">{proc.name}</span>
-                        <span className="text-xs text-muted-foreground block font-mono">PID #{proc.id} • mode: {proc.mode}</span>
+          {/* Node Process Governance & File Storage */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="bg-card border-border lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-primary" /> Node.js Host Process Governance
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Live runtime metrics for the active CyberMind application instance.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {healthLoading ? <Skeleton className="h-32 w-full" /> : (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/40 border border-border/60">
+                      <div className="flex items-center gap-3">
+                        <Server className="w-4 h-4 text-primary" />
+                        <div>
+                          <span className="font-semibold text-sm text-foreground">cybermind-console</span>
+                          <span className="text-xs text-muted-foreground block font-mono">
+                            PID #{health?.nodeProcess?.pid} • Node {health?.nodeProcess?.nodeVersion}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="font-mono text-muted-foreground">Heap: {health?.nodeProcess?.heapUsedMB} MB / {health?.nodeProcess?.heapTotalMB} MB</span>
+                        <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          ONLINE
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-xs">
-                      <span className="font-mono text-muted-foreground">{proc.memory}</span>
-                      <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        {proc.status}
-                      </Badge>
+
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/40 border border-border/60">
+                      <div className="flex items-center gap-3">
+                        <Cpu className="w-4 h-4 text-primary" />
+                        <div>
+                          <span className="font-semibold text-sm text-foreground">Server Host Node</span>
+                          <span className="text-xs text-muted-foreground block font-mono">
+                            {health?.server?.hostname} • {health?.server?.platform} ({health?.server?.arch})
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="font-mono text-muted-foreground">Uptime: {health?.server?.uptime}</span>
+                        <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                          HEALTHY
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Data Store Storage */}
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Database className="w-4 h-4 text-primary" /> System Data Stores
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Persistent JSON database stores in root `data/`.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {healthLoading ? <Skeleton className="h-32 w-full" /> : (
+                  <div className="space-y-2">
+                    {Object.entries(health?.dataStores || {}).map(([file, info]: [string, any]) => (
+                      <div key={file} className="flex items-center justify-between text-xs p-2 rounded bg-muted/30 border border-border/40">
+                        <span className="font-mono font-medium">{file}</span>
+                        <div className="flex items-center gap-2">
+                          {info.exists ? (
+                            <span className="text-muted-foreground font-mono">{info.sizeKB} KB ({info.records} items)</span>
+                          ) : (
+                            <span className="text-amber-400">Empty</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
 
@@ -321,7 +370,7 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Global CyberAI Audit Log</h2>
-              <p className="text-xs text-muted-foreground">Super admin oversight across all active user sessions.</p>
+              <p className="text-xs text-muted-foreground">Active session telemetry and usage overview.</p>
             </div>
             <Link href="/copilot">
               <Button size="sm" variant="outline" className="gap-1.5 text-xs">
@@ -331,27 +380,12 @@ export default function AdminPage() {
           </div>
 
           <Card className="bg-card border-border">
-            <CardContent className="p-4 space-y-3">
-              {[
-                { id: 'conv-seeded-1', title: 'Ransomware Canary Triggered - DB-01', user: 'admin@cybermind.local', model: 'Google Gemini 3.6 Flash', count: 2, time: '3 hours ago' },
-                { id: 'conv-seeded-2', title: 'SSH Brute Force Threat Intelligence', user: 'admin@cybermind.local', model: 'Groq GPT-OSS 120B', count: 2, time: '10 hours ago' },
-              ].map((c) => (
-                <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-muted/40 rounded-xl border border-border/60 gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-foreground">{c.title}</span>
-                      <Badge variant="outline" className="text-[10px] font-mono">{c.model}</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground font-mono mt-0.5">User: {c.user} • {c.count} messages • {c.time}</p>
-                  </div>
-
-                  <Link href={`/copilot?id=${c.id}`}>
-                    <Button size="sm" variant="ghost" className="text-xs gap-1">
-                      View Chat <ExternalLink className="w-3.5 h-3.5" />
-                    </Button>
-                  </Link>
-                </div>
-              ))}
+            <CardContent className="p-6 text-center text-sm text-muted-foreground">
+              <Bot className="w-8 h-8 text-primary mx-auto mb-2 opacity-80" />
+              <p className="font-medium text-foreground mb-1">Live AI Sessions: {aiUsage?.last24h ?? 0}</p>
+              <p className="text-xs">
+                Total tokens processed in last 24h: <span className="font-mono text-primary font-semibold">{(aiUsage?.totalTokens ?? 0).toLocaleString()}</span>
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -360,32 +394,27 @@ export default function AdminPage() {
       {/* TAB 4: AI MODELS */}
       {activeTab === 'AI_PROVIDERS' && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold tracking-tight">AI Gateway & Model Providers</h2>
+          <h2 className="text-lg font-semibold tracking-tight">AI Gateway & Live Provider Pings</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {providers.map((p, idx) => (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {(health?.aiProviders || []).map((p: any, idx: number) => (
               <Card key={idx} className="bg-card border-border">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm font-semibold">{p.name}</CardTitle>
-                    <Badge className={p.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-muted text-muted-foreground'}>
+                    <Badge className={
+                      p.status === 'operational' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                      p.status === 'not_configured' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                      'bg-red-500/10 text-red-400 border border-red-500/20'
+                    }>
                       {p.status}
                     </Badge>
                   </div>
-                  <CardDescription className="text-xs font-mono">{p.model}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2 text-xs">
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Role / Priority:</span>
-                    <span className="text-foreground font-medium">{p.style}</span>
-                  </div>
-                  <div className="flex justify-between text-muted-foreground">
                     <span>Latency:</span>
-                    <span className="text-emerald-400 font-mono font-medium">{p.latency}</span>
-                  </div>
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>API Key Configured:</span>
-                    <span className="text-emerald-400 font-semibold">Yes (Verified)</span>
+                    <span className="text-emerald-400 font-mono font-medium">{p.latencyMs ? `${p.latencyMs}ms` : 'N/A'}</span>
                   </div>
                 </CardContent>
               </Card>
