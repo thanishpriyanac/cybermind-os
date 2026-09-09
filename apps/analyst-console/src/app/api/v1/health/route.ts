@@ -85,10 +85,12 @@ async function checkAiProviders() {
     })
   );
 
-  return results.map((r, i) => ({
-    name: providers[i].name,
-    ...(r.status === 'fulfilled' ? r.value : { status: 'error' }),
-  }));
+  return results.map((r, i) => {
+    if (r.status === 'fulfilled') {
+      return r.value;
+    }
+    return { name: providers[i].name, status: 'error' };
+  });
 }
 
 function getNodeProcessInfo() {
