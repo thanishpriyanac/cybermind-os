@@ -122,51 +122,22 @@ const PROVIDERS = {
   },
 } as const;
 
+interface ProviderConfig {
+  name: string;
+  apiKey: string;
+  model: string;
+  baseUrl: string;
+  style: string;
+}
+
 type ProviderKey = keyof typeof PROVIDERS;
-type ProviderConfig = (typeof PROVIDERS)[ProviderKey];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  AUTO-MODEL DISCOVERY — ensures valid chat LLM selection
+//  MODEL DISCOVERY — returns configured model ID
 // ═══════════════════════════════════════════════════════════════════════════════
-
-const modelCache: Record<string, string> = {};
 
 async function getWorkingModel(provider: ProviderConfig): Promise<string> {
-  if (provider.model) return provider.model;
-
-  const cacheKey = provider.baseUrl;
-  if (modelCache[cacheKey]) return modelCache[cacheKey];
-
-  try {
-    const res = await fetch(`${provider.baseUrl}/models`, {
-      headers: { Authorization: `Bearer ${provider.apiKey}` },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return provider.model;
-    const data = await res.json();
-    const models: string[] = (data?.data || data?.models || []).map((m: any) => m.id || m.name).filter(Boolean);
-
-    // Filter out non-chat models (guardrails, audio, vision embeds)
-    const chatModels = models.filter(m =>
-      !m.includes('guard') &&
-      !m.includes('whisper') &&
-      !m.includes('embed') &&
-      !m.includes('parse') &&
-      !m.includes('safeguard')
-    );
-
-    const preferred = chatModels.find(m =>
-      m.includes('gpt-oss') || m.includes('qwen') || m.includes('instruct') || m.includes('chat') || m.includes('llama')
-    ) || chatModels[0];
-
-    if (preferred) {
-      modelCache[cacheKey] = preferred;
-      return preferred;
-    }
-  } catch {
-    // fallback to configured model
-  }
-  return provider.model;
+  return provider.model || 'openai/gpt-oss-120b';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
