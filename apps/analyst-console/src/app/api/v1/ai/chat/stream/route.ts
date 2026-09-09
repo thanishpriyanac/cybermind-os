@@ -85,6 +85,13 @@ const PROVIDERS = {
     baseUrl: 'https://api.groq.com/openai/v1',
     style: 'openai',
   },
+  experientiallabs: {
+    name: 'ExperientialLabs AI (Cloud AI)',
+    apiKey: process.env.EXPERIENTIALLABS_API_KEY || process.env.EXPERIENTIAL_API_KEY || '',
+    model: 'experientiallabs-pro',
+    baseUrl: 'https://platform.experientiallabs.ai/v1',
+    style: 'openai',
+  },
   nvidia_pro: {
     name: 'NVIDIA DeepSeek V4 Pro',
     apiKey: process.env.NVIDIA_API_KEY_PRO || '',
