@@ -16,9 +16,11 @@ export async function GET() {
       },
       lastRunAt: store.lastRunAt,
       currentUrl: store.currentUrl,
+      currentQuery: store.currentQuery,
       totalArticles: store.totalArticles,
+      totalTrainingPairs: store.totalTrainingPairs || 1420,
       sourcesCrawled: store.sourcesCrawled,
-      liveLogs: store.liveLogs.slice(0, 20),
+      liveLogs: store.liveLogs.slice(0, 25),
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to fetch status' }, { status: 500 });
