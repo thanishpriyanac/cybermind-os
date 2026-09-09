@@ -86,9 +86,9 @@ const PROVIDERS = {
     style: 'gemini',
   },
   groq: {
-    name: 'Groq (GPT-OSS 20B)',
+    name: 'Groq (Llama 3.3 70B)',
     apiKey: process.env.GROQ_API_KEY || '',
-    model: 'openai/gpt-oss-20b',
+    model: 'llama-3.3-70b-versatile',
     baseUrl: 'https://api.groq.com/openai/v1',
     style: 'openai',
   },
