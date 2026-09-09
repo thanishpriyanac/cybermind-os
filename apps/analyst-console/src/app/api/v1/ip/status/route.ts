@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
-import { ipStore } from '../../../../../lib/ip-store';
+import { ipStore } from '@/lib/ip-store';
+
+const DEFAULT_ABUSEIPDB_KEY = '331d85893fe540622f192f9ccd5dc2caebdb5d5735c97b2402613b85c7d6f8cd570b96f7d0776c9f';
 
 export async function GET() {
   try {
-    const configured = !!process.env.ABUSEIPDB_API_KEY;
+    const apiKey = process.env.ABUSEIPDB_API_KEY || DEFAULT_ABUSEIPDB_KEY;
+    const configured = !!apiKey;
     const status = ipStore.getStatus();
     
     return NextResponse.json({

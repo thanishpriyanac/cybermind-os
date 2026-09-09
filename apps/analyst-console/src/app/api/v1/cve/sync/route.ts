@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-import { getSyncStatus, updateFromNvdData, updateKevData } from '../../../../../lib/cve-store';
+import { getSyncStatus, updateFromNvdData, updateKevData } from '@/lib/cve-store';
 import axios from 'axios';
 
 export async function POST() {
@@ -21,7 +21,7 @@ export async function POST() {
     const pubEndDate = '2026-09-08T23:59:59.999';
     let nvdUrl = `https://services.nvd.nist.gov/rest/json/cves/2.0?pubStartDate=${pubStartDate}&pubEndDate=${pubEndDate}`;
     
-    const apiKey = process.env.NVD_API_KEY;
+    const apiKey = process.env.NVD_API_KEY || 'F536F18D-BB15-4F4C-9F5E-3BCEF77FAA64';
     const headers: any = {};
     if (apiKey) {
       headers.apiKey = apiKey;
