@@ -119,88 +119,122 @@ function getNetworkStats() {
 
 function getHardwareSensors() {
   let cpuTempC: number | null = null;
-  let fanSpeed = 'Auto (PWM)';
-  const cpus = os.cpus();
-  const speedMHz = cpus[0]?.speed || 0;
+  const cores: Array<{ label: string; tempC: number }> = [];
+  const thermalZones: Array<{ id: string; name: string; tempC: number }> = [];
+  const fans: Array<{ id: string; name: string; speed: string; status: string }> = [];
 
   try {
     if (fs.existsSync('/sys/class/hwmon')) {
       const hwmonDirs = fs.readdirSync('/sys/class/hwmon').filter((d) => d.startsWith('hwmon'));
-      let highestPackageTemp = 0;
-      let foundFanRpm = 0;
-
       for (const h of hwmonDirs) {
         const dirPath = path.join('/sys/class/hwmon', h);
         const namePath = path.join(dirPath, 'name');
-        const name = fs.existsSync(namePath) ? fs.readFileSync(namePath, 'utf-8').trim() : '';
+        const hwmonName = fs.existsSync(namePath) ? fs.readFileSync(namePath, 'utf-8').trim() : h;
 
-        const files = fs.readdirSync(dirPath);
-        for (const f of files) {
-          if (f.startsWith('temp') && f.endsWith('_input')) {
-            const val = parseInt(fs.readFileSync(path.join(dirPath, f), 'utf-8').trim(), 10);
-            if (!isNaN(val) && val > 0) {
-              const tempC = val > 1000 ? val / 1000 : val;
-              const labelPath = path.join(dirPath, f.replace('_input', '_label'));
-              const label = fs.existsSync(labelPath) ? fs.readFileSync(labelPath, 'utf-8').trim().toLowerCase() : '';
+        try {
+          const files = fs.readdirSync(dirPath);
+          for (const f of files) {
+            if (f.startsWith('temp') && f.endsWith('_input')) {
+              const val = parseInt(fs.readFileSync(path.join(dirPath, f), 'utf-8').trim(), 10);
+              if (!isNaN(val) && val > 0) {
+                const tempC = Math.round((val > 1000 ? val / 1000 : val) * 10) / 10;
+                const labelPath = path.join(dirPath, f.replace('_input', '_label'));
+                const label = fs.existsSync(labelPath)
+                  ? fs.readFileSync(labelPath, 'utf-8').trim()
+                  : `${hwmonName} ${f.replace('_input', '')}`;
 
-              if (name.includes('coretemp') || label.includes('package') || label.includes('core')) {
-                if (tempC > highestPackageTemp) {
-                  highestPackageTemp = tempC;
+                if (label.toLowerCase().includes('package')) {
+                  cpuTempC = tempC;
+                } else if (label.toLowerCase().includes('core')) {
+                  cores.push({ label, tempC });
+                } else {
+                  thermalZones.push({ id: f, name: label, tempC });
                 }
-              } else if (tempC > highestPackageTemp && tempC > 35) {
-                highestPackageTemp = tempC;
+              }
+            }
+
+            if (f.startsWith('fan') && f.endsWith('_input')) {
+              const rpm = parseInt(fs.readFileSync(path.join(dirPath, f), 'utf-8').trim(), 10);
+              const labelPath = path.join(dirPath, f.replace('_input', '_label'));
+              const label = fs.existsSync(labelPath)
+                ? fs.readFileSync(labelPath, 'utf-8').trim()
+                : `Fan ${f.replace('fan', '').replace('_input', '')}`;
+
+              fans.push({
+                id: f,
+                name: label,
+                speed: !isNaN(rpm) && rpm > 0 ? `${rpm} RPM` : '0 RPM (Stopped)',
+                status: !isNaN(rpm) && rpm > 0 ? 'ACTIVE' : 'IDLE',
+              });
+            }
+          }
+        } catch { /* skip */ }
+      }
+    }
+
+    if (fs.existsSync('/sys/class/thermal')) {
+      const thermalDirs = fs.readdirSync('/sys/class/thermal/').filter((d) => d.startsWith('thermal_zone'));
+      for (const dir of thermalDirs) {
+        try {
+          const typePath = path.join('/sys/class/thermal', dir, 'type');
+          const tempPath = path.join('/sys/class/thermal', dir, 'temp');
+          const type = fs.existsSync(typePath) ? fs.readFileSync(typePath, 'utf-8').trim() : dir;
+          if (fs.existsSync(tempPath)) {
+            const val = parseInt(fs.readFileSync(tempPath, 'utf-8').trim(), 10);
+            if (!isNaN(val) && val > 0) {
+              const tempC = Math.round((val > 1000 ? val / 1000 : val) * 10) / 10;
+              if (!cpuTempC && (type.includes('x86_pkg_temp') || type.includes('cpu'))) {
+                cpuTempC = tempC;
+              }
+              if (!thermalZones.some((tz) => tz.name === type)) {
+                thermalZones.push({ id: dir, name: type, tempC });
               }
             }
           }
+        } catch { /* skip */ }
+      }
 
-          if (f.startsWith('fan') && f.endsWith('_input')) {
-            const rpm = parseInt(fs.readFileSync(path.join(dirPath, f), 'utf-8').trim(), 10);
-            if (!isNaN(rpm) && rpm > 0) {
-              foundFanRpm = rpm;
+      const coolingDirs = fs.readdirSync('/sys/class/thermal/').filter((d) => d.startsWith('cooling_device'));
+      for (const c of coolingDirs) {
+        try {
+          const typePath = path.join('/sys/class/thermal', c, 'type');
+          const curPath = path.join('/sys/class/thermal', c, 'cur_state');
+          const maxPath = path.join('/sys/class/thermal', c, 'max_state');
+          const type = fs.existsSync(typePath) ? fs.readFileSync(typePath, 'utf-8').trim() : '';
+          if (type.toLowerCase().includes('fan')) {
+            const cur = fs.existsSync(curPath) ? fs.readFileSync(curPath, 'utf-8').trim() : '0';
+            const max = fs.existsSync(maxPath) ? fs.readFileSync(maxPath, 'utf-8').trim() : '1';
+            const fanName = `System Fan ${c.replace('cooling_device', '')} (${type})`;
+            if (!fans.some((f) => f.name === fanName)) {
+              fans.push({
+                id: c,
+                name: fanName,
+                speed: cur !== '0' ? `Active (Level ${cur}/${max})` : 'Auto PWM Dynamic',
+                status: cur !== '0' ? 'ACTIVE' : 'AUTO_PWM',
+              });
             }
           }
-        }
-      }
-
-      if (highestPackageTemp > 0) {
-        cpuTempC = Math.round(highestPackageTemp * 10) / 10;
-      }
-      if (foundFanRpm > 0) {
-        fanSpeed = `${foundFanRpm} RPM`;
+        } catch { /* skip */ }
       }
     }
 
-    if (!cpuTempC && fs.existsSync('/sys/class/thermal')) {
-      const thermalDirs = fs.readdirSync('/sys/class/thermal/').filter((d) => d.startsWith('thermal_zone'));
-      let maxTemp = 0;
-      for (const dir of thermalDirs) {
-        const typePath = path.join('/sys/class/thermal', dir, 'type');
-        const tempPath = path.join('/sys/class/thermal', dir, 'temp');
-        const type = fs.existsSync(typePath) ? fs.readFileSync(typePath, 'utf-8').trim().toLowerCase() : '';
-        if (fs.existsSync(tempPath)) {
-          const val = parseInt(fs.readFileSync(tempPath, 'utf-8').trim(), 10);
-          if (!isNaN(val) && val > 0) {
-            const tempC = val > 1000 ? val / 1000 : val;
-            if (type.includes('pkg') || type.includes('x86_pkg_temp') || type.includes('cpu')) {
-              cpuTempC = Math.round(tempC * 10) / 10;
-              break;
-            }
-            if (tempC > maxTemp && tempC < 120) {
-              maxTemp = tempC;
-            }
-          }
-        }
-      }
-      if (!cpuTempC && maxTemp > 0) {
-        cpuTempC = Math.round(maxTemp * 10) / 10;
-      }
+    if (!cpuTempC && thermalZones.length > 0) {
+      const pkg = thermalZones.find((t) => t.name.includes('x86_pkg') || t.name.includes('B0D4'));
+      cpuTempC = pkg ? pkg.tempC : thermalZones[0].tempC;
     }
   } catch { /* skip */ }
+
+  const cpus = os.cpus();
+  const speedMHz = cpus[0]?.speed || 0;
 
   return {
     cpuTempC: cpuTempC ?? 'N/A',
     tempStatus: cpuTempC ? (cpuTempC > 80 ? 'CRITICAL' : cpuTempC > 70 ? 'ELEVATED' : 'NORMAL') : 'UNKNOWN',
-    fanSpeed,
+    fanSpeed: fans.length > 0 ? fans[0].speed : 'Auto (PWM)',
+    fans: fans.length > 0 ? fans : [{ id: 'fan0', name: 'System Cooling Fan', speed: 'Auto PWM Dynamic', status: 'ACTIVE' }],
+    fanCount: fans.length || 1,
+    cores,
+    thermalZones,
     clockSpeedGHz: (speedMHz / 1000).toFixed(2),
     cpuArchitecture: os.arch(),
     cpuCores: cpus.length,

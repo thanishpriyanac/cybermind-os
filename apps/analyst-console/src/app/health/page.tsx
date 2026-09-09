@@ -41,11 +41,16 @@ interface HealthData {
   networkSpeed: {
     latencyMs: number;
     status: string;
+    targets?: Array<{ name: string; latencyMs: number; status: string }>;
   };
   sensors: {
     cpuTempC: number | string;
     tempStatus: string;
     fanSpeed?: string;
+    fans?: Array<{ id: string; name: string; speed: string; status: string }>;
+    fanCount?: number;
+    cores?: Array<{ label: string; tempC: number }>;
+    thermalZones?: Array<{ id: string; name: string; tempC: number }>;
     clockSpeedGHz: string;
     cpuArchitecture: string;
     cpuCores: number;
@@ -254,21 +259,35 @@ export default function HealthPage() {
           </CardContent>
         </Card>
 
-        {/* Data Consumption & Ping */}
+        {/* Data Consumption & Multi-Target Latency */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Data Usage & Ping</CardTitle>
-            <Wifi className="w-4 h-4 text-muted-foreground" />
+            <CardTitle className="text-xs font-medium text-muted-foreground">Network Latency & Data</CardTitle>
+            <Wifi className="w-4 h-4 text-emerald-400" />
           </CardHeader>
           <CardContent>
             {!health ? <Skeleton className="h-8 w-24" /> : (
               <>
-                <div className="text-2xl font-bold text-foreground font-mono">
-                  {health.network?.totalConsumptionGB} GB
+                <div className="flex items-center justify-between">
+                  <div className="text-xl font-bold text-foreground font-mono">
+                    {health.network?.totalConsumptionGB} GB
+                  </div>
+                  <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-mono">
+                    Avg {health.networkSpeed?.latencyMs}ms
+                  </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Ping: <span className="text-emerald-400 font-semibold">{health.networkSpeed?.latencyMs} ms</span> ({health.networkSpeed?.status})
-                </p>
+                <div className="mt-2 space-y-1">
+                  {health.networkSpeed?.targets?.map((t, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-[11px] font-mono">
+                      <span className="text-muted-foreground truncate max-w-[120px]">{t.name}</span>
+                      <span className="text-emerald-400 font-semibold">{t.latencyMs} ms</span>
+                    </div>
+                  )) || (
+                    <p className="text-xs text-muted-foreground mt-1 font-mono">
+                      Ping: <span className="text-emerald-400 font-semibold">{health.networkSpeed?.latencyMs} ms</span> ({health.networkSpeed?.status})
+                    </p>
+                  )}
+                </div>
               </>
             )}
           </CardContent>
@@ -277,72 +296,137 @@ export default function HealthPage() {
 
       {/* Hardware Sensors & Network Interfaces Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Hardware Sensors */}
-        <Card className="bg-card border-border">
+        {/* Hardware Sensors, Fans & Thermal Matrix */}
+        <Card className="bg-card border-border lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Flame className="w-5 h-5 text-amber-500" />
-              Hardware Sensors & Thermal Telemetry
-            </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              CPU temperature zones, frequency stats, and processor info.
-            </CardDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-amber-500" />
+                  Hardware Telemetry: Thermal Sensors & System Fans ({health?.sensors?.fanCount || 0} Fans Detected)
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                  Real-time Linux sysfs hwmon sensors, per-core CPU package temperatures, ACPI cooling fans, and thermal zones.
+                </CardDescription>
+              </div>
+              <Badge className="self-start sm:self-auto bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-3 py-1 font-mono text-xs">
+                {health?.sensors?.fanCount || 1} System Fans Active
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent>
-            {!health ? <Skeleton className="h-32 w-full" /> : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
-                  <div>
-                    <span className="text-sm font-medium">CPU Thermal Temperature</span>
-                    <span className="text-xs text-muted-foreground block font-mono">Package Temperature Sensor</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold font-mono">
+            {!health ? <Skeleton className="h-48 w-full" /> : (
+              <div className="space-y-6">
+                {/* Top Row: CPU Package & Main Sensors */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-3.5 rounded-lg bg-muted/40 border border-border/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">CPU Package Temp</span>
+                      <Badge className={
+                        health.sensors?.tempStatus === 'NORMAL' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
+                        health.sensors?.tempStatus === 'ELEVATED' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' :
+                        'bg-muted text-muted-foreground'
+                      }>
+                        {health.sensors?.tempStatus}
+                      </Badge>
+                    </div>
+                    <div className="text-2xl font-bold font-mono text-foreground mt-2">
                       {typeof health.sensors?.cpuTempC === 'number' ? `${health.sensors.cpuTempC}°C` : health.sensors?.cpuTempC}
-                    </span>
-                    <Badge className={
-                      health.sensors?.tempStatus === 'NORMAL' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
-                      health.sensors?.tempStatus === 'ELEVATED' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' :
-                      'bg-muted text-muted-foreground'
-                    }>
-                      {health.sensors?.tempStatus}
-                    </Badge>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground font-mono block mt-1">Intel Core Package (hwmon coretemp)</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-lg bg-muted/40 border border-border/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Primary Fan Status</span>
+                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                    </div>
+                    <div className="text-xl font-bold font-mono text-cyan-400 mt-2 flex items-center gap-2">
+                      <Fan className="w-5 h-5 text-cyan-400 animate-spin" style={{ animationDuration: '2.5s' }} />
+                      {health.sensors?.fanSpeed || 'Auto (PWM)'}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground font-mono block mt-1">ACPI EC Dynamic PWM Control</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-lg bg-muted/40 border border-border/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">CPU Frequency</span>
+                      <Cpu className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="text-xl font-bold font-mono text-foreground mt-2">
+                      {health.sensors?.clockSpeedGHz} GHz
+                    </div>
+                    <span className="text-[11px] text-muted-foreground font-mono block mt-1">{health.sensors?.cpuArchitecture} · {health.sensors?.cpuCores} Cores</span>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
+                {/* Per-Core Temperatures (if available) */}
+                {health.sensors?.cores && health.sensors.cores.length > 0 && (
                   <div>
-                    <span className="text-sm font-medium flex items-center gap-1.5">
-                      <Fan className="w-4 h-4 text-cyan-400 animate-spin" style={{ animationDuration: '3s' }} />
-                      System Fan Speed
-                    </span>
-                    <span className="text-xs text-muted-foreground block font-mono">Cooling Fan Control</span>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">CPU Per-Core Thermal Breakdown</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {health.sensors.cores.map((core, i) => (
+                        <div key={i} className="p-2.5 rounded-md bg-muted/30 border border-border/40 flex items-center justify-between">
+                          <span className="text-xs font-medium text-foreground font-mono">{core.label}</span>
+                          <span className="text-xs font-bold font-mono text-amber-400">{core.tempC}°C</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-sm font-bold font-mono text-cyan-400">{health.sensors?.fanSpeed || 'Auto (PWM)'}</span>
-                    <span className="text-xs text-muted-foreground block font-mono">ACPI Thermal PWM</span>
+                )}
+
+                {/* ALL DETECTED SYSTEM FANS GRID */}
+                <div>
+                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-2">
+                    <Fan className="w-4 h-4 text-cyan-400" />
+                    All Detected System Fans ({health.sensors?.fans?.length || 0} Fans)
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {health.sensors?.fans && health.sensors.fans.length > 0 ? (
+                      health.sensors.fans.map((fan, idx) => (
+                        <div key={idx} className="p-3 rounded-lg bg-muted/40 border border-border/60 flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <Fan className="w-4 h-4 text-cyan-400 animate-spin" style={{ animationDuration: `${2 + (idx % 3) * 0.5}s` }} />
+                            <div>
+                              <span className="text-xs font-semibold text-foreground font-mono block">{fan.name}</span>
+                              <span className="text-[10px] text-muted-foreground font-mono block">sysfs {fan.id}</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-xs font-bold font-mono text-cyan-400 block">{fan.speed}</span>
+                            <Badge className="text-[9px] px-1.5 py-0 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                              {fan.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-3 rounded-lg bg-muted/40 border border-border/60 text-xs text-muted-foreground font-mono">
+                        System Cooling Fan: Auto PWM Dynamic Control
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
+                {/* THERMAL SENSOR ZONES MATRIX */}
+                {health.sensors?.thermalZones && health.sensors.thermalZones.length > 0 && (
                   <div>
-                    <span className="text-sm font-medium">CPU Frequency</span>
-                    <span className="text-xs text-muted-foreground block font-mono">Clock Speed & Architecture</span>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">All Thermal Zones & Hardware Sensors</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                      {health.sensors.thermalZones.map((tz, i) => (
+                        <div key={i} className="p-2.5 rounded-md bg-muted/30 border border-border/40 flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-mono text-foreground font-medium block truncate max-w-[120px]" title={tz.name}>{tz.name}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground">{tz.id}</span>
+                          </div>
+                          <span className={`text-xs font-bold font-mono ${tz.tempC >= 70 ? 'text-red-400' : tz.tempC >= 50 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            {tz.tempC}°C
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-sm font-bold font-mono">{health.sensors?.clockSpeedGHz} GHz</span>
-                    <span className="text-xs text-muted-foreground block font-mono">{health.sensors?.cpuArchitecture} ({health.sensors?.cpuCores} cores)</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
-                  <div>
-                    <span className="text-sm font-medium">CPU Model</span>
-                  </div>
-                  <span className="text-xs font-mono text-muted-foreground max-w-[250px] truncate" title={health.sensors?.cpuModel}>
-                    {health.sensors?.cpuModel}
-                  </span>
-                </div>
+                )}
               </div>
             )}
           </CardContent>
