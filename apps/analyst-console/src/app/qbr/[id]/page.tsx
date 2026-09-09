@@ -1,18 +1,22 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../../../lib/api';
+import { api } from '@/lib/api';
 import { ShieldAlert, Shield, ShieldCheck, Printer, ArrowLeft } from 'lucide-react';
-import { Skeleton } from '../../../components/ui/skeleton';
-import { Button } from '../../../components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
-export default function QbrReportView({ params }: { params: { id: string } }) {
+export default function QbrReportView() {
+  const params = useParams();
+  const id = params.id as string;
+
   const { data: report, isLoading } = useQuery({
-    queryKey: ['qbr-report', params.id],
+    queryKey: ['qbr-report', id],
     queryFn: async () => {
-      const res = await api.get(`/v1/qbr/${params.id}`);
+      const res = await api.get(`/v1/qbr/${id}`);
       return res.data.data;
     },
   });

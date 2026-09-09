@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { getVendorControls } from '@/lib/vendors';
 import { Vendor } from '@/lib/firewall-store';
 
-export async function GET(request: Request, { params }: { params: { vendor: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ vendor: string }> }) {
   try {
-    const controls = getVendorControls(params.vendor as Vendor);
+    const { vendor } = await params;
+    const controls = getVendorControls(vendor as Vendor);
     return NextResponse.json(controls);
   } catch (error) {
     console.error('Failed to get vendor controls:', error);

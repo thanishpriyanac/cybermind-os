@@ -2,25 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { api } from '../../../../lib/api';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
-import { Button } from '../../../../components/ui/button';
-import { Skeleton } from '../../../../components/ui/skeleton';
-import { Badge } from '../../../../components/ui/badge';
+import { api } from '@/lib/api';
+import { useRouter, useParams } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 
-export default function QbrBuilderPage({ params }: { params: { id: string } }) {
+export default function QbrBuilderPage() {
   const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
   const [executiveSummary, setExecutiveSummary] = useState('');
   
   const { data: assessment, isLoading } = useQuery({
-    queryKey: ['assessment', params.id],
+    queryKey: ['assessment', id],
     queryFn: async () => {
-      // Endpoint to get single assessment
-      // If there's no such endpoint yet, we can fetch all and find
       const res = await api.get('/v1/firewall/assessments');
-      const item = res.data.find((a: any) => a.id === params.id);
+      const item = res.data.find((a: any) => a.id === id);
       return item;
     },
   });
@@ -30,7 +30,6 @@ export default function QbrBuilderPage({ params }: { params: { id: string } }) {
       let criticals = 0;
       let highs = 0;
       
-      // Need vendor controls to get severity
       api.get('/v1/firewall/controls').then(res => {
          const controls = res.data[assessment.vendor] || [];
          assessment.findings.forEach((f: any) => {
