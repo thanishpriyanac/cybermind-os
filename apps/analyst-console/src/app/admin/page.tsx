@@ -106,7 +106,7 @@ export default function AdminPage() {
   });
 
   // Live AI Usage Metrics (rapid auto-update)
-  const { data: aiUsage } = useQuery({
+  const { data: aiUsage, isLoading: aiLoading } = useQuery({
     queryKey: ['admin-ai-usage'],
     queryFn: async () => {
       const res = await fetch('/api/v1/ai/usage');
