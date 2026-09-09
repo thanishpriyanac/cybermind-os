@@ -506,6 +506,11 @@ export default function AdminPage() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm text-foreground">{art.title}</span>
+                        {art.category === 'DARK_WEB' && (
+                          <Badge className="bg-purple-500/10 text-purple-400 border border-purple-500/30 font-mono text-[10px]">
+                            🔒 DARK WEB
+                          </Badge>
+                        )}
                         <Badge className={
                           art.severity === 'CRITICAL' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
                           art.severity === 'HIGH' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
@@ -519,6 +524,7 @@ export default function AdminPage() {
                       <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground pt-1">
                         <span>URL: <a href={art.url} target="_blank" rel="noreferrer" className="text-primary underline">{art.url}</a></span>
                         {art.cveId && <span>• {art.cveId}</span>}
+                        {art.category === 'DARK_WEB' && <span className="text-purple-400 font-semibold">• Tor / Telegram Threat Intel</span>}
                       </div>
                     </div>
                     <div className="text-right text-xs font-mono text-muted-foreground whitespace-nowrap">

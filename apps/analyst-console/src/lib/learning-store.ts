@@ -6,7 +6,7 @@ export interface LearningArticle {
   url: string;
   title: string;
   source: string;
-  category: 'CVE' | 'EXPLOIT' | 'ADVISORY' | 'MALWARE' | 'ZERO_DAY' | 'NEWS' | 'RESEARCH';
+  category: 'CVE' | 'EXPLOIT' | 'ADVISORY' | 'MALWARE' | 'ZERO_DAY' | 'NEWS' | 'RESEARCH' | 'DARK_WEB';
   cveId?: string;
   severity?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   summary: string;
@@ -78,6 +78,36 @@ const INITIAL_ARTICLES: LearningArticle[] = [
   },
   {
     id: 'learn-002',
+    url: 'http://breached27onion4x.onion/thread/credential-dump-enterprise-2026',
+    title: 'Dark Web Tor Forum: Enterprise Credential & Database Leak Briefing',
+    source: 'Dark Web Breach Forum (.onion)',
+    category: 'DARK_WEB',
+    cveId: 'CVE-2026-8810',
+    severity: 'CRITICAL',
+    summary: 'Tor onion leak marketplace thread advertising compromised Active Directory hashes and SQL dumps.',
+    contentSnippet: 'Threat actor released 500MB sample of bcrypt hashes and NTLM tokens harvested via Kerberoasting.',
+    trainingPrompt: 'Evaluate Dark Web onion threat intelligence report regarding Active Directory Kerberoasting leak.',
+    trainingCompletion: '### Dark Web Threat Assessment:\n**Threat Actor**: ShadowCorrupt\n**Impact**: High risk of Domain Admin takeover.\n**Mitigation**: Enforce 25+ character service account passwords, disable RC4 encryption, and roll krbtgt account password twice.',
+    tags: ['DarkWeb', 'Tor', 'Leak', 'ActiveDirectory'],
+    scrapedAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
+  },
+  {
+    id: 'learn-003',
+    url: 'https://t.me/threat_intel_dark_leaks/9481',
+    title: 'Telegram Cyber Threat Intel Channel: Zero-Day Exploit Market Monitor',
+    source: 'Telegram Threat Channel',
+    category: 'DARK_WEB',
+    cveId: 'CVE-2026-7492',
+    severity: 'HIGH',
+    summary: 'Automated monitoring of underground Telegram channels for zero-day weaponization alerts.',
+    contentSnippet: 'Channel payload sample includes obfuscated PowerShell script leveraging Windows ALPC local privilege escalation.',
+    trainingPrompt: 'Summarize Telegram dark web zero-day exploit payload analysis.',
+    trainingCompletion: '### Exploit Payload Signature:\n**Vulnerability**: ALPC Privilege Escalation\n**Behavior**: Drops DLL in %TEMP% and invokes Rundll32 with elevated token privileges.',
+    tags: ['DarkWeb', 'Telegram', 'ZeroDay', 'PrivEsc'],
+    scrapedAt: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
+  },
+  {
+    id: 'learn-004',
     url: 'https://securityweek.com/articles/ransomware-canary-honeypot-analysis',
     title: 'Global Cybersecurity News: Ransomware Canary Honey-Tokens Active Across Cloud DBs',
     source: 'SecurityWeek Global',
@@ -89,41 +119,26 @@ const INITIAL_ARTICLES: LearningArticle[] = [
     trainingPrompt: 'Explain how honey-token canary files detect ransomware activity on database servers.',
     trainingCompletion: '### Honey-Token Detection Mechanics:\nHoney-tokens are dummy credentials or files placed in decoy directories. When an automated ransomware process reads or encrypts the file, a high-priority EDR trigger alerts the SOC immediately.',
     tags: ['SecurityWeek', 'News', 'Ransomware', 'Honey-Token'],
-    scrapedAt: new Date(Date.now() - 1000 * 60 * 40).toISOString(),
-  },
-  {
-    id: 'learn-003',
-    url: 'https://reddit.com/r/netsec/comments/kernel_ebpf_exploit',
-    title: 'Reddit NetSec: Linux Kernel eBPF Privilege Escalation Mitigation Guide',
-    source: 'Reddit /r/netsec',
-    category: 'RESEARCH',
-    cveId: 'CVE-2026-7719',
-    severity: 'HIGH',
-    summary: 'Deep dive into eBPF verifier bypass vulnerability in Linux 6.x kernels.',
-    contentSnippet: 'Disabling unprivileged eBPF via sysctl (kernel.unprivileged_bpf_disabled = 1) prevents local privilege escalation.',
-    trainingPrompt: 'Provide Sigma detection rule for unprivileged eBPF execution attempts.',
-    trainingCompletion: '```yaml\ntitle: Unprivileged eBPF Execution Attempt\nstatus: production\ndetection:\n  selection:\n    CommandLine|contains: "unprivileged_bpf_disabled"\n  condition: selection\nlevel: high\n```',
-    tags: ['Reddit', 'NetSec', 'Kernel', 'eBPF'],
-    scrapedAt: new Date(Date.now() - 1000 * 60 * 75).toISOString(),
+    scrapedAt: new Date(Date.now() - 1000 * 60 * 50).toISOString(),
   },
 ];
 
 const INITIAL_LOGS: LearningLog[] = [
   { timestamp: new Date(Date.now() - 1000 * 60 * 12).toISOString(), level: 'info', message: 'Overnight Web Learning Engine active (18:00 - 09:00 IST schedule).' },
-  { timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(), level: 'info', message: 'Executing unrestricted web search query: "cybersecurity zero day exploits news 2026"...' },
-  { timestamp: new Date(Date.now() - 1000 * 60 * 6).toISOString(), level: 'success', message: 'Scraped 4 pages from HackerNews, Reddit /r/netsec, and SecurityWeek. Extracted 4 training samples.' },
-  { timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(), level: 'info', message: 'Updating model fine-tuning dataset: model_training_dataset.jsonl (Total samples: 1420).' },
+  { timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(), level: 'info', message: 'Executing unrestricted web & Dark Web crawler pass across Tor onion forums, Telegram feeds & news...' },
+  { timestamp: new Date(Date.now() - 1000 * 60 * 6).toISOString(), level: 'success', message: 'Scraped 6 portals including Dark Web Tor feeds, HackerNews, and SecurityWeek. Extracted 6 training samples.' },
+  { timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(), level: 'info', message: 'Updating model fine-tuning dataset: model_training_dataset.jsonl (Total samples: 1428).' },
 ];
 
 function generateDefaultStore(): LearningStore {
   return {
     status: 'active',
     lastRunAt: new Date().toISOString(),
-    currentUrl: 'https://securityweek.com/articles/ransomware-canary-honeypot-analysis',
-    currentQuery: 'cybersecurity zero day exploits news 2026',
+    currentUrl: 'http://breached27onion4x.onion/thread/credential-dump-enterprise-2026',
+    currentQuery: 'dark web breach leaks zero day exploits 2026',
     totalArticles: INITIAL_ARTICLES.length,
-    totalTrainingPairs: 1420,
-    sourcesCrawled: 18,
+    totalTrainingPairs: 1428,
+    sourcesCrawled: 24,
     liveLogs: INITIAL_LOGS,
     articles: INITIAL_ARTICLES,
   };
@@ -193,31 +208,35 @@ export async function runUnrestrictedWebScraperPass(): Promise<LearningStore> {
 
   const searchQueries = [
     'latest zero day cybersecurity vulnerabilities 2026',
+    'dark web breach leaks zero day exploits 2026',
+    'Tor onion threat actor leak telegram channel',
     'ransomware attack news and EDR bypass methods',
     'kernel exploit analysis and PoC advisories',
-    'threat intelligence reports CISA NVD ExploitDB',
-    'AI security threats and LLM prompt injection advisories',
+    'darknet pastebin zero day PoC code',
   ];
 
   const targetWebsites = [
+    { name: 'Dark Web Tor Forum (.onion)', domain: 'darkweb-leak-intel.onion', cat: 'DARK_WEB' as const },
+    { name: 'Telegram Dark Threat Channel', domain: 't.me/darknet_leaks', cat: 'DARK_WEB' as const },
     { name: 'HackerNews Security', domain: 'news.ycombinator.com', cat: 'ZERO_DAY' as const },
     { name: 'SecurityWeek Global', domain: 'securityweek.com', cat: 'NEWS' as const },
     { name: 'Reddit /r/netsec', domain: 'reddit.com/r/netsec', cat: 'RESEARCH' as const },
+    { name: 'Dark Web Exploit Market', domain: 'exploit-dark-market.onion', cat: 'DARK_WEB' as const },
     { name: 'BleepingComputer', domain: 'bleepingcomputer.com', cat: 'NEWS' as const },
     { name: 'DarkReading', domain: 'darkreading.com', cat: 'ADVISORY' as const },
-    { name: 'Threatpost', domain: 'threatpost.com', cat: 'MALWARE' as const },
   ];
 
   store.liveLogs.unshift({
     timestamp: now,
     level: 'info',
-    message: `[18:00 - 09:00 Overnight Window] Initiating unrestricted web crawling across global cybersecurity portals, news, and research blogs...`,
+    message: `[18:00 - 09:00 Overnight Window] Initiating unrestricted web & Dark Web crawling pass across Tor onion forums, Telegram feeds, news & research blogs...`,
   });
 
   for (let i = 0; i < targetWebsites.length; i++) {
     const site = targetWebsites[i];
     const query = searchQueries[i % searchQueries.length];
-    const url = `https://${site.domain}/search?q=${encodeURIComponent(query)}`;
+    const isTor = site.domain.endsWith('.onion') || site.domain.includes('t.me');
+    const url = isTor ? `http://${site.domain}/search?q=${encodeURIComponent(query)}` : `https://${site.domain}/search?q=${encodeURIComponent(query)}`;
 
     store.currentUrl = url;
     store.currentQuery = query;
@@ -225,7 +244,7 @@ export async function runUnrestrictedWebScraperPass(): Promise<LearningStore> {
     store.liveLogs.unshift({
       timestamp: new Date().toISOString(),
       level: 'info',
-      message: `Searching Web [Query: "${query}"] → Surfing: ${url}...`,
+      message: `${isTor ? '🔒 Surfing Dark Web / Tor Feed' : '🌐 Surfing Web'} [Query: "${query}"] → ${url}...`,
     });
 
     const newId = `learn-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
@@ -235,16 +254,16 @@ export async function runUnrestrictedWebScraperPass(): Promise<LearningStore> {
     const newArticle: LearningArticle = {
       id: newId,
       url,
-      title: `${site.name}: Live Threat Intelligence Analysis (${query.split(' ')[0]})`,
+      title: `${site.name}: Live Threat & Leak Intelligence Analysis (${query.split(' ')[0]})`,
       source: site.name,
       category: site.cat,
       cveId,
       severity,
-      summary: `Automated web crawler extracted cybersecurity indicators, technical write-ups, and mitigation steps from ${site.name}.`,
+      summary: `Automated crawler extracted ${site.cat === 'DARK_WEB' ? 'dark web leak telemetry, zero-day payloads, and threat actor briefings' : 'cybersecurity indicators, technical write-ups, and mitigations'} from ${site.name}.`,
       contentSnippet: `Live content scraped from ${url}. Formatted into instruction tuning prompt-completion pair for AI model training.`,
       trainingPrompt: `Analyze threat briefing for ${cveId} extracted from ${site.name}. Provide MITRE ATT&CK mapping and containment.`,
       trainingCompletion: `### CyberMind LLM Training Record:\n**CVE ID**: ${cveId}\n**Severity**: ${severity}\n**Tactics**: Initial Access, Privilege Escalation\n**Remediation**: Isolate host, block malicious IPs, and update system kernel.`,
-      tags: [site.name.split(' ')[0], 'WebScraped', 'LLMTrainingData'],
+      tags: [site.name.split(' ')[0], site.cat === 'DARK_WEB' ? 'DarkWeb' : 'WebScraped', 'LLMTrainingData'],
       scrapedAt: new Date().toISOString(),
     };
 
@@ -268,7 +287,7 @@ export async function runUnrestrictedWebScraperPass(): Promise<LearningStore> {
   store.liveLogs.unshift({
     timestamp: new Date().toISOString(),
     level: 'success',
-    message: `Overnight web learning pass finished. Total compiled LLM training samples: ${store.totalTrainingPairs} stored in model_training_dataset.jsonl.`,
+    message: `Overnight web & dark web learning pass finished. Total compiled LLM training samples: ${store.totalTrainingPairs} stored in model_training_dataset.jsonl.`,
   });
 
   saveLearningStore(store);
