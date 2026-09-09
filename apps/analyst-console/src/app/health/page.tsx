@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import {
@@ -78,7 +79,7 @@ function UsageBar({ pct, colorClass }: { pct: number; colorClass: string }) {
   return (
     <div className="w-full bg-muted rounded-full h-2 mt-2">
       <div
-        className={`h-2 rounded-full transition-all duration-500 ${colorClass}`}
+        className={`h-2 rounded-full transition-all duration-300 ${colorClass}`}
         style={{ width: `${Math.min(pct, 100)}%` }}
       />
     </div>
@@ -92,15 +93,47 @@ function getBarColor(pct: number) {
 }
 
 export default function HealthPage() {
-  const { data: health, isLoading, error, refetch, isFetching } = useQuery<HealthData>({
+  const [streamData, setStreamData] = useState<HealthData | null>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  // Instant SSE Stream Connection (Zero-Delay Streaming)
+  useEffect(() => {
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource('/api/v1/health/stream');
+      es.onopen = () => setIsStreaming(true);
+      es.onmessage = (event) => {
+        try {
+          const parsed = JSON.parse(event.data);
+          setStreamData(parsed);
+          setIsStreaming(true);
+        } catch { /* skip */ }
+      };
+      es.onerror = () => {
+        setIsStreaming(false);
+      };
+    } catch {
+      setIsStreaming(false);
+    }
+
+    return () => {
+      if (es) es.close();
+    };
+  }, []);
+
+  // Rapid Polling Fallback (500ms) if SSE stream is unavailable
+  const { data: fallbackHealth, isLoading, error, refetch, isFetching } = useQuery<HealthData>({
     queryKey: ['system-health-real'],
     queryFn: async () => {
       const res = await api.get('/v1/health');
       return res.data;
     },
-    refetchInterval: 1000, // AUTO-SYNC EVERY 1 SECOND (REAL-TIME)
-    staleTime: 500,
+    enabled: !isStreaming || !streamData,
+    refetchInterval: 500, // Rapid 500ms fallback polling
+    staleTime: 200,
   });
+
+  const health = streamData || fallbackHealth;
 
   const storeNames: Record<string, string> = {
     'copilot_store.json': 'AI Chat History',
@@ -120,13 +153,13 @@ export default function HealthPage() {
             System Health & Telemetry
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Live hardware sensors, real-time bandwidth speeds, and system telemetry auto-synced every 1 second.
+            Zero-delay real-time hardware telemetry stream — live bandwidth speeds, CPU & thermal sensors.
           </p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-center">
           <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 flex items-center gap-2 text-xs font-mono">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            Real-Time: 1s
+            {isStreaming ? 'Live Stream (0ms)' : 'Real-Time SSE'}
           </Badge>
           <Button
             variant="outline"
@@ -140,7 +173,7 @@ export default function HealthPage() {
         </div>
       </div>
 
-      {error && (
+      {error && !health && (
         <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
           Failed to load health metrics. Ensure the server is running.
         </div>
@@ -167,13 +200,13 @@ export default function HealthPage() {
             <Cpu className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-20" /> : (
+            {!health ? <Skeleton className="h-8 w-20" /> : (
               <>
-                <div className={`text-2xl font-bold ${health && health.cpu.usagePct >= 80 ? 'text-red-400' : health && health.cpu.usagePct >= 60 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                  {health?.cpu.usagePct ?? '--'}%
+                <div className={`text-2xl font-bold ${health.cpu.usagePct >= 80 ? 'text-red-400' : health.cpu.usagePct >= 60 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                  {health.cpu.usagePct}%
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">{health?.sensors?.cpuCores} Cores · {health?.sensors?.clockSpeedGHz} GHz</p>
-                {health && <UsageBar pct={health.cpu.usagePct} colorClass={getBarColor(health.cpu.usagePct)} />}
+                <p className="text-xs text-muted-foreground mt-1">{health.sensors?.cpuCores} Cores · {health.sensors?.clockSpeedGHz} GHz</p>
+                <UsageBar pct={health.cpu.usagePct} colorClass={getBarColor(health.cpu.usagePct)} />
               </>
             )}
           </CardContent>
@@ -186,15 +219,15 @@ export default function HealthPage() {
             <MemoryStick className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-24" /> : (
+            {!health ? <Skeleton className="h-8 w-24" /> : (
               <>
-                <div className={`text-2xl font-bold ${health && health.memory.usedPct >= 85 ? 'text-red-400' : health && health.memory.usedPct >= 70 ? 'text-amber-400' : 'text-primary'}`}>
-                  {health?.memory.usedMB ?? '--'} MB
+                <div className={`text-2xl font-bold ${health.memory.usedPct >= 85 ? 'text-red-400' : health.memory.usedPct >= 70 ? 'text-amber-400' : 'text-primary'}`}>
+                  {health.memory.usedMB} MB
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {health?.memory.usedPct}% of {health?.memory.totalMB} MB
+                  {health.memory.usedPct}% of {health.memory.totalMB} MB
                 </p>
-                {health && <UsageBar pct={health.memory.usedPct} colorClass={getBarColor(health.memory.usedPct)} />}
+                <UsageBar pct={health.memory.usedPct} colorClass={getBarColor(health.memory.usedPct)} />
               </>
             )}
           </CardContent>
@@ -203,17 +236,17 @@ export default function HealthPage() {
         {/* Real-time Internet Speed */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Real-Time Speed</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">Real-Time Bandwidth</CardTitle>
             <Zap className="w-4 h-4 text-emerald-400" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-24" /> : (
+            {!health ? <Skeleton className="h-8 w-24" /> : (
               <>
                 <div className="text-xl font-bold text-foreground flex items-center gap-2">
-                  <span className="text-emerald-400 flex items-center"><ArrowDown className="w-4 h-4 inline" />{health?.network?.downloadSpeed || '0 KB/s'}</span>
+                  <span className="text-emerald-400 flex items-center font-mono"><ArrowDown className="w-4 h-4 inline mr-0.5" />{health.network?.downloadSpeed || '0.0 KB/s'}</span>
                 </div>
-                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                  <ArrowUp className="w-3 h-3 text-primary inline" /> Upload: <span className="text-foreground font-mono">{health?.network?.uploadSpeed || '0 KB/s'}</span>
+                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1 font-mono">
+                  <ArrowUp className="w-3 h-3 text-primary inline" /> Upload: <span className="text-foreground font-semibold">{health.network?.uploadSpeed || '0.0 KB/s'}</span>
                 </div>
               </>
             )}
@@ -227,13 +260,13 @@ export default function HealthPage() {
             <Wifi className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-24" /> : (
+            {!health ? <Skeleton className="h-8 w-24" /> : (
               <>
-                <div className="text-2xl font-bold text-foreground">
-                  {health?.network?.totalConsumptionGB} GB
+                <div className="text-2xl font-bold text-foreground font-mono">
+                  {health.network?.totalConsumptionGB} GB
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Ping: <span className="text-emerald-400 font-semibold">{health?.networkSpeed?.latencyMs} ms</span> ({health?.networkSpeed?.status})
+                  Ping: <span className="text-emerald-400 font-semibold">{health.networkSpeed?.latencyMs} ms</span> ({health.networkSpeed?.status})
                 </p>
               </>
             )}
@@ -255,7 +288,7 @@ export default function HealthPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-32 w-full" /> : (
+            {!health ? <Skeleton className="h-32 w-full" /> : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
                   <div>
@@ -264,14 +297,14 @@ export default function HealthPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-lg font-bold font-mono">
-                      {typeof health?.sensors?.cpuTempC === 'number' ? `${health.sensors.cpuTempC}°C` : health?.sensors?.cpuTempC}
+                      {typeof health.sensors?.cpuTempC === 'number' ? `${health.sensors.cpuTempC}°C` : health.sensors?.cpuTempC}
                     </span>
                     <Badge className={
-                      health?.sensors?.tempStatus === 'NORMAL' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
-                      health?.sensors?.tempStatus === 'ELEVATED' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' :
+                      health.sensors?.tempStatus === 'NORMAL' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
+                      health.sensors?.tempStatus === 'ELEVATED' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' :
                       'bg-muted text-muted-foreground'
                     }>
-                      {health?.sensors?.tempStatus}
+                      {health.sensors?.tempStatus}
                     </Badge>
                   </div>
                 </div>
@@ -282,8 +315,8 @@ export default function HealthPage() {
                     <span className="text-xs text-muted-foreground block font-mono">Clock Speed & Architecture</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-bold font-mono">{health?.sensors?.clockSpeedGHz} GHz</span>
-                    <span className="text-xs text-muted-foreground block font-mono">{health?.sensors?.cpuArchitecture} ({health?.sensors?.cpuCores} cores)</span>
+                    <span className="text-sm font-bold font-mono">{health.sensors?.clockSpeedGHz} GHz</span>
+                    <span className="text-xs text-muted-foreground block font-mono">{health.sensors?.cpuArchitecture} ({health.sensors?.cpuCores} cores)</span>
                   </div>
                 </div>
 
@@ -291,8 +324,8 @@ export default function HealthPage() {
                   <div>
                     <span className="text-sm font-medium">CPU Model</span>
                   </div>
-                  <span className="text-xs font-mono text-muted-foreground max-w-[250px] truncate" title={health?.sensors?.cpuModel}>
-                    {health?.sensors?.cpuModel}
+                  <span className="text-xs font-mono text-muted-foreground max-w-[250px] truncate" title={health.sensors?.cpuModel}>
+                    {health.sensors?.cpuModel}
                   </span>
                 </div>
               </div>
@@ -312,9 +345,9 @@ export default function HealthPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-32 w-full" /> : (
+            {!health ? <Skeleton className="h-32 w-full" /> : (
               <div className="space-y-3">
-                {health?.network?.interfaces && health.network.interfaces.length > 0 ? (
+                {health.network?.interfaces && health.network.interfaces.length > 0 ? (
                   health.network.interfaces.map((iface, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
                       <div>
@@ -329,7 +362,7 @@ export default function HealthPage() {
                   ))
                 ) : (
                   <div className="p-4 text-center text-xs text-muted-foreground">
-                    Total Network Data: {health?.network?.totalConsumptionGB} GB (Rx: {health?.network?.rxGB} GB, Tx: {health?.network?.txGB} GB)
+                    Total Network Data: {health.network?.totalConsumptionGB} GB (Rx: {health.network?.rxGB} GB, Tx: {health.network?.txGB} GB)
                   </div>
                 )}
               </div>
@@ -350,7 +383,7 @@ export default function HealthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {!health ? (
             <div className="space-y-3">
               <Skeleton className="h-12 w-full" />
               <Skeleton className="h-12 w-full" />
@@ -358,7 +391,7 @@ export default function HealthPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {health?.aiProviders.map((p, i) => (
+              {health.aiProviders.map((p, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
                   <div>
                     <p className="text-sm font-medium text-foreground">{p.name}</p>
@@ -389,13 +422,13 @@ export default function HealthPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {!health ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
             </div>
           ) : (
             <div className="space-y-3">
-              {health && Object.entries(health.dataStores).map(([file, info]) => (
+              {Object.entries(health.dataStores).map(([file, info]) => (
                 <div key={file} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
                   <div>
                     <p className="text-sm font-medium text-foreground">{storeNames[file] || file}</p>
