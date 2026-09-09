@@ -139,24 +139,80 @@ function getNetworkStats() {
 
 function getHardwareSensors() {
   let cpuTempC: number | null = null;
+  let fanSpeed = 'Auto (PWM)';
   const cpus = os.cpus();
   const speedMHz = cpus[0]?.speed || 0;
 
   try {
-    if (fs.existsSync('/sys/class/thermal')) {
+    if (fs.existsSync('/sys/class/hwmon')) {
+      const hwmonDirs = fs.readdirSync('/sys/class/hwmon').filter((d) => d.startsWith('hwmon'));
+      let highestPackageTemp = 0;
+      let foundFanRpm = 0;
+
+      for (const h of hwmonDirs) {
+        const dirPath = path.join('/sys/class/hwmon', h);
+        const namePath = path.join(dirPath, 'name');
+        const name = fs.existsSync(namePath) ? fs.readFileSync(namePath, 'utf-8').trim() : '';
+
+        const files = fs.readdirSync(dirPath);
+        for (const f of files) {
+          if (f.startsWith('temp') && f.endsWith('_input')) {
+            const val = parseInt(fs.readFileSync(path.join(dirPath, f), 'utf-8').trim(), 10);
+            if (!isNaN(val) && val > 0) {
+              const tempC = val > 1000 ? val / 1000 : val;
+              const labelPath = path.join(dirPath, f.replace('_input', '_label'));
+              const label = fs.existsSync(labelPath) ? fs.readFileSync(labelPath, 'utf-8').trim().toLowerCase() : '';
+
+              if (name.includes('coretemp') || label.includes('package') || label.includes('core')) {
+                if (tempC > highestPackageTemp) {
+                  highestPackageTemp = tempC;
+                }
+              } else if (tempC > highestPackageTemp && tempC > 35) {
+                highestPackageTemp = tempC;
+              }
+            }
+          }
+
+          if (f.startsWith('fan') && f.endsWith('_input')) {
+            const rpm = parseInt(fs.readFileSync(path.join(dirPath, f), 'utf-8').trim(), 10);
+            if (!isNaN(rpm) && rpm > 0) {
+              foundFanRpm = rpm;
+            }
+          }
+        }
+      }
+
+      if (highestPackageTemp > 0) {
+        cpuTempC = Math.round(highestPackageTemp * 10) / 10;
+      }
+      if (foundFanRpm > 0) {
+        fanSpeed = `${foundFanRpm} RPM`;
+      }
+    }
+
+    if (!cpuTempC && fs.existsSync('/sys/class/thermal')) {
       const thermalDirs = fs.readdirSync('/sys/class/thermal/').filter((d) => d.startsWith('thermal_zone'));
+      let maxTemp = 0;
       for (const dir of thermalDirs) {
+        const typePath = path.join('/sys/class/thermal', dir, 'type');
         const tempPath = path.join('/sys/class/thermal', dir, 'temp');
+        const type = fs.existsSync(typePath) ? fs.readFileSync(typePath, 'utf-8').trim().toLowerCase() : '';
         if (fs.existsSync(tempPath)) {
           const val = parseInt(fs.readFileSync(tempPath, 'utf-8').trim(), 10);
           if (!isNaN(val) && val > 0) {
             const tempC = val > 1000 ? val / 1000 : val;
-            if (tempC > 10 && tempC < 120) {
+            if (type.includes('pkg') || type.includes('x86_pkg_temp') || type.includes('cpu')) {
               cpuTempC = Math.round(tempC * 10) / 10;
               break;
             }
+            if (tempC > maxTemp && tempC < 120) {
+              maxTemp = tempC;
+            }
           }
         }
+      }
+      if (!cpuTempC && maxTemp > 0) {
+        cpuTempC = Math.round(maxTemp * 10) / 10;
       }
     }
   } catch { /* skip */ }
@@ -164,6 +220,7 @@ function getHardwareSensors() {
   return {
     cpuTempC: cpuTempC ?? 'N/A',
     tempStatus: cpuTempC ? (cpuTempC > 80 ? 'CRITICAL' : cpuTempC > 70 ? 'ELEVATED' : 'NORMAL') : 'UNKNOWN',
+    fanSpeed,
     clockSpeedGHz: (speedMHz / 1000).toFixed(2),
     cpuArchitecture: os.arch(),
     cpuCores: cpus.length,

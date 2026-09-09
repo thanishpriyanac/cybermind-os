@@ -6,7 +6,7 @@ import { api } from '../../lib/api';
 import {
   HeartPulse, RefreshCw, Server, Cpu, HardDrive, MemoryStick,
   Bot, Database, CheckCircle2, AlertTriangle, XCircle, Activity,
-  Wifi, ShieldAlert, Zap, Network, Flame, ArrowDown, ArrowUp
+  Wifi, ShieldAlert, Zap, Network, Flame, ArrowDown, ArrowUp, Fan
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -45,6 +45,7 @@ interface HealthData {
   sensors: {
     cpuTempC: number | string;
     tempStatus: string;
+    fanSpeed?: string;
     clockSpeedGHz: string;
     cpuArchitecture: string;
     cpuCores: number;
@@ -293,7 +294,7 @@ export default function HealthPage() {
                 <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
                   <div>
                     <span className="text-sm font-medium">CPU Thermal Temperature</span>
-                    <span className="text-xs text-muted-foreground block font-mono">Linux Thermal Sensor</span>
+                    <span className="text-xs text-muted-foreground block font-mono">Package Temperature Sensor</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-lg font-bold font-mono">
@@ -306,6 +307,20 @@ export default function HealthPage() {
                     }>
                       {health.sensors?.tempStatus}
                     </Badge>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
+                  <div>
+                    <span className="text-sm font-medium flex items-center gap-1.5">
+                      <Fan className="w-4 h-4 text-cyan-400 animate-spin" style={{ animationDuration: '3s' }} />
+                      System Fan Speed
+                    </span>
+                    <span className="text-xs text-muted-foreground block font-mono">Cooling Fan Control</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold font-mono text-cyan-400">{health.sensors?.fanSpeed || 'Auto (PWM)'}</span>
+                    <span className="text-xs text-muted-foreground block font-mono">ACPI Thermal PWM</span>
                   </div>
                 </div>
 
