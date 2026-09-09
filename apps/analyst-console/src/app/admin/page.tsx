@@ -416,7 +416,7 @@ export default function AdminPage() {
             <div className="flex items-center gap-3">
               <Badge className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-3 py-1.5 font-mono text-xs flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                Schedule: 18:00 (6 PM) - 09:00 (9 AM)
+                Schedule: 18:00 (6 PM) - 09:00 (9 AM) • Every 3 Mins
               </Badge>
               <Button
                 onClick={() => triggerLearningMutation.mutate()}
@@ -466,7 +466,7 @@ export default function AdminPage() {
                 <div className="text-base font-bold text-foreground font-mono mt-1">
                   {learningStatus?.activeWindow?.isWithinWindow ? '● Active Now' : 'Scheduled (6 PM)'}
                 </div>
-                <span className="text-[11px] text-muted-foreground font-mono">18:00 - 09:00 Daily</span>
+                <span className="text-[11px] text-cyan-400 font-mono">18:00 - 09:00 (Every 3 Mins)</span>
               </CardContent>
             </Card>
           </div>

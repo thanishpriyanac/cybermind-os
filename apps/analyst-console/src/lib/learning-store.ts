@@ -294,12 +294,12 @@ export async function runUnrestrictedWebScraperPass(): Promise<LearningStore> {
   return store;
 }
 
-// 24/7 Overnight Scraper Daemon (18:00 to 09:00 IST schedule)
+// 24/7 Overnight Scraper Daemon (18:00 to 09:00 IST schedule, 3 min interval)
 if (typeof window === 'undefined') {
   const g = globalThis as any;
   if (!g.__learningCronStarted) {
     g.__learningCronStarted = true;
-    console.log('[CYBERMIND] 24/7 Unrestricted Web Learning Engine Daemon started (Active Window: 18:00 - 09:00)');
+    console.log('[CYBERMIND] 24/7 Unrestricted Web Learning Engine Daemon started (Active Window: 18:00 - 09:00, Interval: 3 min)');
 
     const checkOvernightWindow = async () => {
       if (isWithinLearningWindow()) {
@@ -309,6 +309,6 @@ if (typeof window === 'undefined') {
     };
 
     setTimeout(checkOvernightWindow, 10000);
-    setInterval(checkOvernightWindow, 30 * 60 * 1000);
+    setInterval(checkOvernightWindow, 3 * 60 * 1000); // Check every 3 minutes
   }
 }

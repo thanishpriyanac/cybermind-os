@@ -85,7 +85,8 @@ export async function GET() {
     return NextResponse.json({
       status: store.status,
       activeWindow: {
-        schedule: '18:00 (6:00 PM) - 09:00 (9:00 AM)',
+        schedule: '18:00 (6:00 PM) - 09:00 (9:00 AM) • Every 3 Mins',
+        interval: '3 minutes',
         isWithinWindow: inWindow,
       },
       lastRunAt: store.lastRunAt,
