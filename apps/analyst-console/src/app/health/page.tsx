@@ -5,7 +5,7 @@ import { api } from '../../lib/api';
 import {
   HeartPulse, RefreshCw, Server, Cpu, HardDrive, MemoryStick,
   Bot, Database, CheckCircle2, AlertTriangle, XCircle, Activity,
-  Wifi, ShieldAlert, Zap, Network, Flame
+  Wifi, ShieldAlert, Zap, Network, Flame, ArrowDown, ArrowUp
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -33,6 +33,8 @@ interface HealthData {
     txGB: string;
     totalConsumptionGB: string;
     totalConsumptionMB: number;
+    downloadSpeed: string;
+    uploadSpeed: string;
     interfaces: Array<{ name: string; ip: string; rxMB: number; txMB: number }>;
   };
   networkSpeed: {
@@ -96,8 +98,8 @@ export default function HealthPage() {
       const res = await api.get('/v1/health');
       return res.data;
     },
-    refetchInterval: 15000,
-    staleTime: 5000,
+    refetchInterval: 5000, // AUTO-SYNC EVERY 5 SECONDS
+    staleTime: 2000,
   });
 
   const storeNames: Record<string, string> = {
@@ -115,21 +117,27 @@ export default function HealthPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <HeartPulse className="w-7 h-7 text-emerald-500" />
-            System Health & Hardware Telemetry
+            System Health & Telemetry
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Real-time server metrics — CPU, memory, disk, network bandwidth, thermal sensors, and AI provider status.
+            Live hardware sensors, real-time bandwidth speeds, and system telemetry auto-synced every 5 seconds.
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          className="gap-2 text-xs self-start sm:self-center"
-        >
-          <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-3 self-start sm:self-center">
+          <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 flex items-center gap-2 text-xs font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            Auto-Sync: 5s
+          </Badge>
+          <Button
+            variant="outline"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="gap-2 text-xs"
+          >
+            <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {error && (
@@ -192,10 +200,30 @@ export default function HealthPage() {
           </CardContent>
         </Card>
 
-        {/* Network Consumption */}
+        {/* Real-time Internet Speed */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Data Consumption</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground">Real-Time Speed</CardTitle>
+            <Zap className="w-4 h-4 text-emerald-400" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-24" /> : (
+              <>
+                <div className="text-xl font-bold text-foreground flex items-center gap-2">
+                  <span className="text-emerald-400 flex items-center"><ArrowDown className="w-4 h-4 inline" />{health?.network?.downloadSpeed || '0 KB/s'}</span>
+                </div>
+                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                  <ArrowUp className="w-3 h-3 text-primary inline" /> Upload: <span className="text-foreground font-mono">{health?.network?.uploadSpeed || '0 KB/s'}</span>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Data Consumption & Ping */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Data Usage & Ping</CardTitle>
             <Wifi className="w-4 h-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -205,27 +233,7 @@ export default function HealthPage() {
                   {health?.network?.totalConsumptionGB} GB
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Rx: {health?.network?.rxGB} GB · Tx: {health?.network?.txGB} GB
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Network Latency & Speed */}
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Internet Speed / Ping</CardTitle>
-            <Zap className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-24" /> : (
-              <>
-                <div className="text-2xl font-bold text-emerald-400 flex items-center gap-2">
-                  {health?.networkSpeed?.latencyMs ? `${health.networkSpeed.latencyMs} ms` : 'Offline'}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Status: <span className="text-emerald-400 font-semibold">{health?.networkSpeed?.status}</span>
+                  Ping: <span className="text-emerald-400 font-semibold">{health?.networkSpeed?.latencyMs} ms</span> ({health?.networkSpeed?.status})
                 </p>
               </>
             )}
@@ -252,7 +260,7 @@ export default function HealthPage() {
                 <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/60">
                   <div>
                     <span className="text-sm font-medium">CPU Thermal Temperature</span>
-                    <span className="text-xs text-muted-foreground block font-mono">Linux Thermal Zone 0</span>
+                    <span className="text-xs text-muted-foreground block font-mono">Linux Thermal Sensor</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-lg font-bold font-mono">
@@ -300,7 +308,7 @@ export default function HealthPage() {
               Network Interfaces & Data Consumption
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
-              Interface bindings and bandwidth transfer totals.
+              Interface bindings, IP addresses, and transfer totals.
             </CardDescription>
           </CardHeader>
           <CardContent>

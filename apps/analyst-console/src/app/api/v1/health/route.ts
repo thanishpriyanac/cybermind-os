@@ -5,6 +5,15 @@ import path from 'path';
 
 export const dynamic = 'force-dynamic';
 
+let prevNetworkSample: { rxBytes: number; txBytes: number; time: number } | null = null;
+
+function formatSpeed(bytesPerSec: number): string {
+  if (bytesPerSec >= 1024 * 1024) {
+    return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s`;
+  }
+  return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+}
+
 function getCpuUsage(): Promise<number> {
   return new Promise((resolve) => {
     const cpus1 = os.cpus();
@@ -102,6 +111,18 @@ function getNetworkStats() {
     }
   } catch { /* skip */ }
 
+  const now = Date.now();
+  let downloadSpeedBps = 0;
+  let uploadSpeedBps = 0;
+
+  if (prevNetworkSample) {
+    const elapsedSec = Math.max((now - prevNetworkSample.time) / 1000, 0.5);
+    downloadSpeedBps = Math.max(0, (rxBytes - prevNetworkSample.rxBytes) / elapsedSec);
+    uploadSpeedBps = Math.max(0, (txBytes - prevNetworkSample.txBytes) / elapsedSec);
+  }
+
+  prevNetworkSample = { rxBytes, txBytes, time: now };
+
   const totalBytes = rxBytes + txBytes;
   return {
     rxBytes,
@@ -110,6 +131,8 @@ function getNetworkStats() {
     txGB: (txBytes / 1073741824).toFixed(2),
     totalConsumptionGB: (totalBytes / 1073741824).toFixed(2),
     totalConsumptionMB: Math.round(totalBytes / 1048576),
+    downloadSpeed: formatSpeed(downloadSpeedBps),
+    uploadSpeed: formatSpeed(uploadSpeedBps),
     interfaces,
   };
 }
