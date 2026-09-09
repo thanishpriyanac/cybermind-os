@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { qbrStore } from '../../../../../../lib/qbr-store';
+import { qbrStore } from '@/lib/qbr-store';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const report = qbrStore.getReport(params.id);

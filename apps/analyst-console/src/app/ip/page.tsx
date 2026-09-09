@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../../lib/api';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Skeleton } from '../../components/ui/skeleton';
+import { api } from '@/lib/api';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Shield, Search, Globe, Network, Server, Clock, AlertTriangle, AlertCircle, Database, ShieldAlert } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -149,7 +149,7 @@ export default function IpIntelligencePage() {
                   <div className="w-full bg-secondary h-3 rounded-full overflow-hidden">
                     <div 
                       className={`h-full ${getScoreBgColor(lookupMutation.data.abuseScore)}`} 
-                      style={{ width: \`\${Math.max(lookupMutation.data.abuseScore, 2)}%\` }}
+                      style={{ width: `${Math.max(lookupMutation.data.abuseScore, 2)}%` }}
                     />
                   </div>
                 </div>
@@ -172,7 +172,7 @@ export default function IpIntelligencePage() {
                   </div>
                   <div className="space-y-1">
                     <div className="text-sm text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3"/> Country</div>
-                    <div className="font-medium">{lookupMutation.data.countryName || 'Unknown'} {lookupMutation.data.countryCode && \`(\${lookupMutation.data.countryCode})\`}</div>
+                    <div className="font-medium">{lookupMutation.data.countryName || 'Unknown'} {lookupMutation.data.countryCode && `(${lookupMutation.data.countryCode})`}</div>
                   </div>
                   <div className="space-y-1">
                     <div className="text-sm text-muted-foreground flex items-center gap-1"><Server className="h-3 w-3"/> ISP</div>

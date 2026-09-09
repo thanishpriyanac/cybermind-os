@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
-import { qbrStore } from '../../../../../lib/qbr-store';
-import { firewallStore } from '../../../../../lib/firewall-store';
-import { getVendorControls } from '../../../../../lib/vendors';
+import { qbrStore } from '@/lib/qbr-store';
+import { firewallStore } from '@/lib/firewall-store';
+import { getVendorControls } from '@/lib/vendors';
 
 export async function GET() {
   const reports = qbrStore.listReports();

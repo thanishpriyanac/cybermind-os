@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Shield, FileText, CheckCircle2, AlertTriangle, XCircle, Info, Save } from 'lucide-react';
-import axios from '@/lib/api';
+import { api } from '@/lib/api';
 import { CheckControl, FindingRecord, FirewallAssessment } from '@/lib/firewall-store';
 
 export default function AssessmentDetailPage() {
@@ -25,7 +25,7 @@ export default function AssessmentDetailPage() {
   const { data: assessment, isLoading, error } = useQuery<FirewallAssessment>({
     queryKey: ['firewall-assessment', id],
     queryFn: async () => {
-      const res = await axios.get(`/api/v1/firewall/assessments/${id}`);
+      const res = await api.get(`/v1/firewall/assessments/${id}`);
       return res.data;
     },
   });
@@ -33,7 +33,7 @@ export default function AssessmentDetailPage() {
   // Fetch controls for this vendor
   useEffect(() => {
     if (assessment?.vendor) {
-      axios.get(`/api/v1/firewall/vendors/${assessment.vendor}/controls`).then(res => {
+      api.get(`/v1/firewall/vendors/${assessment.vendor}/controls`).then(res => {
         setControls(res.data);
       }).catch(console.error);
     }
@@ -48,7 +48,7 @@ export default function AssessmentDetailPage() {
 
   const updateMutation = useMutation({
     mutationFn: async (updates: Partial<FirewallAssessment>) => {
-      const res = await axios.put(`/api/v1/firewall/assessments/${id}`, updates);
+      const res = await api.put(`/v1/firewall/assessments/${id}`, updates);
       return res.data;
     },
     onSuccess: (data) => {

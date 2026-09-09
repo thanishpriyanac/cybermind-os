@@ -2,13 +2,13 @@
 
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../../../lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
-import { Badge } from '../../../components/ui/badge';
-import { Button } from '../../../components/ui/button';
-import { Input } from '../../../components/ui/input';
-import { Skeleton } from '../../../components/ui/skeleton';
+import { api } from '@/lib/api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { RefreshCw, Download, Search, ShieldAlert, Globe, Server } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -20,7 +20,7 @@ export default function IpBlacklistPage() {
   const { data: blacklist, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['ip-blacklist', minConfidence],
     queryFn: async () => {
-      const res = await api.get(\`/v1/ip/blacklist?confidenceMinimum=\${minConfidence}\`);
+      const res = await api.get(`/v1/ip/blacklist?confidenceMinimum=${minConfidence}`);
       return res.data;
     }
   });
@@ -43,7 +43,7 @@ export default function IpBlacklistPage() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(filteredBlacklist, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", \`ip-blacklist-\${format(new Date(), 'yyyyMMdd-HHmm')}.json\`);
+    downloadAnchorNode.setAttribute("download", `ip-blacklist-${format(new Date(), 'yyyyMMdd-HHmm')}.json`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
@@ -59,7 +59,7 @@ export default function IpBlacklistPage() {
         <h1 className="text-3xl font-bold tracking-tight">IP Blacklist</h1>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => refetch()} disabled={isLoading || isRefetching}>
-            <RefreshCw className={\`mr-2 h-4 w-4 \${isRefetching ? 'animate-spin' : ''}\`} />
+            <RefreshCw className={`mr-2 h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Button onClick={handleExport} disabled={!blacklist || blacklist.length === 0}>
@@ -167,7 +167,7 @@ export default function IpBlacklistPage() {
                         <TableCell>{entry.countryCode || 'N/A'}</TableCell>
                         <TableCell className="max-w-[200px] truncate" title={entry.isp}>{entry.isp || 'N/A'}</TableCell>
                         <TableCell>
-                          <span className={\`font-medium \${getConfidenceColor(entry.abuseConfidenceScore)}\`}>
+                          <span className={`font-medium ${getConfidenceColor(entry.abuseConfidenceScore)}`}>
                             {entry.abuseConfidenceScore}
                           </span>
                         </TableCell>

@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Shield, Activity, AlertTriangle, FileText } from 'lucide-react';
-import axios from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface AssessmentSummary {
   id: string;
@@ -29,7 +29,7 @@ export default function FirewallAssessmentsPage() {
   const { data: assessments, isLoading, error } = useQuery<AssessmentSummary[]>({
     queryKey: ['firewall-assessments'],
     queryFn: async () => {
-      const res = await axios.get('/api/v1/firewall/assessments');
+      const res = await api.get('/v1/firewall/assessments');
       return res.data;
     },
   });

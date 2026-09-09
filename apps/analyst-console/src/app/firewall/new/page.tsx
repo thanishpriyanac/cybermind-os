@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Shield, Server } from 'lucide-react';
-import axios from '@/lib/api';
+import { api } from '@/lib/api';
 
 const VENDORS = [
   { id: 'fortinet', name: 'Fortinet', icon: Shield, color: 'text-green-500' },
@@ -39,7 +39,7 @@ export default function NewFirewallAssessmentPage() {
 
     setIsSubmitting(true);
     try {
-      const res = await axios.post('/api/v1/firewall/assessments', formData);
+      const res = await api.post('/v1/firewall/assessments', formData);
       router.push(`/firewall/${res.data.id}`);
     } catch (error) {
       console.error('Failed to create assessment', error);

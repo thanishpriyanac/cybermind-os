@@ -363,6 +363,7 @@ async function* streamGemini(
               );
             }
           } catch { /* skip */ }
+        }
       }
     } finally {
       reader.releaseLock();
