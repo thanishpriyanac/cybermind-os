@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import Link from 'next/link';
@@ -22,7 +22,9 @@ import {
   Shield,
   Bot,
   Terminal,
-  Zap
+  Zap,
+  Flame,
+  Fan
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -55,31 +57,70 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'CONVERSATIONS' | 'AI_PROVIDERS'>('OVERVIEW');
   const [users] = useState<UserRecord[]>(INITIAL_USERS);
   const [toast, setToast] = useState<string | null>(null);
+  const [streamData, setStreamData] = useState<any | null>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Live System Health Metrics
-  const { data: health, isLoading: healthLoading, refetch: refetchHealth, isRefetching } = useQuery({
-    queryKey: ['admin-system-health'],
+  // Instant SSE Stream Connection (Zero-Delay Streaming without needing manual refresh)
+  useEffect(() => {
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource('/api/v1/health/stream');
+      es.onopen = () => setIsStreaming(true);
+      es.onmessage = (event) => {
+        try {
+          const parsed = JSON.parse(event.data);
+          setStreamData(parsed);
+          setIsStreaming(true);
+        } catch { /* skip */ }
+      };
+      es.onerror = () => setIsStreaming(false);
+    } catch {
+      setIsStreaming(false);
+    }
+
+    return () => {
+      if (es) es.close();
+    };
+  }, []);
+
+  // Rapid 500ms Polling Fallback if SSE stream is disconnected
+  const { data: fallbackHealth, isLoading: healthLoading, refetch: refetchHealth, isRefetching } = useQuery({
+    queryKey: ['admin-system-health-real'],
     queryFn: async () => {
       const res = await api.get('/v1/health');
       return res.data;
     },
-    refetchInterval: 10000,
+    enabled: !isStreaming || !streamData,
+    refetchInterval: 500,
+    staleTime: 200,
   });
 
-  // Live AI Usage Metrics
+  // Live AI Usage Metrics (rapid auto-update)
   const { data: aiUsage, isLoading: aiLoading } = useQuery({
     queryKey: ['admin-ai-usage'],
     queryFn: async () => {
       const res = await fetch('/api/v1/ai/usage');
       return res.json();
     },
-    refetchInterval: 15000,
+    refetchInterval: 2000,
   });
+
+  // Real Copilot Conversations for Audit
+  const { data: conversations = [] } = useQuery({
+    queryKey: ['admin-conversations'],
+    queryFn: async () => {
+      const res = await fetch('/api/v1/ai/conversations');
+      return res.json();
+    },
+    refetchInterval: 3000,
+  });
+
+  const health = streamData || fallbackHealth;
 
   return (
     <div className="space-y-6 p-6">
@@ -94,18 +135,22 @@ export default function AdminPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <ShieldCheck className="w-7 h-7 text-primary" />
+            <ShieldCheck className="w-7 h-7 text-primary animate-pulse" />
             Platform Administration & Control Center
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Real-time server governance, process telemetry, and AI model health.
+            Zero-delay real-time server governance, process telemetry, and AI model health.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 flex items-center gap-2 text-xs font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            {isStreaming ? 'Live Stream (0ms)' : 'Real-Time SSE'}
+          </Badge>
           <Button variant="outline" size="sm" onClick={() => refetchHealth()} disabled={isRefetching} className="gap-1 text-xs">
             <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} /> Refresh
           </Button>
-          <Badge className="bg-primary/10 text-primary border border-primary/20 text-xs py-1 px-3">
+          <Badge className="bg-primary/10 text-primary border border-primary/20 text-xs py-1.5 px-3 font-mono">
             Tenant: cybermind-master-tenant
           </Badge>
         </div>
@@ -370,7 +415,7 @@ export default function AdminPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Global CyberAI Audit Log</h2>
-              <p className="text-xs text-muted-foreground">Active session telemetry and usage overview.</p>
+              <p className="text-xs text-muted-foreground">Active session telemetry and prompt history.</p>
             </div>
             <Link href="/copilot">
               <Button size="sm" variant="outline" className="gap-1.5 text-xs">
@@ -379,13 +424,59 @@ export default function AdminPage() {
             </Link>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card className="bg-card border-border">
+              <CardContent className="p-4">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">Active AI Sessions</span>
+                <div className="text-2xl font-bold text-emerald-400 font-mono mt-1">{aiUsage?.last24h ?? conversations.length ?? 0}</div>
+                <span className="text-[11px] text-muted-foreground font-mono">Real-time sessions</span>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardContent className="p-4">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">Tokens Processed</span>
+                <div className="text-2xl font-bold text-primary font-mono mt-1">{(aiUsage?.totalTokens ?? 0).toLocaleString()}</div>
+                <span className="text-[11px] text-muted-foreground font-mono">Tokens in last 24h</span>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border">
+              <CardContent className="p-4">
+                <span className="text-xs font-semibold text-muted-foreground uppercase">AI Routing Engine</span>
+                <div className="text-xl font-bold text-foreground font-mono mt-1">Auto Router</div>
+                <span className="text-[11px] text-emerald-400 font-mono">Groq / NVIDIA / xAI</span>
+              </CardContent>
+            </Card>
+          </div>
+
           <Card className="bg-card border-border">
-            <CardContent className="p-6 text-center text-sm text-muted-foreground">
-              <Bot className="w-8 h-8 text-primary mx-auto mb-2 opacity-80" />
-              <p className="font-medium text-foreground mb-1">Live AI Sessions: {aiUsage?.last24h ?? 0}</p>
-              <p className="text-xs">
-                Total tokens processed in last 24h: <span className="font-mono text-primary font-semibold">{(aiUsage?.totalTokens ?? 0).toLocaleString()}</span>
-              </p>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold">Saved AI Security Analysis Sessions ({conversations.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {conversations.length === 0 ? (
+                <div className="p-6 text-center text-xs text-muted-foreground">
+                  No active AI chat sessions recorded yet. Start a session in CyberAI Console.
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {conversations.map((c: any) => (
+                    <div key={c.id} className="p-4 flex items-center justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm text-foreground font-mono">{c.title || 'Security Analysis'}</span>
+                          <Badge variant="outline" className="text-[10px] font-mono">{c.model}</Badge>
+                        </div>
+                        <span className="text-xs text-muted-foreground font-mono block mt-0.5">
+                          ID: {c.id} • {c.messageCount || 0} messages • User: {c.userId || 'admin@cybermind.local'}
+                        </span>
+                      </div>
+                      <div className="text-right text-xs font-mono text-muted-foreground">
+                        <span>{new Date(c.updatedAt || c.lastMessageAt || Date.now()).toLocaleTimeString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

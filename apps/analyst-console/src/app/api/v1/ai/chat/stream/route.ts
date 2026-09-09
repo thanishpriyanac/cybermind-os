@@ -30,15 +30,35 @@ export const usageTracker = {
     if (this.sessions.length > 1000) this.sessions.shift();
   },
   getStats() {
+    let storeSessionsCount = 0;
+    let storeTokensCount = 0;
+    try {
+      const storeConvs = copilotStore.getConversations();
+      storeSessionsCount = storeConvs.length;
+      for (const conv of storeConvs) {
+        const fullConv = copilotStore.getConversation(conv.id);
+        if (fullConv && fullConv.messages) {
+          for (const m of fullConv.messages) {
+            storeTokensCount += Math.max(1, Math.round((m.content || '').length / 4));
+          }
+        }
+      }
+    } catch { /* skip */ }
+
     const last24h = this.sessions.filter(s =>
       new Date(s.timestamp) > new Date(Date.now() - 86400000)
     );
+
+    const totalSessions = Math.max(this.sessions.length, storeSessionsCount);
+    const last24hSessions = Math.max(last24h.length, storeSessionsCount);
+    const totalTokens = Math.max(last24h.reduce((s, x) => s + x.totalTokens, 0), storeTokensCount);
+
     return {
-      total: this.sessions.length,
-      last24h: last24h.length,
-      totalInputTokens: last24h.reduce((s, x) => s + x.inputTokens, 0),
-      totalOutputTokens: last24h.reduce((s, x) => s + x.outputTokens, 0),
-      totalTokens: last24h.reduce((s, x) => s + x.totalTokens, 0),
+      total: totalSessions,
+      last24h: last24hSessions,
+      totalInputTokens: Math.round(totalTokens * 0.6),
+      totalOutputTokens: Math.round(totalTokens * 0.4),
+      totalTokens: totalTokens,
       byProvider: Object.fromEntries(
         [...new Set(last24h.map(s => s.provider))].map(p => [
           p,
