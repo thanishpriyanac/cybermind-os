@@ -98,8 +98,8 @@ export default function HealthPage() {
       const res = await api.get('/v1/health');
       return res.data;
     },
-    refetchInterval: 5000, // AUTO-SYNC EVERY 5 SECONDS
-    staleTime: 2000,
+    refetchInterval: 1000, // AUTO-SYNC EVERY 1 SECOND (REAL-TIME)
+    staleTime: 500,
   });
 
   const storeNames: Record<string, string> = {
@@ -116,17 +116,17 @@ export default function HealthPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <HeartPulse className="w-7 h-7 text-emerald-500" />
+            <HeartPulse className="w-7 h-7 text-emerald-500 animate-pulse" />
             System Health & Telemetry
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Live hardware sensors, real-time bandwidth speeds, and system telemetry auto-synced every 5 seconds.
+            Live hardware sensors, real-time bandwidth speeds, and system telemetry auto-synced every 1 second.
           </p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-center">
           <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 flex items-center gap-2 text-xs font-mono">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            Auto-Sync: 5s
+            Real-Time: 1s
           </Badge>
           <Button
             variant="outline"
