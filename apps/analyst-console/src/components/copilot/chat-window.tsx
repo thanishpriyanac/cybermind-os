@@ -536,8 +536,8 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
       {/* Usage Meter */}
       <UsageMeter />
 
-      {/* Input Area */}
-      <div className="p-4 border-t border-border bg-card">
+      {/* Input Area - Sticky Bottom */}
+      <div className="p-3 md:p-4 border-t border-border bg-card sticky bottom-0 z-20 flex-shrink-0">
         <div className="relative max-w-4xl mx-auto flex flex-col bg-muted rounded-xl border border-border p-2 focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all shadow-sm">
           {/* File Attachment Previews */}
           {attachedFiles.length > 0 && (

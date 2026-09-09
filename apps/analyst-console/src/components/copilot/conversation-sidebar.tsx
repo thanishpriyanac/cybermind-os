@@ -49,10 +49,6 @@ export function ConversationSidebar({ activeId, onSelect, onCloseMobile }: Sideb
           model: conv.model || conv.modelKey || 'auto',
         }));
         setConversations(mapped);
-
-        if (!activeId && mapped.length > 0) {
-          onSelect(mapped[0].id);
-        }
       }
     } catch (e) {
       console.error('Failed to fetch conversations', e);

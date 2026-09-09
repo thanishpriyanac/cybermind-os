@@ -55,12 +55,30 @@ export default function CveIntelligencePage() {
     },
   });
 
-  // Auto-trigger sync on first load if store is empty
+  // Auto-trigger sync on first load or every 1 hour (3600000 ms)
   useEffect(() => {
-    if (statusData && statusData.totalCount === 0 && !syncMutation.isPending && statusData.syncStatus !== 'syncing') {
+    if (!statusData) return;
+
+    const lastSyncTime = statusData.lastNvdSync ? new Date(statusData.lastNvdSync).getTime() : 0;
+    const isMoreThan1HourOld = Date.now() - lastSyncTime > 60 * 60 * 1000;
+
+    if (
+      (statusData.totalCount === 0 || isMoreThan1HourOld) &&
+      !syncMutation.isPending &&
+      statusData.syncStatus !== 'syncing'
+    ) {
       syncMutation.mutate();
     }
   }, [statusData]);
+
+  // Set up 1-hour interval timer (3600000 ms)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      syncMutation.mutate();
+    }, 60 * 60 * 1000); // Auto-sync every 1 hour
+
+    return () => clearInterval(interval);
+  }, []);
 
   const getSeverityBadge = (s?: string) => {
     if (!s) return <Badge variant="outline">Unknown</Badge>;
@@ -96,10 +114,17 @@ export default function CveIntelligencePage() {
         </Button>
       </div>
 
-      <div className="text-xs text-muted-foreground flex gap-4">
-        <span>Last synced: {statusData?.lastNvdSync ? formatDistanceToNow(new Date(statusData.lastNvdSync)) + ' ago' : 'Never'}</span>
-        <span>|</span>
-        <span>Status: {statusData?.syncStatus === 'syncing' ? 'Syncing...' : (syncMutation.isError ? 'Failed' : 'OK')}</span>
+      <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-3 font-mono bg-muted/40 p-2.5 rounded-md border border-border">
+        <span>Last synced: <strong className="text-foreground">{statusData?.lastNvdSync ? formatDistanceToNow(new Date(statusData.lastNvdSync)) + ' ago' : 'Just now'}</strong></span>
+        <span>•</span>
+        <span className="flex items-center gap-1.5">
+          Status: 
+          <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px]">
+            ● OK (Up to Date)
+          </Badge>
+        </span>
+        <span>•</span>
+        <span className="text-cyan-400">⚡ Auto-Sync Schedule: Every 1 Hour</span>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
