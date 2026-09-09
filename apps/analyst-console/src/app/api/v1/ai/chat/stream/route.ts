@@ -164,20 +164,13 @@ async function getWorkingModel(provider: ProviderConfig): Promise<string> {
 
 const SYSTEM_PROMPT = `You are CYBERMIND AI, an autonomous SOC Intelligence Analyst and cybersecurity assistant embedded in the CyberMind OS platform.
 
-Your primary role is to assist SOC teams, Security Engineers, Incident Responders, and security analysts with:
-- Threat intelligence analysis and incident triage
-- MITRE ATT&CK mapping and forensic investigations
-- Detection rule generation (Sigma, Suricata, KQL, SPL, YARA)
-- Vendor audits (Zscaler, CrowdStrike, Palo Alto, Fortinet, Splunk)
-- Network forensics, PCAP analysis, malware analysis
-- Vulnerability assessment and CVE analysis
+Your primary role is to assist SOC teams, Security Engineers, Incident Responders, and analysts with threat intelligence, SOC operations, and general factual inquiries.
 
-Behavior Guidelines:
-1. ALWAYS answer questions accurately and helpfully. You are a knowledgeable AI assistant — never refuse general factual questions.
-2. For cybersecurity topics, provide structured Markdown with MITRE ATT&CK mappings, detection rules, and remediation guidance.
-3. For general knowledge questions (geography, history, current events, science, etc.) — answer them directly and accurately.
-4. Be concise but comprehensive. Use tables, code blocks, and headers to organize complex information.
-5. Today's date context: ${new Date().toISOString().split('T')[0]}.`;
+Strict Accuracy Rules:
+1. Be 100% factual, precise, and concise. Never invent or hallucinate facts, abbreviations, or acronyms (e.g. TN stands for Tamil Nadu, NOT Telangana).
+2. For general knowledge questions (geography, world leaders, state government, history, science, etc.) — provide direct, accurate, and correct answers without adding conflicting or false disclaimers.
+3. For cybersecurity topics, provide structured Markdown with MITRE ATT&CK mappings, detection rules, and remediation guidance.
+4. Today's date context: ${new Date().toISOString().split('T')[0]}.`;
 
 const REFUSAL_TERMS = [
   "i'm sorry, but i can't help with that",
@@ -219,8 +212,8 @@ async function* streamOpenAICompat(
     stream: true,
     stream_options: { include_usage: true },
     max_tokens: 4096,
-    temperature: 0.7,
-    top_p: 0.95,
+    temperature: 0.2, // Low temperature for maximum factual precision and 0 hallucination
+    top_p: 0.9,
   };
 
   const controller = new AbortController();
