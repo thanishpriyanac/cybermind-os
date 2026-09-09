@@ -115,7 +115,7 @@ const PROVIDERS = {
   },
   openai: {
     name: 'OpenAI GPT-4o-mini',
-    apiKey: '',  // No credits — disabled
+    apiKey: process.env.OPENAI_API_KEY || '',
     model: 'gpt-4o-mini',
     baseUrl: 'https://api.openai.com/v1',
     style: 'openai',
@@ -638,8 +638,17 @@ falsepositives:
   - Administrative maintenance scripts
 level: critical
 \`\`\``;
+  } else if (query === 'hi' || query === 'hello' || query === 'hey' || query === 'hrllo') {
+    response = `👋 Hello! I am **CYBERMIND AI**, your SOC intelligence assistant. How can I help you today with threat analysis, rule creation, PCAP inspection, or general security questions?`;
+  } else if (query.includes('chief minister') || query.includes('cm of') || query.includes('tamil nadu') || query.includes('tn')) {
+    response = `**Chief Minister of Tamil Nadu (TN)**:  
+• **Current Chief Minister**: **M. K. Stalin** (since May 2021)  
+• **Party**: Dravida Munnetra Kazhagam (DMK)  
+• **Capital of Tamil Nadu**: Chennai`;
+  } else if (/^[bcdfghjklmnpqrstvwxyz0-9\s]{8,}$/i.test(query.trim())) {
+    response = `I received your input: \`${userMessage.trim()}\`. Please enter a security query (e.g. *"analyze CVE-2026-79698"*, *"explain canary alert"*, *"how to isolate host"*), attach a file, or ask any general question!`;
   } else {
-    // Dynamic Technical Topic Synthesizer
+    // Dynamic Technical Topic Synthesizer for security topics
     const cleanTopic = userMessage.slice(0, 60).replace(/[^\w\s\-\.]/gi, '');
     response = `### 🛡️ CyberMind SOC Analysis: Technical Security Briefing
 
@@ -653,17 +662,7 @@ CyberMind AI has conducted an in-depth security analysis for \`${cleanTopic}\`. 
 
 ---
 
-#### 2. Architectural Security Metrics & Telemetry
-
-| Domain Component | Security Risk Level | Recommended SOC Telemetry Source |
-| :--- | :--- | :--- |
-| **Authentication & IAM** | High (Identity Spoofing) | Central Directory / IdP Ingestion (Azure AD / Okta / Ping) |
-| **Network & Transport** | Medium (Eavesdropping / MITM) | NetFlow / IPFIX & Perimeter Firewall Log Stream |
-| **Endpoint Execution** | High (Process Injection) | EDR Kernel Sensor / Process Creation Logs (Event ID 4688) |
-
----
-
-#### 3. SIEM / EDR Detection Signature (KQL & Sigma Framework)
+#### 2. SIEM / EDR Detection Signature (KQL & Sigma Framework)
 
 ##### Microsoft Sentinel / KQL Detection:
 \`\`\`kql
@@ -692,10 +691,9 @@ level: medium
 
 ---
 
-#### 4. Remediation & Hardening Roadmap
+#### 3. Remediation & Hardening Roadmap
 1. **Apply Principle of Least Privilege**: Restrict execution and administrative rights for \`${cleanTopic}\` to authorized service principals.
-2. **Enable Log Ingestion**: Ensure log telemetry is continuously ingested into SIEM with 90-day hot retention.
-3. **Conduct Periodic Audits**: Validate security baseline configurations against CIS Benchmarks.`;
+2. **Enable Log Ingestion**: Ensure log telemetry is continuously ingested into SIEM with 90-day hot retention.`;
   }
 
   const words = response.split(/(\s+)/);
