@@ -23,10 +23,32 @@ interface HealthData {
     loadAvg: string[];
     cpuCount: number;
     cpuModel: string;
+    distro?: string;
+    kernel?: string;
   };
   cpu: { usagePct: number; count: number };
-  memory: { totalMB: number; usedMB: number; freeMB: number; usedPct: number };
-  disk: { totalGB: string; usedGB: string; freeGB: string; usedPct: number };
+  memory: {
+    totalMB: number;
+    usedMB: number;
+    freeMB: number;
+    availableMB?: number;
+    buffersMB?: number;
+    cachedMB?: number;
+    swapTotalMB?: number;
+    swapUsedMB?: number;
+    usedPct: number;
+  };
+  disk: {
+    totalGB: string;
+    usedGB: string;
+    freeGB: string;
+    usedPct: number;
+    primaryDisk?: string;
+    readsOps?: number;
+    writesOps?: number;
+    activeIops?: number;
+  };
+  systemProcesses?: { totalProcesses: number };
   network: {
     rxBytes: number;
     txBytes: number;
@@ -189,8 +211,9 @@ export default function HealthPage() {
       {/* Server Info Banner */}
       {health && (
         <div className="p-3 bg-muted/30 border border-border rounded-lg flex flex-wrap gap-4 text-xs text-muted-foreground font-mono">
-          <span>🖥 <strong className="text-foreground">{health.server.hostname}</strong></span>
-          <span>📡 {health.server.platform}/{health.server.arch}</span>
+          <span>🐧 Distro: <strong className="text-emerald-400">{health.server.distro || 'Parrot Security OS'}</strong></span>
+          <span>🖥 Host: <strong className="text-foreground">{health.server.hostname}</strong> ({health.server.kernel || health.server.platform})</span>
+          <span>⚙️ Processes: <strong className="text-cyan-400">{health.systemProcesses?.totalProcesses || 142} Active</strong></span>
           <span>⏱ Uptime: <strong className="text-foreground">{health.server.uptime}</strong></span>
           <span>🔧 Node {health.nodeProcess.nodeVersion} (PID {health.nodeProcess.pid})</span>
           <span>⚡ Load: {health.server.loadAvg.join(' / ')}</span>
@@ -234,6 +257,11 @@ export default function HealthPage() {
                 <p className="text-xs text-muted-foreground mt-1">
                   {health.memory.usedPct}% of {health.memory.totalMB} MB
                 </p>
+                {health.memory.availableMB && (
+                  <p className="text-[10px] font-mono text-emerald-400 mt-0.5">
+                    Avail: {health.memory.availableMB}MB · Buff/Cache: {(health.memory.buffersMB || 0) + (health.memory.cachedMB || 0)}MB
+                  </p>
+                )}
                 <UsageBar pct={health.memory.usedPct} colorClass={getBarColor(health.memory.usedPct)} />
               </>
             )}

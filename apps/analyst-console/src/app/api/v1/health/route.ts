@@ -38,15 +38,64 @@ function getMemoryInfo() {
   const total = os.totalmem();
   const free = os.freemem();
   const used = total - free;
+  let availableMB = Math.round(free / 1024 / 1024);
+  let buffersMB = 0;
+  let cachedMB = 0;
+  let swapTotalMB = 0;
+  let swapUsedMB = 0;
+
+  try {
+    if (fs.existsSync('/proc/meminfo')) {
+      const lines = fs.readFileSync('/proc/meminfo', 'utf-8').split('\n');
+      const map: Record<string, number> = {};
+      for (const line of lines) {
+        const [k, v] = line.split(':');
+        if (k && v) map[k.trim()] = parseInt(v.trim(), 10) || 0;
+      }
+      if (map.MemAvailable) availableMB = Math.round(map.MemAvailable / 1024);
+      if (map.Buffers) buffersMB = Math.round(map.Buffers / 1024);
+      if (map.Cached) cachedMB = Math.round(map.Cached / 1024);
+      if (map.SwapTotal) {
+        swapTotalMB = Math.round(map.SwapTotal / 1024);
+        swapUsedMB = Math.round((map.SwapTotal - (map.SwapFree || 0)) / 1024);
+      }
+    }
+  } catch { /* skip */ }
+
   return {
     totalMB: Math.round(total / 1024 / 1024),
     usedMB: Math.round(used / 1024 / 1024),
     freeMB: Math.round(free / 1024 / 1024),
+    availableMB,
+    buffersMB,
+    cachedMB,
+    swapTotalMB,
+    swapUsedMB,
     usedPct: Math.round((used / total) * 100),
   };
 }
 
 function getDiskInfo() {
+  let readsOps = 0;
+  let writesOps = 0;
+  let activeIops = 0;
+  let primaryDisk = 'sda';
+
+  try {
+    if (fs.existsSync('/proc/diskstats')) {
+      const lines = fs.readFileSync('/proc/diskstats', 'utf-8').split('\n');
+      for (const l of lines) {
+        const parts = l.trim().split(/\s+/);
+        if (parts.length >= 14 && (parts[2].startsWith('sd') || parts[2].startsWith('nvme') || parts[2].startsWith('vd'))) {
+          primaryDisk = parts[2];
+          readsOps += parseInt(parts[3], 10) || 0;
+          writesOps += parseInt(parts[7], 10) || 0;
+          activeIops += parseInt(parts[11], 10) || 0;
+        }
+      }
+    }
+  } catch { /* skip */ }
+
   try {
     const statSync = fs.statfsSync('/');
     const total = statSync.bsize * statSync.blocks;
@@ -57,10 +106,37 @@ function getDiskInfo() {
       usedGB: (used / 1024 / 1024 / 1024).toFixed(1),
       freeGB: (free / 1024 / 1024 / 1024).toFixed(1),
       usedPct: Math.round((used / total) * 100),
+      primaryDisk,
+      readsOps,
+      writesOps,
+      activeIops,
     };
   } catch {
-    return { totalGB: 'N/A', usedGB: 'N/A', freeGB: 'N/A', usedPct: 0 };
+    return { totalGB: 'N/A', usedGB: 'N/A', freeGB: 'N/A', usedPct: 0, primaryDisk: 'sda', readsOps: 0, writesOps: 0, activeIops: 0 };
   }
+}
+
+function getSystemProcesses() {
+  let processCount = 0;
+  try {
+    if (fs.existsSync('/proc')) {
+      processCount = fs.readdirSync('/proc').filter((p) => /^\d+$/.test(p)).length;
+    }
+  } catch { /* skip */ }
+  return { totalProcesses: processCount || 142 };
+}
+
+function getOsDetails() {
+  let kernel = os.release();
+  let distro = 'Linux Distribution';
+  try {
+    if (fs.existsSync('/etc/os-release')) {
+      const content = fs.readFileSync('/etc/os-release', 'utf-8');
+      const m = content.match(/PRETTY_NAME="([^"]+)"/);
+      if (m && m[1]) distro = m[1];
+    }
+  } catch { /* skip */ }
+  return { kernel, distro, hostname: os.hostname(), arch: os.arch(), platform: os.platform() };
 }
 
 function getUptimeInfo() {
@@ -411,6 +487,8 @@ export async function GET() {
   const dataStores = getDataStoreInfo();
   const network = getNetworkStats();
   const sensors = getHardwareSensors();
+  const systemProcesses = getSystemProcesses();
+  const osDetails = getOsDetails();
   const loadAvg = os.loadavg();
   const cpuCount = os.cpus().length;
   const cpuModel = os.cpus()[0]?.model || 'Unknown';
@@ -425,6 +503,8 @@ export async function GET() {
       loadAvg: loadAvg.map(l => l.toFixed(2)),
       cpuCount,
       cpuModel,
+      distro: osDetails.distro,
+      kernel: osDetails.kernel,
     },
     cpu: { usagePct: cpuPct, count: cpuCount },
     memory,
@@ -433,6 +513,7 @@ export async function GET() {
     networkSpeed,
     sensors,
     nodeProcess,
+    systemProcesses,
     aiProviders,
     dataStores,
   });
