@@ -49,8 +49,9 @@ interface HealthData {
     fanSpeed?: string;
     fans?: Array<{ id: string; name: string; speed: string; status: string }>;
     fanCount?: number;
-    cores?: Array<{ label: string; tempC: number }>;
+    logicalCores?: Array<{ coreId: string; model: string; speedMHz: number; tempC: number }>;
     thermalZones?: Array<{ id: string; name: string; tempC: number }>;
+    powerSensors?: Array<{ name: string; value: string }>;
     clockSpeedGHz: string;
     cpuArchitecture: string;
     cpuCores: number;
@@ -360,15 +361,37 @@ export default function HealthPage() {
                   </div>
                 </div>
 
-                {/* Per-Core Temperatures (if available) */}
-                {health.sensors?.cores && health.sensors.cores.length > 0 && (
+                {/* Per-Core & Thread Temperatures for ALL Logical Cores */}
+                {health.sensors?.logicalCores && health.sensors.logicalCores.length > 0 && (
                   <div>
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">CPU Per-Core Thermal Breakdown</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">
+                      CPU Logical Cores Thermal Breakdown ({health.sensors.logicalCores.length} Cores)
+                    </h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {health.sensors.cores.map((core, i) => (
-                        <div key={i} className="p-2.5 rounded-md bg-muted/30 border border-border/40 flex items-center justify-between">
-                          <span className="text-xs font-medium text-foreground font-mono">{core.label}</span>
-                          <span className="text-xs font-bold font-mono text-amber-400">{core.tempC}°C</span>
+                      {health.sensors.logicalCores.map((core, i) => (
+                        <div key={i} className="p-3 rounded-md bg-muted/30 border border-border/40 flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-bold text-foreground font-mono block">{core.coreId}</span>
+                            <span className="text-[10px] text-muted-foreground font-mono block">{core.speedMHz} MHz</span>
+                          </div>
+                          <span className={`text-sm font-bold font-mono ${core.tempC >= 75 ? 'text-red-400' : core.tempC >= 60 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                            {core.tempC}°C
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Power & Battery Voltage Sensors */}
+                {health.sensors?.powerSensors && health.sensors.powerSensors.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">Hardware Power & Voltage Telemetry</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {health.sensors.powerSensors.map((p, i) => (
+                        <div key={i} className="p-2.5 rounded-md bg-muted/30 border border-border/40 flex items-center justify-between font-mono text-xs">
+                          <span className="text-muted-foreground">{p.name}</span>
+                          <span className="text-emerald-400 font-bold">{p.value}</span>
                         </div>
                       ))}
                     </div>
@@ -377,10 +400,14 @@ export default function HealthPage() {
 
                 {/* ALL DETECTED SYSTEM FANS GRID */}
                 <div>
-                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-2">
-                    <Fan className="w-4 h-4 text-cyan-400" />
-                    All Detected System Fans ({health.sensors?.fans?.length || 0} Fans)
-                  </h3>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                      <Fan className="w-4 h-4 text-cyan-400" />
+                      All Detected System Fans ({health.sensors?.fans?.length || 0} Fans)
+                    </h3>
+                    <span className="text-[11px] text-muted-foreground font-mono">Mode: ACPI EC PWM / Tachometer</span>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {health.sensors?.fans && health.sensors.fans.length > 0 ? (
                       health.sensors.fans.map((fan, idx) => (

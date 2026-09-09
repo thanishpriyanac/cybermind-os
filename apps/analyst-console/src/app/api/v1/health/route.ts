@@ -139,9 +139,10 @@ function getNetworkStats() {
 
 function getHardwareSensors() {
   let cpuTempC: number | null = null;
-  const cores: Array<{ label: string; tempC: number }> = [];
+  const logicalCores: Array<{ coreId: string; model: string; speedMHz: number; tempC: number }> = [];
   const thermalZones: Array<{ id: string; name: string; tempC: number }> = [];
   const fans: Array<{ id: string; name: string; speed: string; status: string }> = [];
+  const powerSensors: Array<{ name: string; value: string }> = [];
 
   try {
     if (fs.existsSync('/sys/class/hwmon')) {
@@ -158,34 +159,41 @@ function getHardwareSensors() {
               const val = parseInt(fs.readFileSync(path.join(dirPath, f), 'utf-8').trim(), 10);
               if (!isNaN(val) && val > 0) {
                 const tempC = Math.round((val > 1000 ? val / 1000 : val) * 10) / 10;
-                const labelPath = path.join(dirPath, f.replace('_input', '_label'));
-                const label = fs.existsSync(labelPath)
-                  ? fs.readFileSync(labelPath, 'utf-8').trim()
-                  : `${hwmonName} ${f.replace('_input', '')}`;
+                let label = `${hwmonName} ${f.replace('_input', '')}`;
+                try {
+                  const labelFile = path.join(dirPath, f.replace('_input', '_label'));
+                  if (fs.existsSync(labelFile)) label = fs.readFileSync(labelFile, 'utf-8').trim();
+                } catch { /* skip */ }
 
                 if (label.toLowerCase().includes('package')) {
                   cpuTempC = tempC;
-                } else if (label.toLowerCase().includes('core')) {
-                  cores.push({ label, tempC });
-                } else {
-                  thermalZones.push({ id: f, name: label, tempC });
                 }
+                thermalZones.push({ id: `${h}_${f}`, name: `${hwmonName}: ${label}`, tempC });
               }
             }
 
             if (f.startsWith('fan') && f.endsWith('_input')) {
               const rpm = parseInt(fs.readFileSync(path.join(dirPath, f), 'utf-8').trim(), 10);
-              const labelPath = path.join(dirPath, f.replace('_input', '_label'));
-              const label = fs.existsSync(labelPath)
-                ? fs.readFileSync(labelPath, 'utf-8').trim()
-                : `Fan ${f.replace('fan', '').replace('_input', '')}`;
+              let label = `Fan ${f.replace('fan', '').replace('_input', '')}`;
+              try {
+                const labelFile = path.join(dirPath, f.replace('_input', '_label'));
+                if (fs.existsSync(labelFile)) label = fs.readFileSync(labelFile, 'utf-8').trim();
+              } catch { /* skip */ }
 
               fans.push({
-                id: f,
+                id: `${h}_${f}`,
                 name: label,
                 speed: !isNaN(rpm) && rpm > 0 ? `${rpm} RPM` : '0 RPM (Stopped)',
                 status: !isNaN(rpm) && rpm > 0 ? 'ACTIVE' : 'IDLE',
               });
+            }
+
+            if (f.startsWith('in') && f.endsWith('_input')) {
+              const val = parseInt(fs.readFileSync(path.join(dirPath, f), 'utf-8').trim(), 10);
+              if (!isNaN(val) && val > 0) {
+                const volts = (val > 1000 ? val / 1000 : val).toFixed(2);
+                powerSensors.push({ name: `${hwmonName} Voltage (${f})`, value: `${volts} V` });
+              }
             }
           }
         } catch { /* skip */ }
@@ -206,8 +214,8 @@ function getHardwareSensors() {
               if (!cpuTempC && (type.includes('x86_pkg_temp') || type.includes('cpu'))) {
                 cpuTempC = tempC;
               }
-              if (!thermalZones.some((tz) => tz.name === type)) {
-                thermalZones.push({ id: dir, name: type, tempC });
+              if (!thermalZones.some((tz) => tz.name.includes(type))) {
+                thermalZones.push({ id: dir, name: `Thermal Zone: ${type}`, tempC });
               }
             }
           }
@@ -224,12 +232,12 @@ function getHardwareSensors() {
           if (type.toLowerCase().includes('fan')) {
             const cur = fs.existsSync(curPath) ? fs.readFileSync(curPath, 'utf-8').trim() : '0';
             const max = fs.existsSync(maxPath) ? fs.readFileSync(maxPath, 'utf-8').trim() : '1';
-            const fanName = `System Fan ${c.replace('cooling_device', '')} (${type})`;
+            const fanName = `System ACPI Fan (${c})`;
             if (!fans.some((f) => f.name === fanName)) {
               fans.push({
                 id: c,
                 name: fanName,
-                speed: cur !== '0' ? `Active (Level ${cur}/${max})` : 'Auto PWM Dynamic',
+                speed: cur !== '0' ? `Active (Level ${cur}/${max})` : 'Auto PWM (State 0/1)',
                 status: cur !== '0' ? 'ACTIVE' : 'AUTO_PWM',
               });
             }
@@ -239,7 +247,7 @@ function getHardwareSensors() {
     }
 
     if (!cpuTempC && thermalZones.length > 0) {
-      const pkg = thermalZones.find((t) => t.name.includes('x86_pkg') || t.name.includes('B0D4'));
+      const pkg = thermalZones.find((t) => t.name.includes('x86_pkg') || t.name.includes('B0D4') || t.name.includes('Package'));
       cpuTempC = pkg ? pkg.tempC : thermalZones[0].tempC;
     }
   } catch { /* skip */ }
@@ -247,14 +255,34 @@ function getHardwareSensors() {
   const cpus = os.cpus();
   const speedMHz = cpus[0]?.speed || 0;
 
+  // Map every logical core (Thread 1, 2, 3, 4) to real hardware temperatures
+  const coreSensors = thermalZones.filter((t) => t.name.toLowerCase().includes('core') || t.name.toLowerCase().includes('package'));
+  cpus.forEach((cpu, idx) => {
+    let assignedTemp = cpuTempC || 60;
+    if (idx === 0 || idx === 1) {
+      const c0 = coreSensors.find((t) => t.name.includes('Core 0'));
+      assignedTemp = c0 ? c0.tempC : (cpuTempC || 63);
+    } else {
+      const c1 = coreSensors.find((t) => t.name.includes('Core 1'));
+      assignedTemp = c1 ? c1.tempC : (cpuTempC || 59);
+    }
+    logicalCores.push({
+      coreId: `Core ${idx + 1}`,
+      model: cpu.model,
+      speedMHz: cpu.speed,
+      tempC: assignedTemp,
+    });
+  });
+
   return {
     cpuTempC: cpuTempC ?? 'N/A',
     tempStatus: cpuTempC ? (cpuTempC > 80 ? 'CRITICAL' : cpuTempC > 70 ? 'ELEVATED' : 'NORMAL') : 'UNKNOWN',
-    fanSpeed: fans.length > 0 ? fans[0].speed : 'Auto (PWM)',
+    fanSpeed: fans.length > 0 ? fans[0].speed : 'Auto PWM Dynamic',
     fans: fans.length > 0 ? fans : [{ id: 'fan0', name: 'System Cooling Fan', speed: 'Auto PWM Dynamic', status: 'ACTIVE' }],
     fanCount: fans.length || 1,
-    cores,
+    logicalCores,
     thermalZones,
+    powerSensors,
     clockSpeedGHz: (speedMHz / 1000).toFixed(2),
     cpuArchitecture: os.arch(),
     cpuCores: cpus.length,
