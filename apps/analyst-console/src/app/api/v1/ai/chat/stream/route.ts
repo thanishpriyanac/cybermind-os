@@ -774,51 +774,63 @@ export async function POST(request: Request) {
         let usedProvider = 'offline';
         let success = false;
 
-        for (const key of availableProviders) {
-          const provider = PROVIDERS[key];
-          let providerText = '';
-          try {
-            send({ type: 'provider_info', provider: provider.name, model: provider.model });
+        // ── 1. If user explicitly manually selected Local RAG Engine ───────────
+        if (modelKey === 'local-soc') {
+          usedProvider = 'CyberMind Local SOC Engine (Manual Selection)';
+          send({ type: 'provider_info', provider: usedProvider, model: 'cybermind-soc-v1' });
 
-            for await (const chunk of streamProvider(provider, userMessageContent, history, attachments)) {
-              providerText += chunk;
+          for await (const chunk of streamLocalSOCEngine(userMessageContent, attachments)) {
+            fullText += chunk;
+            send({ delta: chunk, done: false, provider: usedProvider });
+          }
+          success = true;
+        } else {
+          // ── 2. Cloud AI Provider Chain (Default) ────────────────────────────
+          for (const key of availableProviders) {
+            const provider = PROVIDERS[key];
+            let providerText = '';
+            try {
+              send({ type: 'provider_info', provider: provider.name, model: provider.model });
+
+              for await (const chunk of streamProvider(provider, userMessageContent, history, attachments)) {
+                providerText += chunk;
+              }
+
+              // Refusal Filter Check
+              if (isRefusal(providerText)) {
+                console.warn(`[CYBERMIND] Refusal string detected from ${provider.name}. Triggering failover...`);
+                throw { status: 403, body: 'Safety refusal detected', provider: provider.name };
+              }
+
+              fullText = providerText;
+              for (const word of fullText.split(/(\s+)/)) {
+                send({ delta: word, done: false, provider: provider.name });
+                await new Promise((r) => setTimeout(r, 6));
+              }
+
+              usedProvider = provider.name;
+              success = true;
+              break; // Success!
+
+            } catch (err: unknown) {
+              const e = err as { status?: number; body?: string };
+              const status = e?.status ?? 0;
+              const errBody = e?.body ?? '';
+
+              console.error(`[CYBERMIND] ${provider.name} failed (${status}):`, errBody.slice(0, 150));
+              send({ type: 'provider_switch', reason: `${provider.name} unavailable — switching to next provider...` });
+              continue;
             }
+          }
 
-            // Refusal Filter Check
-            if (isRefusal(providerText)) {
-              console.warn(`[CYBERMIND] Refusal string detected from ${provider.name}. Triggering failover...`);
-              throw { status: 403, body: 'Safety refusal detected', provider: provider.name };
-            }
-
-            fullText = providerText;
+          if (!success) {
+            fullText = "⚠️ Unable to connect to Cloud AI Providers (Groq / OpenAI / NVIDIA / Gemini). Please check your API keys in `.env.local` or server outbound network. To use offline mode, manually select **Local SOC Engine (Offline RAG Only)** from the top-right model dropdown.";
             for (const word of fullText.split(/(\s+)/)) {
-              send({ delta: word, done: false, provider: provider.name });
+              send({ delta: word, done: false, provider: 'Cloud AI Error' });
               await new Promise((r) => setTimeout(r, 6));
             }
-
-            usedProvider = provider.name;
-            success = true;
-            break; // Success!
-
-          } catch (err: unknown) {
-            const e = err as { status?: number; body?: string };
-            const status = e?.status ?? 0;
-            const errBody = e?.body ?? '';
-
-            console.error(`[CYBERMIND] ${provider.name} failed (${status}):`, errBody.slice(0, 150));
-            send({ type: 'provider_switch', reason: `${provider.name} unavailable — switching to next provider...` });
-            continue;
+            usedProvider = 'Cloud AI Error';
           }
-        }
-
-        // ── Fallback Handling (RAG Disabled by Request) ───────────────────────
-        if (!success) {
-          fullText = "⚠️ Unable to connect to Cloud AI Providers (Groq / OpenAI / NVIDIA / Gemini). Please check your API keys in `.env.local` or server outbound network connectivity.";
-          for (const word of fullText.split(/(\s+)/)) {
-            send({ delta: word, done: false, provider: 'Cloud AI Error' });
-            await new Promise((r) => setTimeout(r, 6));
-          }
-          usedProvider = 'Cloud AI Error';
         }
 
         if (fullText) {
