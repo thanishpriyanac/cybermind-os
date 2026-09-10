@@ -21,7 +21,9 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const userRole = typeof window !== 'undefined' ? (localStorage.getItem('user_role') || 'ANALYST').toUpperCase() : 'ANALYST';
+  const userRole = typeof window !== 'undefined' 
+    ? (localStorage.getItem('user_role') || 'ADMIN').toUpperCase() 
+    : 'ADMIN';
 
   const visibleNav = navigation.filter((item) => {
     if (item.adminOnly && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
