@@ -257,9 +257,9 @@ print(check_ip_reputation('198.51.100.75'))
 \`\`\`
 
 #### 4. SOC Automated Triaging Matrix:
-- **Case A**: Inbound Probe from `noise:true` + `classification:benign` -> **Automated Auto-Dismiss**.
-- **Case B**: Inbound Probe from `abuseScore: 95%` + `noise:true` -> **Block at Edge Firewall**.
-- **Case C**: Inbound Connection from `noise:false` + `abuseScore: 10%` -> **ESCALATE TO SOC ANALYST (Targeted Zero-Day Threat!)**.`,
+- **Case A**: Inbound Probe from noise:true + classification:benign -> **Automated Auto-Dismiss**.
+- **Case B**: Inbound Probe from abuseScore: 95% + noise:true -> **Block at Edge Firewall**.
+- **Case C**: Inbound Connection from noise:false + abuseScore: 10% -> **ESCALATE TO SOC ANALYST (Targeted Zero-Day Threat!)**.`,
     tags: ['OSINT', 'GreyNoise', 'AbuseIPDB', 'GNQL', 'NoiseReduction', 'SIEM_Triage', 'IPReputation'],
   },
 
@@ -365,13 +365,13 @@ TARGET_DOMAIN="example.com"
 curl -s "https://crt.sh/?q=%25.${TARGET_DOMAIN}&output=json" | \
   jq -r '.[].name_value' | \
   sed 's/\*\.//g' | \
-  sort -u > subdomains_${TARGET_DOMAIN}.txt
+  sort -u > subdomains_\${TARGET_DOMAIN}.txt
 
-echo "[+] Discovered $(wc -l < subdomains_${TARGET_DOMAIN}.txt) unique subdomains for ${TARGET_DOMAIN}"
+echo "[+] Discovered \$(wc -l < subdomains_\${TARGET_DOMAIN}.txt) unique subdomains for \${TARGET_DOMAIN}"
 \`\`\`
 
 #### 3. SecurityTrails API Query Examples:
-\`WW\`\`python
+\`\`\`python
 import requests
 
 API_KEY = "YOUR_SECURITYTRAILS_API_KEY"
