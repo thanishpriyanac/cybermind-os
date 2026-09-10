@@ -362,7 +362,7 @@ When a DevOps engineer or IT admin requests an SSL/TLS certificate (e.g., Let's 
 # Extract clean, unique subdomains from crt.sh JSON API
 TARGET_DOMAIN="example.com"
 
-curl -s "https://crt.sh/?q=%25.${TARGET_DOMAIN}&output=json" | \
+curl -s "https://crt.sh/?q=%25.\${TARGET_DOMAIN}&output=json" | \
   jq -r '.[].name_value' | \
   sed 's/\*\.//g' | \
   sort -u > subdomains_\${TARGET_DOMAIN}.txt
