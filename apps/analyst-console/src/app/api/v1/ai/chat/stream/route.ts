@@ -193,8 +193,6 @@ async function* streamOpenAICompat(
     { role: 'user', content: buildUserMessage(userMessage, attachments) },
   ];
 
-  const activeModel = await getWorkingModel(provider);
-
   const body: Record<string, unknown> = {
     model: activeModel,
     messages,
