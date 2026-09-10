@@ -145,9 +145,36 @@ function generateDefaultStore(): LearningStore {
 }
 
 export function isWithinLearningWindow(): boolean {
-  const currentHour = new Date().getHours();
-  // 18:00 (6 PM) to 09:00 (9 AM next morning)
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+  const currentHour = now.getHours();
+
+  // Weekends (Saturday & Sunday): 24 Hours Non-Stop
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    return true;
+  }
+
+  // Weekdays (Monday to Friday): 18:00 (6 PM) to 09:00 (9 AM next morning)
   return currentHour >= 18 || currentHour < 9;
+}
+
+export function getLearningScheduleInfo() {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const inWindow = isWithinLearningWindow();
+
+  return {
+    isWithinWindow: inWindow,
+    isWeekend,
+    schedule: isWeekend
+      ? 'Weekends: 24 Hours Active (Every 3 Mins)'
+      : 'Weekdays: 18:00 (6 PM) - 09:00 (9 AM) (Every 3 Mins)',
+    activeLabel: inWindow
+      ? (isWeekend ? '● Active Now (Weekend 24h)' : '● Active Now (Overnight 6 PM - 9 AM)')
+      : 'Scheduled (6 PM Weekday)',
+    interval: '3 minutes',
+  };
 }
 
 export function loadLearningStore(): LearningStore {

@@ -238,7 +238,7 @@ export default function AdminPage() {
               : 'text-muted-foreground hover:bg-muted hover:text-foreground'
           }`}
         >
-          <BookOpen className="w-4 h-4 text-cyan-400" /> Web Learning Engine (18:00 - 09:00)
+          <BookOpen className="w-4 h-4 text-cyan-400" /> Web Learning Engine ({learningStatus?.activeWindow?.isWeekend ? 'Weekend 24h' : '18:00 - 09:00'})
         </button>
 
         <button
@@ -416,7 +416,7 @@ export default function AdminPage() {
             <div className="flex items-center gap-3">
               <Badge className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-3 py-1.5 font-mono text-xs flex items-center gap-2">
                 <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                Schedule: 18:00 (6 PM) - 09:00 (9 AM) • Every 3 Mins
+                {learningStatus?.activeWindow?.schedule || 'Weekdays: 18:00 - 09:00 | Weekends: 24 Hours (Every 3 Mins)'}
               </Badge>
               <Button
                 onClick={() => triggerLearningMutation.mutate()}
@@ -464,11 +464,15 @@ export default function AdminPage() {
             </Card>
             <Card className="bg-card border-border">
               <CardContent className="p-4">
-                <span className="text-xs font-semibold text-muted-foreground uppercase">Overnight Window</span>
-                <div className="text-base font-bold text-foreground font-mono mt-1">
-                  {learningStatus?.activeWindow?.isWithinWindow ? '● Active Now' : 'Scheduled (6 PM)'}
+                <span className="text-xs font-semibold text-muted-foreground uppercase">
+                  {learningStatus?.activeWindow?.isWeekend ? 'Weekend 24h Mode' : 'Overnight Window'}
+                </span>
+                <div className="text-xs font-bold text-foreground font-mono mt-1 truncate">
+                  {learningStatus?.activeWindow?.activeLabel || (learningStatus?.activeWindow?.isWithinWindow ? '● Active Now' : 'Scheduled (6 PM)')}
                 </div>
-                <span className="text-[11px] text-cyan-400 font-mono">18:00 - 09:00 (Every 3 Mins)</span>
+                <span className="text-[11px] text-cyan-400 font-mono">
+                  {learningStatus?.activeWindow?.isWeekend ? '24 Hours Non-Stop (Every 3 Mins)' : 'Weekdays 6 PM - 9 AM (Every 3 Mins)'}
+                </span>
               </CardContent>
             </Card>
           </div>

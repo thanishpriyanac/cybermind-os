@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { loadLearningStore, isWithinLearningWindow } from '@/lib/learning-store';
+import { loadLearningStore, isWithinLearningWindow, getLearningScheduleInfo } from '@/lib/learning-store';
 import fs from 'fs';
 import path from 'path';
 
@@ -79,15 +79,17 @@ function getStorageMetrics() {
 export async function GET() {
   try {
     const store = loadLearningStore();
-    const inWindow = isWithinLearningWindow();
+    const scheduleInfo = getLearningScheduleInfo();
     const storageMetrics = getStorageMetrics();
 
     return NextResponse.json({
       status: store.status,
       activeWindow: {
-        schedule: '18:00 (6:00 PM) - 09:00 (9:00 AM) • Every 3 Mins',
-        interval: '3 minutes',
-        isWithinWindow: inWindow,
+        schedule: scheduleInfo.schedule,
+        interval: scheduleInfo.interval,
+        isWithinWindow: scheduleInfo.isWithinWindow,
+        isWeekend: scheduleInfo.isWeekend,
+        activeLabel: scheduleInfo.activeLabel,
       },
       lastRunAt: store.lastRunAt,
       currentUrl: store.currentUrl,
