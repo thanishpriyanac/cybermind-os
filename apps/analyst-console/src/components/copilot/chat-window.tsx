@@ -303,11 +303,23 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
 
                 if (data.type === 'conversation_id' && !conversationId) {
                   onConversationCreated(data.conversationId);
+                } else if (data.type === 'provider_info') {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === tempAssistantMsgId ? { ...m, metadata: { ...m.metadata, model: data.provider } } : m
+                    )
+                  );
                 } else if (data.delta) {
                   aiContent += data.delta;
                   setMessages((prev) =>
                     prev.map((m) =>
-                      m.id === tempAssistantMsgId ? { ...m, content: aiContent } : m
+                      m.id === tempAssistantMsgId
+                        ? {
+                            ...m,
+                            content: aiContent,
+                            metadata: { ...m.metadata, model: data.provider || m.metadata?.model || 'Groq GPT-OSS 120B (Cloud AI)' },
+                          }
+                        : m
                     )
                   );
                   scrollToBottom();
