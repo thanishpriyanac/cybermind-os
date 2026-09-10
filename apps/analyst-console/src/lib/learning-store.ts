@@ -6,6 +6,7 @@ import {
   StructuredCtiRecord,
   getCtiRegistrySummary
 } from './cti-pipeline';
+import { ZSCALER_ATOZ_CONFIG_GUIDES } from './zscaler-config-kb';
 
 export interface LearningArticle {
   id: string;
@@ -476,6 +477,36 @@ export async function runUnrestrictedWebScraperPass(): Promise<LearningStore> {
       message: `Scraped & Learned from ${site.name}. Compiled 1 new LLM training sample into model_training_dataset.jsonl.`,
     });
   }
+
+  // 5️⃣  Zscaler A-to-Z Complete Configuration & Deployment Ingestion (help.zscaler.com)
+  for (const guide of ZSCALER_ATOZ_CONFIG_GUIDES) {
+    const exists = store.articles.some((a) => a.id === guide.id);
+    if (!exists) {
+      const zscalerArticle: LearningArticle = {
+        id: guide.id,
+        url: `https://help.zscaler.com/docs/${guide.id}`,
+        title: `Zscaler A-to-Z Config: ${guide.title}`,
+        source: 'help.zscaler.com',
+        category: 'ADVISORY',
+        severity: 'HIGH',
+        summary: guide.summary,
+        contentSnippet: `Zscaler Module: ${guide.module} | Category: ${guide.category} | Steps: ${guide.stepByStepConfig.length} steps | Verification: ${guide.verificationCommands.join(', ')}`,
+        trainingPrompt: guide.trainingPrompt,
+        trainingCompletion: guide.trainingCompletion,
+        tags: ['Zscaler', guide.module, 'Configuration', 'AtoZSetup', 'help.zscaler.com'],
+        scrapedAt: new Date().toISOString(),
+      };
+
+      store.articles.unshift(zscalerArticle);
+      newItemsScraped++;
+    }
+  }
+
+  store.liveLogs.unshift({
+    timestamp: new Date().toISOString(),
+    level: 'success',
+    message: `Ingested Zscaler A-to-Z Complete Configuration Knowledge Base (ZIA GRE/IPsec, SSL Inspection, ZPA App Connectors, ZCC Tunnel 2.0 & Entra ID SSO) from help.zscaler.com.`,
+  });
 
   store.totalArticles = store.articles.length;
   store.totalTrainingPairs = store.totalTrainingPairs + newItemsScraped;
