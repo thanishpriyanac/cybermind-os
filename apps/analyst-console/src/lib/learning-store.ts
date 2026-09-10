@@ -7,13 +7,14 @@ import {
   getCtiRegistrySummary
 } from './cti-pipeline';
 import { ZSCALER_ATOZ_CONFIG_GUIDES } from './zscaler-config-kb';
+import { OSINT_MASTER_KNOWLEDGE_BASE } from './osint-learning-kb';
 
 export interface LearningArticle {
   id: string;
   url: string;
   title: string;
   source: string;
-  category: 'CVE' | 'EXPLOIT' | 'ADVISORY' | 'MALWARE' | 'ZERO_DAY' | 'NEWS' | 'RESEARCH' | 'DARK_WEB';
+  category: 'CVE' | 'EXPLOIT' | 'ADVISORY' | 'MALWARE' | 'ZERO_DAY' | 'NEWS' | 'RESEARCH' | 'DARK_WEB' | 'OSINT';
   cveId?: string;
   severity?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   summary: string;
@@ -573,6 +574,36 @@ level: critical
       newItemsScraped++;
     }
   }
+
+  // 6️⃣  OSINT & Open Source Threat Intelligence Masterclass Ingestion (Shodan, Censys, VT, OTX, GreyNoise, Bellingcat, crt.sh)
+  for (const osint of OSINT_MASTER_KNOWLEDGE_BASE) {
+    const exists = store.articles.some((a) => a.id === osint.id);
+    if (!exists) {
+      const osintArticle: LearningArticle = {
+        id: osint.id,
+        url: osint.url,
+        title: osint.title,
+        source: osint.source,
+        category: osint.category,
+        severity: osint.severity,
+        summary: osint.summary,
+        contentSnippet: osint.contentSnippet,
+        trainingPrompt: osint.trainingPrompt,
+        trainingCompletion: osint.trainingCompletion,
+        tags: osint.tags,
+        scrapedAt: new Date().toISOString(),
+      };
+
+      store.articles.unshift(osintArticle);
+      newItemsScraped++;
+    }
+  }
+
+  store.liveLogs.unshift({
+    timestamp: new Date().toISOString(),
+    level: 'success',
+    message: `Ingested OSINT & Threat Reconnaissance Masterclass Knowledge Base (Shodan, Censys, VirusTotal VTI, AlienVault OTX, GreyNoise, AbuseIPDB, Bellingcat GEOINT & crt.sh).`,
+  });
 
   store.liveLogs.unshift({
     timestamp: new Date().toISOString(),

@@ -698,6 +698,11 @@ export default function AdminPage() {
                                 🔒 DARK WEB
                               </Badge>
                             )}
+                            {art.category === 'OSINT' && (
+                              <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono text-[10px]">
+                                🌐 OSINT RECON
+                              </Badge>
+                            )}
                             <Badge className={
                               art.severity === 'CRITICAL' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
                               art.severity === 'HIGH' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
