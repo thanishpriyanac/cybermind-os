@@ -33,7 +33,11 @@ import {
   BookOpen,
   Sparkles,
   Clock,
-  Loader2
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  Code
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -68,6 +72,7 @@ export default function AdminPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [streamData, setStreamData] = useState<any | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -680,59 +685,141 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-border">
-                {learningArticles.map((art: any) => (
-                  <div key={art.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-muted/30 transition-colors">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm text-foreground">{art.title}</span>
-                        {art.category === 'DARK_WEB' && (
-                          <Badge className="bg-purple-500/10 text-purple-400 border border-purple-500/30 font-mono text-[10px]">
-                            🔒 DARK WEB
-                          </Badge>
-                        )}
-                        <Badge className={
-                          art.severity === 'CRITICAL' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
-                          art.severity === 'HIGH' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
-                          'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-                        }>
-                          {art.severity || art.category}
-                        </Badge>
-                        <Badge variant="outline" className="text-[10px] font-mono text-cyan-400 border-cyan-500/30">{art.source}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground max-w-3xl">{art.summary}</p>
-                      <div className="flex items-center gap-3 text-[11px] font-mono text-muted-foreground pt-1 flex-wrap">
-                        {art.url && art.url.includes('.onion') ? (
-                          <span className="text-purple-400 font-semibold flex items-center gap-1" title="Tor Dark Web Feed">
-                            🔒 Tor Onion Feed ({art.url.replace(/^https?:\/\//, '')})
-                          </span>
-                        ) : art.url ? (
-                          <a 
-                            href={art.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="text-primary hover:underline flex items-center gap-1 font-medium"
+                {learningArticles.map((art: any) => {
+                  const isExpanded = expandedArticleId === art.id;
+                  return (
+                    <div key={art.id} className="p-4 space-y-3 hover:bg-muted/30 transition-colors">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="space-y-1 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm text-foreground">{art.title}</span>
+                            {art.category === 'DARK_WEB' && (
+                              <Badge className="bg-purple-500/10 text-purple-400 border border-purple-500/30 font-mono text-[10px]">
+                                🔒 DARK WEB
+                              </Badge>
+                            )}
+                            <Badge className={
+                              art.severity === 'CRITICAL' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                              art.severity === 'HIGH' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
+                              'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                            }>
+                              {art.severity || art.category}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px] font-mono text-cyan-400 border-cyan-500/30">{art.source}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground max-w-3xl">{art.summary}</p>
+                          <div className="flex items-center gap-3 text-[11px] font-mono text-muted-foreground pt-1 flex-wrap">
+                            {art.url && art.url.includes('.onion') ? (
+                              <span className="text-purple-400 font-semibold flex items-center gap-1" title="Tor Dark Web Feed">
+                                🔒 Tor Onion Feed ({art.url.replace(/^https?:\/\//, '')})
+                              </span>
+                            ) : art.url ? (
+                              <a 
+                                href={art.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="text-primary hover:underline flex items-center gap-1 font-medium"
+                              >
+                                <span>Source Link ({art.source || 'External'})</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            ) : null}
+                            {art.cveId && (
+                              <Link 
+                                href={`/cve/${art.cveId}`} 
+                                className="text-cyan-400 hover:underline flex items-center gap-1 font-semibold"
+                              >
+                                <span>• {art.cveId}</span>
+                                <ExternalLink className="w-3 h-3" />
+                              </Link>
+                            )}
+                            {art.category === 'DARK_WEB' && <span className="text-purple-400 font-semibold">• Tor / Telegram Threat Intel</span>}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 whitespace-nowrap self-start md:self-center">
+                          <span className="text-xs font-mono text-muted-foreground">{new Date(art.scrapedAt).toLocaleTimeString()}</span>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setExpandedArticleId(isExpanded ? null : art.id)}
+                            className="text-xs font-mono gap-1.5 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10"
                           >
-                            <span>Source Link ({art.source || 'External'})</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        ) : null}
-                        {art.cveId && (
-                          <Link 
-                            href={`/cve/${art.cveId}`} 
-                            className="text-cyan-400 hover:underline flex items-center gap-1 font-semibold"
-                          >
-                            <span>• {art.cveId}</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </Link>
-                        )}
-                        {art.category === 'DARK_WEB' && <span className="text-purple-400 font-semibold">• Tor / Telegram Threat Intel</span>}
+                            <FileText className="w-3.5 h-3.5" />
+                            {isExpanded ? 'Hide Data' : 'Inspect Stored Data'}
+                            {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          </Button>
+                        </div>
                       </div>
+
+                      {/* Expanded Stored Payload Drawer */}
+                      {isExpanded && (
+                        <div className="p-4 bg-black/70 rounded-xl border border-cyan-500/30 space-y-4 font-mono text-xs animate-in fade-in slide-in-from-top-2">
+                          <div className="flex items-center justify-between border-b border-border/80 pb-2">
+                            <span className="font-bold text-cyan-400 flex items-center gap-2">
+                              <Code className="w-4 h-4 text-cyan-400" />
+                              Physical Stored Record Telemetry: <code className="text-foreground">{art.id}</code>
+                            </span>
+                            <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px]">
+                              ● PERSISTED ON SERVER DISK
+                            </Badge>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px]">
+                            {/* Metadata */}
+                            <div className="space-y-1.5 p-3 rounded-lg bg-muted/40 border border-border/60">
+                              <div className="text-cyan-400 font-bold uppercase text-[10px]">📌 Article Metadata:</div>
+                              <div><span className="text-muted-foreground">ID:</span> <span className="text-foreground font-bold">{art.id}</span></div>
+                              <div><span className="text-muted-foreground">Source Feed:</span> <span className="text-foreground">{art.source}</span></div>
+                              <div><span className="text-muted-foreground">Category:</span> <span className="text-purple-400 font-bold">{art.category}</span></div>
+                              <div><span className="text-muted-foreground">Severity:</span> <span className="text-amber-400 font-bold">{art.severity || 'N/A'}</span></div>
+                              <div><span className="text-muted-foreground">Scraped At:</span> <span className="text-foreground">{new Date(art.scrapedAt).toLocaleString()}</span></div>
+                              {art.cveId && <div><span className="text-muted-foreground">CVE Identifier:</span> <span className="text-cyan-400 font-bold">{art.cveId}</span></div>}
+                              <div>
+                                <span className="text-muted-foreground block mb-1">Tags:</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {(art.tags || []).map((t: string, i: number) => (
+                                    <Badge key={i} variant="outline" className="text-[9px] border-cyan-500/20 text-cyan-300">{t}</Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Content Snippet */}
+                            <div className="space-y-1.5 p-3 rounded-lg bg-muted/40 border border-border/60">
+                              <div className="text-amber-400 font-bold uppercase text-[10px]">📄 Raw Extracted Content Snippet:</div>
+                              <p className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-sans">
+                                {art.contentSnippet || art.summary}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Model Training Fine-Tuning Sample */}
+                          <div className="p-3 rounded-lg bg-purple-950/20 border border-purple-500/30 space-y-2">
+                            <div className="text-purple-400 font-bold uppercase text-[10px] flex items-center justify-between">
+                              <span>🤖 Model Fine-Tuning Pair (persisted in model_training_dataset.jsonl):</span>
+                              <span className="text-muted-foreground font-normal text-[9px]">Format: JSONL Prompt-Completion</span>
+                            </div>
+                            <div className="space-y-1.5 text-[11px]">
+                              <div>
+                                <span className="text-purple-300 font-bold block text-[10px]">Training Prompt:</span>
+                                <div className="p-2 bg-black/60 rounded border border-purple-500/20 text-purple-200">
+                                  {art.trainingPrompt}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-emerald-400 font-bold block text-[10px]">Training Completion (Model Ground Truth Response):</span>
+                                <div className="p-2 bg-black/60 rounded border border-emerald-500/20 text-emerald-300 whitespace-pre-wrap font-sans text-xs">
+                                  {art.trainingCompletion}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right text-xs font-mono text-muted-foreground whitespace-nowrap">
-                      <span>{new Date(art.scrapedAt).toLocaleTimeString()}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
