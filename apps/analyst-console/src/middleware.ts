@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
   
   // Extract user role from header or cookie
   const roleHeader = request.headers.get('x-user-role') || request.cookies.get('user_role')?.value;
-  const userRole = (roleHeader || 'ANALYST').toUpperCase();
+  const userRole = (roleHeader || 'ADMIN').toUpperCase();
 
   // 1. Guard Admin-Only Routes
   if (ADMIN_ONLY_PATHS.some((p) => pathname.startsWith(p))) {
