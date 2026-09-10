@@ -477,6 +477,91 @@ export default function AdminPage() {
             </Card>
           </div>
 
+          {/* Cyber Threat Intelligence (CTI) Ingestion Pipeline & Feed Registry */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                    Cyber Threat Intelligence (CTI) Ingestion Pipeline & Feed Registry v1
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Structured Intelligence Pipeline: Collect → Normalize → Verify → Correlate → Enrich → STIX 2.1 Graph → Model Training.
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-xs font-mono">
+                    STIX 2.1 COMPLIANT
+                  </Badge>
+                  <Badge className="bg-purple-500/10 text-purple-400 border border-purple-500/30 text-xs font-mono">
+                    20+ FEEDS REGISTERED
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Architecture Pipeline Banner */}
+              <div className="p-3 bg-muted/40 rounded-lg border border-border/70 text-xs font-mono space-y-2">
+                <div className="text-[11px] text-cyan-400 font-bold uppercase tracking-wider">
+                  ⚡ CyberMind CTI Pipeline Stage Flow:
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">APIs & STIX 2.1</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20">Ingestion Layer</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">Normalization</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">Source Verification</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">CTI Graph Correlation</span>
+                  <span className="text-muted-foreground">→</span>
+                  <span className="px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/20">LLM Instruction Tuning</span>
+                </div>
+              </div>
+
+              {/* Feed Registry Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
+                <div className="p-3 rounded-lg bg-card border border-rose-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-rose-400">🔴 P0 Authoritative Stack</span>
+                    <Badge variant="outline" className="text-[9px] border-rose-500/40 text-rose-300">1.00 Weight</Badge>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">CISA KEV, NIST NVD 2.0, MITRE ATT&CK STIX 2.1, CWE, ThreatFox, URLhaus, MalwareBazaar, MISP</p>
+                  <div className="text-[10px] text-emerald-400 font-bold">● Active 3-Min API Sync</div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-card border border-amber-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-amber-400">🟠 P1 Threat Research</span>
+                    <Badge variant="outline" className="text-[9px] border-amber-500/40 text-amber-300">0.92 Weight</Badge>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Google Threat Intel, Microsoft Security, Cisco Talos, Unit 42, SentinelLabs, ESET, Mandiant</p>
+                  <div className="text-[10px] text-amber-400 font-bold">● RSS & API Crawler</div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-card border border-cyan-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-cyan-400">🟡 P1 Breaking Cyber News</span>
+                    <Badge variant="outline" className="text-[9px] border-cyan-500/40 text-cyan-300">0.82 Weight</Badge>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">The Hacker News, BleepingComputer, KrebsOnSecurity, Dark Reading, SecurityWeek, CyberScoop</p>
+                  <div className="text-[10px] text-cyan-400 font-bold">● Entity Extractor Active</div>
+                </div>
+
+                <div className="p-3 rounded-lg bg-card border border-purple-500/30 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-purple-400">🟢 P1 Exploits & Detections</span>
+                    <Badge variant="outline" className="text-[9px] border-purple-500/40 text-purple-300">0.95 Weight</Badge>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Exploit-DB PoCs, Sigma HQ SIEM Rules, MITRE ATLAS AI Security, OWASP Top 10, SANS ISC</p>
+                  <div className="text-[10px] text-purple-400 font-bold">● STIX & Rules Ingested</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Server Storage & Model Training Dataset Telemetry Card */}
           <Card className="bg-card border-border">
             <CardHeader className="pb-3">

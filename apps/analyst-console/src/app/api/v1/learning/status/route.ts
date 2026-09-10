@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { loadLearningStore, isWithinLearningWindow, getLearningScheduleInfo } from '@/lib/learning-store';
+import { loadLearningStore, getLearningScheduleInfo } from '@/lib/learning-store';
+import { getCtiRegistrySummary, CYBERMIND_CTI_REGISTRY } from '@/lib/cti-pipeline';
 import fs from 'fs';
 import path from 'path';
 
@@ -81,6 +82,7 @@ export async function GET() {
     const store = loadLearningStore();
     const scheduleInfo = getLearningScheduleInfo();
     const storageMetrics = getStorageMetrics();
+    const ctiRegistryMetrics = getCtiRegistrySummary();
 
     return NextResponse.json({
       status: store.status,
@@ -91,6 +93,15 @@ export async function GET() {
         isWeekend: scheduleInfo.isWeekend,
         activeLabel: scheduleInfo.activeLabel,
       },
+      ctiPipeline: {
+        architecture: ctiRegistryMetrics.pipelineArchitecture,
+        stixVersion: ctiRegistryMetrics.stixVersion,
+        totalRegistryFeeds: ctiRegistryMetrics.totalFeeds,
+        p0AuthoritativeFeeds: ctiRegistryMetrics.p0Count,
+        p1ResearchFeeds: ctiRegistryMetrics.p1Count,
+        p2IntelligenceFeeds: ctiRegistryMetrics.p2Count,
+        registryFeeds: CYBERMIND_CTI_REGISTRY,
+      },
       lastRunAt: store.lastRunAt,
       currentUrl: store.currentUrl,
       currentQuery: store.currentQuery,
@@ -98,9 +109,13 @@ export async function GET() {
       totalTrainingPairs: store.totalTrainingPairs || 1428,
       sourcesCrawled: store.sourcesCrawled,
       liveLogs: store.liveLogs.slice(0, 25),
-      storage: storageMetrics,
+      articles: store.articles.slice(0, 30),
+      serverStorage: storageMetrics,
     });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Failed to fetch status' }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: 'Failed to fetch learning status', details: error.message },
+      { status: 500 }
+    );
   }
 }

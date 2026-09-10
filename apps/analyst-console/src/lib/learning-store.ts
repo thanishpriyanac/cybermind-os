@@ -1,5 +1,11 @@
 import fs from 'fs';
 import path from 'path';
+import { 
+  CYBERMIND_CTI_REGISTRY, 
+  processRawContentToCtiRecord, 
+  StructuredCtiRecord,
+  getCtiRegistrySummary
+} from './cti-pipeline';
 
 export interface LearningArticle {
   id: string;
@@ -15,6 +21,7 @@ export interface LearningArticle {
   trainingCompletion: string;
   tags: string[];
   scrapedAt: string;
+  ctiRecord?: StructuredCtiRecord;
 }
 
 export interface LearningLog {
@@ -211,17 +218,29 @@ export function saveLearningStore(store: LearningStore) {
 
     // Also export JSONL model training dataset
     const datasetFile = getTrainingDatasetPath();
-    const jsonlLines = store.articles.map((a) =>
-      JSON.stringify({
+    const jsonlLines = store.articles.map((a) => {
+      const cti = a.ctiRecord || processRawContentToCtiRecord({
+        id: a.id,
+        title: a.title,
+        url: a.url,
+        source: a.source,
+        content: `${a.summary} ${a.contentSnippet}`,
+        publishedAt: a.scrapedAt,
+      });
+      return JSON.stringify({
         id: a.id,
         source_url: a.url,
         source_name: a.source,
         category: a.category,
         prompt: a.trainingPrompt,
         completion: a.trainingCompletion,
+        confidence_score: cti.confidenceScore,
+        verification_status: cti.verificationStatus,
+        stix_2_1: cti.stix21Representation,
+        entities: cti.entities,
         metadata: { cveId: a.cveId, severity: a.severity, tags: a.tags },
-      })
-    );
+      });
+    });
     fs.writeFileSync(datasetFile, jsonlLines.join('\n'), 'utf-8');
   } catch (err) {
     console.error('Failed to write learning store / dataset file', err);
