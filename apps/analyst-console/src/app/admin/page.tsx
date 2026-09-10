@@ -74,6 +74,27 @@ export default function AdminPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
   const [ruleFormat, setRuleFormat] = useState<'sigma' | 'yara' | 'kql' | 'spl'>('sigma');
+  const [customUrlInput, setCustomUrlInput] = useState('');
+  const [customCategory, setCustomCategory] = useState('OSINT');
+
+  // Custom URL Ingest Mutation
+  const ingestMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/api/v1/learning/ingest', {
+        url: customUrlInput,
+        category: customCategory,
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      showToast(`⚡ ${data.message || 'Custom CTI Feed Ingested Successfully!'}`);
+      setCustomUrlInput('');
+      refetchStatus();
+    },
+    onError: (err: any) => {
+      showToast(`❌ Ingestion Error: ${err.message || 'Failed to ingest URL'}`);
+    },
+  });
 
   // Auto-Generated Detection Rules Query
   const { data: rulesData } = useQuery({
@@ -802,6 +823,70 @@ export default function AdminPage() {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Custom Target URL & RSS Feed On-Demand Ingestor Card */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-cyan-400" />
+                    🌐 On-Demand Custom Target URL & RSS Feed Ingestor (MITRE ATT&CK Auto-Tagger)
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Paste any custom security URL, RSS Feed, or research blog to extract STIX 2.1 CTI data, tag MITRE ATT&CK TTPs, and compile model training samples on demand.
+                  </CardDescription>
+                </div>
+                <Badge className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 text-xs font-mono">
+                  ● AUTO TTP TAGGER
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <form 
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (customUrlInput.trim()) ingestMutation.mutate();
+                }}
+                className="flex flex-col sm:flex-row gap-3 items-center"
+              >
+                <Input
+                  type="text"
+                  placeholder="Paste URL or RSS feed (e.g. https://unit42.paloaltonetworks.com/feed or https://krebsonsecurity.com)"
+                  value={customUrlInput}
+                  onChange={(e) => setCustomUrlInput(e.target.value)}
+                  className="flex-1 font-mono text-xs bg-muted/30"
+                />
+                <select
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  className="h-9 px-3 rounded-md border border-input bg-muted/40 text-xs font-mono focus:outline-none"
+                >
+                  <option value="OSINT">OSINT Recon</option>
+                  <option value="ZERO_DAY">Zero-Day</option>
+                  <option value="EXPLOIT">Exploit</option>
+                  <option value="DARK_WEB">Dark Web</option>
+                  <option value="RESEARCH">Research</option>
+                  <option value="ADVISORY">Advisory</option>
+                </select>
+                <Button 
+                  type="submit"
+                  disabled={!customUrlInput.trim() || ingestMutation.isPending} 
+                  className="w-full sm:w-auto text-xs font-mono gap-1.5 bg-cyan-600 hover:bg-cyan-500 text-white"
+                >
+                  {ingestMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Ingesting & Tagging...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" /> Ingest & Train Model
+                    </>
+                  )}
+                </Button>
+              </form>
             </CardContent>
           </Card>
 
