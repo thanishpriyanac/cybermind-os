@@ -700,9 +700,31 @@ export default function AdminPage() {
                         <Badge variant="outline" className="text-[10px] font-mono text-cyan-400 border-cyan-500/30">{art.source}</Badge>
                       </div>
                       <p className="text-xs text-muted-foreground max-w-3xl">{art.summary}</p>
-                      <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground pt-1">
-                        <span>URL: <a href={art.url} target="_blank" rel="noreferrer" className="text-primary underline">{art.url}</a></span>
-                        {art.cveId && <span>• {art.cveId}</span>}
+                      <div className="flex items-center gap-3 text-[11px] font-mono text-muted-foreground pt-1 flex-wrap">
+                        {art.url && art.url.includes('.onion') ? (
+                          <span className="text-purple-400 font-semibold flex items-center gap-1" title="Tor Dark Web Feed">
+                            🔒 Tor Onion Feed ({art.url.replace(/^https?:\/\//, '')})
+                          </span>
+                        ) : art.url ? (
+                          <a 
+                            href={art.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-primary hover:underline flex items-center gap-1 font-medium"
+                          >
+                            <span>Source Link ({art.source || 'External'})</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ) : null}
+                        {art.cveId && (
+                          <Link 
+                            href={`/cve/${art.cveId}`} 
+                            className="text-cyan-400 hover:underline flex items-center gap-1 font-semibold"
+                          >
+                            <span>• {art.cveId}</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        )}
                         {art.category === 'DARK_WEB' && <span className="text-purple-400 font-semibold">• Tor / Telegram Threat Intel</span>}
                       </div>
                     </div>

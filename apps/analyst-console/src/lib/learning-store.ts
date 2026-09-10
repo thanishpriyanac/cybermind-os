@@ -71,9 +71,9 @@ let inMemoryStore: LearningStore | null = null;
 const INITIAL_ARTICLES: LearningArticle[] = [
   {
     id: 'learn-001',
-    url: 'https://news.ycombinator.com/item?id=3819201',
+    url: 'https://thehackernews.com',
     title: 'Zero-Day Remote Code Execution Discovered in Enterprise Edge Routers',
-    source: 'HackerNews Security',
+    source: 'The Hacker News',
     category: 'ZERO_DAY',
     cveId: 'CVE-2026-99812',
     severity: 'CRITICAL',
@@ -101,7 +101,7 @@ const INITIAL_ARTICLES: LearningArticle[] = [
   },
   {
     id: 'learn-003',
-    url: 'https://t.me/threat_intel_dark_leaks/9481',
+    url: 'https://t.me/s/threat_intel_dark_leaks',
     title: 'Telegram Cyber Threat Intel Channel: Zero-Day Exploit Market Monitor',
     source: 'Telegram Threat Channel',
     category: 'DARK_WEB',
@@ -116,7 +116,7 @@ const INITIAL_ARTICLES: LearningArticle[] = [
   },
   {
     id: 'learn-004',
-    url: 'https://securityweek.com/articles/ransomware-canary-honeypot-analysis',
+    url: 'https://www.securityweek.com',
     title: 'Global Cybersecurity News: Ransomware Canary Honey-Tokens Active Across Cloud DBs',
     source: 'SecurityWeek Global',
     category: 'NEWS',

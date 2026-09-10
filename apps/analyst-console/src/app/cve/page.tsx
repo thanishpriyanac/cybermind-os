@@ -45,8 +45,8 @@ export default function CveIntelligencePage() {
   });
 
   const syncMutation = useMutation({
-    mutationFn: async () => {
-      const res = await api.post('/v1/cve/sync');
+    mutationFn: async (force: boolean = true) => {
+      const res = await api.post(`/v1/cve/sync${force ? '?force=true' : ''}`);
       return res.data;
     },
     onSuccess: () => {
@@ -104,7 +104,7 @@ export default function CveIntelligencePage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">CVE Intelligence</h1>
         <Button 
-          onClick={() => syncMutation.mutate()} 
+          onClick={() => syncMutation.mutate(true)} 
           disabled={syncMutation.isPending || statusData?.syncStatus === 'syncing'}
         >
           {(syncMutation.isPending || statusData?.syncStatus === 'syncing') && (
