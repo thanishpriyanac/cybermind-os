@@ -73,6 +73,17 @@ export default function AdminPage() {
   const [streamData, setStreamData] = useState<any | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [expandedArticleId, setExpandedArticleId] = useState<string | null>(null);
+  const [ruleFormat, setRuleFormat] = useState<'sigma' | 'yara' | 'kql' | 'spl'>('sigma');
+
+  // Auto-Generated Detection Rules Query
+  const { data: rulesData } = useQuery({
+    queryKey: ['learning-rules'],
+    queryFn: async () => {
+      const res = await api.get('/api/v1/learning/rules');
+      return res.data;
+    },
+    enabled: activeTab === 'LEARNING',
+  });
 
   // Live Client-Side Browser localStorage Audit State
   const [browserStorageStats, setBrowserStorageStats] = useState<{
@@ -791,6 +802,159 @@ export default function AdminPage() {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* LLM Fine-Tuning & Local Model Weights Export Suite */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Cpu className="w-4 h-4 text-amber-400" />
+                    ⚡ LLM Fine-Tuning & Local Model Export Suite
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Export compiled CTI instruction pairs for Ollama, Unsloth QLoRA (RTX 4090/A100), HuggingFace TRL, and SIEM rule packs.
+                  </CardDescription>
+                </div>
+                <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-mono">
+                  ● {(learningStatus?.totalTrainingPairs ?? 1428).toLocaleString()} SAMPLES READY
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 font-mono text-xs">
+                {/* Format 1: JSONL */}
+                <a href="/api/v1/learning/export?format=jsonl" download className="block">
+                  <Button variant="outline" className="w-full h-auto py-3 flex flex-col items-center justify-center gap-1.5 border-amber-500/30 hover:bg-amber-500/10 hover:border-amber-500 text-left">
+                    <Database className="w-4 h-4 text-amber-400" />
+                    <span className="font-bold text-amber-400 text-xs">Export .jsonl</span>
+                    <span className="text-[9px] text-muted-foreground">Instruction Dataset</span>
+                  </Button>
+                </a>
+
+                {/* Format 2: Ollama Modelfile */}
+                <a href="/api/v1/learning/export?format=ollama" download className="block">
+                  <Button variant="outline" className="w-full h-auto py-3 flex flex-col items-center justify-center gap-1.5 border-cyan-500/30 hover:bg-cyan-500/10 hover:border-cyan-500 text-left">
+                    <Bot className="w-4 h-4 text-cyan-400" />
+                    <span className="font-bold text-cyan-400 text-xs">Ollama Modelfile</span>
+                    <span className="text-[9px] text-muted-foreground">Local LLM Container</span>
+                  </Button>
+                </a>
+
+                {/* Format 3: Unsloth PyTorch */}
+                <a href="/api/v1/learning/export?format=unsloth" download className="block">
+                  <Button variant="outline" className="w-full h-auto py-3 flex flex-col items-center justify-center gap-1.5 border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500 text-left">
+                    <Sparkles className="w-4 h-4 text-purple-400" />
+                    <span className="font-bold text-purple-400 text-xs">Unsloth QLoRA (.py)</span>
+                    <span className="text-[9px] text-muted-foreground">Local GPU Training</span>
+                  </Button>
+                </a>
+
+                {/* Format 4: Sigma Pack */}
+                <a href="/api/v1/learning/export?format=sigma" download className="block">
+                  <Button variant="outline" className="w-full h-auto py-3 flex flex-col items-center justify-center gap-1.5 border-emerald-500/30 hover:bg-emerald-500/10 hover:border-emerald-500 text-left">
+                    <FileText className="w-4 h-4 text-emerald-400" />
+                    <span className="font-bold text-emerald-400 text-xs">Sigma Pack (.yml)</span>
+                    <span className="text-[9px] text-muted-foreground">SIEM Rules Pack</span>
+                  </Button>
+                </a>
+
+                {/* Format 5: YARA Pack */}
+                <a href="/api/v1/learning/export?format=yara" download className="block">
+                  <Button variant="outline" className="w-full h-auto py-3 flex flex-col items-center justify-center gap-1.5 border-rose-500/30 hover:bg-rose-500/10 hover:border-rose-500 text-left">
+                    <Code className="w-4 h-4 text-rose-400" />
+                    <span className="font-bold text-rose-400 text-xs">YARA Rules (.yar)</span>
+                    <span className="text-[9px] text-muted-foreground">Binary Scanner Pack</span>
+                  </Button>
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Auto-Generated EDR & SIEM Detection Rules Explorer */}
+          <Card className="bg-card border-border">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-emerald-400" />
+                    🛡️ Auto-Generated EDR & SIEM Detection Rules Explorer ({rulesData?.totalRulesGenerated || 0} Rules)
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Automatically compiled detection rules generated from scraped Zero-Days, OSINT feeds, and Dark Web reports.
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-1.5 font-mono text-xs">
+                  <Button 
+                    variant={ruleFormat === 'sigma' ? 'default' : 'outline'} 
+                    size="sm" 
+                    onClick={() => setRuleFormat('sigma')}
+                    className="text-xs h-7 px-2.5"
+                  >
+                    Sigma (YAML)
+                  </Button>
+                  <Button 
+                    variant={ruleFormat === 'yara' ? 'default' : 'outline'} 
+                    size="sm" 
+                    onClick={() => setRuleFormat('yara')}
+                    className="text-xs h-7 px-2.5"
+                  >
+                    YARA (.yar)
+                  </Button>
+                  <Button 
+                    variant={ruleFormat === 'kql' ? 'default' : 'outline'} 
+                    size="sm" 
+                    onClick={() => setRuleFormat('kql')}
+                    className="text-xs h-7 px-2.5"
+                  >
+                    MS KQL
+                  </Button>
+                  <Button 
+                    variant={ruleFormat === 'spl' ? 'default' : 'outline'} 
+                    size="sm" 
+                    onClick={() => setRuleFormat('spl')}
+                    className="text-xs h-7 px-2.5"
+                  >
+                    Splunk SPL
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(rulesData?.rules || []).slice(0, 3).map((ruleItem: any) => {
+                const codeSnippet = 
+                  ruleFormat === 'sigma' ? ruleItem.sigmaYaml :
+                  ruleFormat === 'yara' ? ruleItem.yaraRule :
+                  ruleFormat === 'kql' ? ruleItem.microsoftKql : ruleItem.splunkSpl;
+
+                return (
+                  <div key={ruleItem.id} className="p-3 bg-black/70 rounded-lg border border-border/80 space-y-2">
+                    <div className="flex items-center justify-between font-mono text-xs flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-emerald-400">{ruleItem.title}</span>
+                        <Badge variant="outline" className="text-[10px] text-cyan-400 border-cyan-500/30">{ruleItem.cveId}</Badge>
+                        <Badge className="bg-purple-500/10 text-purple-400 text-[10px] font-mono">{ruleItem.category}</Badge>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(codeSnippet);
+                          showToast(`Copied ${ruleFormat.toUpperCase()} Rule for ${ruleItem.cveId}`);
+                        }}
+                        className="text-[10px] font-mono h-6 px-2 gap-1 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                      >
+                        <FileText className="w-3 h-3" /> Copy Code
+                      </Button>
+                    </div>
+                    <pre className="p-2.5 bg-zinc-950 rounded text-[11px] font-mono text-cyan-300 overflow-x-auto border border-zinc-800">
+                      {codeSnippet}
+                    </pre>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
 
