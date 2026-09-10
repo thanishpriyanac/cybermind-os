@@ -93,7 +93,8 @@ export default function AdminPage() {
       refetchLearning();
     },
     onError: (err: any) => {
-      showToast(`❌ Ingestion Error: ${err.message || 'Failed to ingest URL'}`);
+      const msg = err?.response?.data?.error || err?.message || 'Failed to ingest custom URL';
+      showToast(`❌ Ingestion Error: ${msg}`);
     },
   });
 

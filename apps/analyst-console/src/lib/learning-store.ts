@@ -630,8 +630,13 @@ level: critical
 }
 
 // 🎯 On-Demand Custom Target URL & RSS Feed Ingestor with MITRE ATT&CK Auto-Tagger
-export async function ingestCustomUrl(url: string, category?: any): Promise<LearningArticle> {
+export async function ingestCustomUrl(rawUrl: string, category?: any): Promise<LearningArticle> {
   const store = loadLearningStore();
+
+  let url = (rawUrl || '').trim();
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = `https://${url}`;
+  }
 
   const mitreTtpMap: Record<string, string> = {
     powershell: 'T1059.001 (PowerShell)',
@@ -656,8 +661,8 @@ export async function ingestCustomUrl(url: string, category?: any): Promise<Lear
 
   try {
     const urlObj = new URL(url);
-    domain = urlObj.hostname;
-    title = `On-Demand CTI Analysis: ${urlObj.hostname}${urlObj.pathname}`;
+    domain = urlObj.hostname || 'custom-intel.org';
+    title = `On-Demand CTI Analysis: ${urlObj.hostname}${urlObj.pathname || ''}`;
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
