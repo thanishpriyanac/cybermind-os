@@ -89,7 +89,7 @@ export default function AdminPage() {
     onSuccess: (data) => {
       showToast(`⚡ ${data.message || 'Custom CTI Feed Ingested Successfully!'}`);
       setCustomUrlInput('');
-      refetchStatus();
+      refetchLearning();
     },
     onError: (err: any) => {
       showToast(`❌ Ingestion Error: ${err.message || 'Failed to ingest URL'}`);

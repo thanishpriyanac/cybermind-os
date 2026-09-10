@@ -60,7 +60,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none truncate">{user?.email}</p>
-                  <p className="text-[10px] text-cyan-400 font-mono">Role: {(user?.role || 'ADMIN').toUpperCase()}</p>
+                  <p className="text-[10px] text-cyan-400 font-mono">Role: {((user as any)?.role || 'ADMIN').toUpperCase()}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
