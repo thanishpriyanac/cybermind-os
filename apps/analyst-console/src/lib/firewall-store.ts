@@ -46,9 +46,11 @@ export interface FirewallStore {
   assessments: FirewallAssessment[];
 }
 
-const PROJECT_ROOT = path.resolve(__dirname, '../../../../../../');
-const DATA_DIR = path.join(PROJECT_ROOT, 'data');
-const STORE_FILE = path.join(DATA_DIR, 'firewall_store.json');
+import { getDataFilePath, writeJsonAtomic } from './atomic-store';
+
+function getStoreFilePath(): string {
+  return getDataFilePath('firewall_store.json');
+}
 
 let inMemoryStore: FirewallStore | null = null;
 
@@ -56,8 +58,9 @@ function loadStore(): FirewallStore {
   if (inMemoryStore) return inMemoryStore;
 
   try {
-    if (fs.existsSync(STORE_FILE)) {
-      const raw = fs.readFileSync(STORE_FILE, 'utf-8');
+    const file = getStoreFilePath();
+    if (fs.existsSync(file)) {
+      const raw = fs.readFileSync(file, 'utf-8');
       inMemoryStore = JSON.parse(raw);
       return inMemoryStore!;
     }
@@ -73,10 +76,8 @@ function loadStore(): FirewallStore {
 function saveStore(store: FirewallStore) {
   inMemoryStore = store;
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(STORE_FILE, JSON.stringify(store, null, 2), 'utf-8');
+    const file = getStoreFilePath();
+    writeJsonAtomic(file, store);
   } catch (err) {
     console.error('Failed to write firewall store file', err);
   }

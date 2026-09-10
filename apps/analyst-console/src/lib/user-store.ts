@@ -19,9 +19,11 @@ export interface UserSession {
   userAgent: string;
 }
 
-const PROJECT_ROOT = path.resolve(__dirname, '../../../../../../');
-const DATA_DIR = path.join(PROJECT_ROOT, 'data');
-const STORE_FILE = path.join(DATA_DIR, 'user_store.json');
+import { getDataFilePath, writeJsonAtomic } from './atomic-store';
+
+function getStoreFilePath(): string {
+  return getDataFilePath('user_store.json');
+}
 
 const INITIAL_SESSIONS: UserSession[] = [
   {
@@ -65,8 +67,9 @@ let inMemorySessions: UserSession[] | null = null;
 function loadSessions(): UserSession[] {
   if (inMemorySessions) return inMemorySessions;
   try {
-    if (fs.existsSync(STORE_FILE)) {
-      const raw = fs.readFileSync(STORE_FILE, 'utf-8');
+    const file = getStoreFilePath();
+    if (fs.existsSync(file)) {
+      const raw = fs.readFileSync(file, 'utf-8');
       inMemorySessions = JSON.parse(raw);
       return inMemorySessions!;
     }
@@ -81,10 +84,8 @@ function loadSessions(): UserSession[] {
 function saveSessions(sessions: UserSession[]) {
   inMemorySessions = sessions;
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(STORE_FILE, JSON.stringify(sessions, null, 2), 'utf-8');
+    const file = getStoreFilePath();
+    writeJsonAtomic(file, sessions);
   } catch (err) {
     console.error('Failed to write user_store.json file', err);
   }

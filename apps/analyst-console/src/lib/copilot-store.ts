@@ -28,14 +28,14 @@ export interface CopilotConversation {
   messages: CopilotMessage[];
 }
 
-// Store file is pinned to the project root for stable persistence across PM2 restarts
-const PROJECT_ROOT = path.resolve(__dirname, '../../../../../../');
-const DATA_DIR = path.join(PROJECT_ROOT, 'data');
-const STORE_FILE = path.join(DATA_DIR, 'copilot_store.json');
+import { getDataFilePath, writeJsonAtomic } from './atomic-store';
+
+function getStoreFilePath(): string {
+  return getDataFilePath('copilot_store.json');
+}
 
 // Default store is empty — seeded conversations were visible to ALL users (privacy bug)
 const DEFAULT_CONVERSATIONS: CopilotConversation[] = [];
-
 
 let inMemoryStore: CopilotConversation[] | null = null;
 
@@ -43,8 +43,9 @@ function loadStore(): CopilotConversation[] {
   if (inMemoryStore) return inMemoryStore;
 
   try {
-    if (fs.existsSync(STORE_FILE)) {
-      const raw = fs.readFileSync(STORE_FILE, 'utf-8');
+    const file = getStoreFilePath();
+    if (fs.existsSync(file)) {
+      const raw = fs.readFileSync(file, 'utf-8');
       inMemoryStore = JSON.parse(raw);
       return inMemoryStore!;
     }
@@ -60,10 +61,8 @@ function loadStore(): CopilotConversation[] {
 function saveStore(store: CopilotConversation[]) {
   inMemoryStore = store;
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(STORE_FILE, JSON.stringify(store, null, 2), 'utf-8');
+    const file = getStoreFilePath();
+    writeJsonAtomic(file, store);
   } catch (err) {
     console.error('Failed to write copilot store file', err);
   }
