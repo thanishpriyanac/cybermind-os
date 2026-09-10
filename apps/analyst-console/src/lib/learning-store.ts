@@ -385,6 +385,7 @@ export async function runUnrestrictedWebScraperPass(): Promise<LearningStore> {
     { name: 'SANS Internet Storm Center', domain: 'isc.sans.edu', cat: 'RESEARCH' as const, topic: 'Real-World Incident Handler Notes' },
     { name: 'Exploit-DB', domain: 'exploit-db.com', cat: 'EXPLOIT' as const, topic: 'Public Exploit PoCs & Shellcode' },
     { name: 'OWASP & PortSwigger', domain: 'owasp.org', cat: 'RESEARCH' as const, topic: 'Web & API Vulnerabilities' },
+    { name: 'Zscaler ThreatLabz (help.zscaler.com)', domain: 'help.zscaler.com', cat: 'ADVISORY' as const, topic: 'Cloud Security Research & Zero-Day Threat Advisories' },
   ];
 
   for (const src of prioritySources) {

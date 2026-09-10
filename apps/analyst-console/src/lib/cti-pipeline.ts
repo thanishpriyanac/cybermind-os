@@ -253,6 +253,17 @@ export const CYBERMIND_CTI_REGISTRY: CtiFeedSource[] = [
     dataTypes: ['ReverseEngineering', 'MacMalware', 'LinuxAttacks'],
     recommendedIntervalMin: 30,
   },
+  {
+    id: 'zscaler-threatlabz',
+    name: 'Zscaler ThreatLabz Research & Security Advisories (help.zscaler.com)',
+    category: 'THREAT_RESEARCH',
+    priority: 'P1',
+    accessType: 'JSON_FEED',
+    url: 'https://help.zscaler.com',
+    confidenceWeight: 0.92,
+    dataTypes: ['ZeroDayAdvisories', 'CloudThreats', 'ZscalerSignatures', 'SSLBypassIntel'],
+    recommendedIntervalMin: 15,
+  },
 
   // 🟡 P1 — Breaking Cyber News
   {
