@@ -1,4 +1,7 @@
 import { copilotStore } from '@/lib/copilot-store';
+import { sanitizeAndInspectPrompt } from '@/lib/llm-security-proxy';
+import { chunkDocument, queryHybridVectorRag } from '@/lib/rag-engine';
+import { validateTenantHeader } from '@/lib/atomic-store';
 
 export const dynamic = 'force-dynamic';
 
@@ -394,14 +397,38 @@ function streamProvider(
 }
 
 function buildUserMessage(userMessage: string, attachments: FileAttachment[]): string {
-  if (!attachments || attachments.length === 0) return userMessage;
+  let ragContext = '';
+
+  // 1. Chunk & Index File Attachments
+  if (attachments && attachments.length > 0) {
+    for (const file of attachments) {
+      if (file.preview) {
+        chunkDocument(file.name, file.preview);
+      }
+    }
+  }
+
+  // 2. Perform Hybrid Vector RAG Retrieval
+  const ragHits = queryHybridVectorRag(userMessage, 3);
+  if (ragHits.length > 0) {
+    ragContext = `\n\n### 🧠 Retracted Hybrid Vector RAG Knowledge & Document Context:\n`;
+    for (const hit of ragHits) {
+      ragContext += `${hit.citationTag}:\n\`\`\`\n${hit.chunk.content}\n\`\`\`\n`;
+    }
+    ragContext += `\nStrict Requirement: Ground your answer using the citations above when referencing attached files or document rules.\n`;
+  }
+
+  if (!attachments || attachments.length === 0) {
+    return `${userMessage}${ragContext}`;
+  }
+
   const file = attachments[0];
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
   let msg = `User uploaded file: "${file.name}" (${(file.size / 1024).toFixed(1)} KB, type: ${ext})\n\n`;
   if (file.preview) {
-    msg += `File content preview:\n\`\`\`\n${file.preview.slice(0, 4000)}\n\`\`\`\n\n`;
+    msg += `File content snippet:\n\`\`\`\n${file.preview.slice(0, 3000)}\n\`\`\`\n\n`;
   }
-  msg += `User question: ${userMessage}`;
+  msg += `User question: ${userMessage}${ragContext}`;
   return msg;
 }
 
