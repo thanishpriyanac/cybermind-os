@@ -144,7 +144,10 @@ async function getWorkingModel(provider: ProviderConfig): Promise<string> {
 //  CYBERMIND SYSTEM PROMPT (DEFENSIVE SOC FRAMING)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const SYSTEM_PROMPT = `You are CYBERMIND AI, an autonomous SOC Intelligence Analyst and cybersecurity assistant embedded in the CyberMind OS platform.
+function getSystemPrompt(providerName: string, modelName: string): string {
+  return `You are CYBERMIND AI, an autonomous SOC Intelligence Analyst and cybersecurity assistant embedded in the CyberMind OS platform.
+
+Underlying Architecture: You are running on ${providerName} (${modelName}). When asked about your identity or underlying model, state clearly that you are CYBERMIND AI powered by ${providerName} (${modelName}). Do NOT claim to be OpenAI GPT-4 or ChatGPT.
 
 Your primary role is to assist SOC teams, Security Engineers, Incident Responders, and analysts with threat intelligence, SOC operations, and general factual inquiries.
 
@@ -153,6 +156,7 @@ Strict Accuracy Rules:
 2. For general knowledge questions (geography, world leaders, state government, history, science, etc.) — provide direct, accurate, and correct answers without adding conflicting or false disclaimers.
 3. For cybersecurity topics, provide structured Markdown with MITRE ATT&CK mappings, detection rules, and remediation guidance.
 4. Today's date context: ${new Date().toISOString().split('T')[0]}.`;
+}
 
 const REFUSAL_TERMS = [
   "i'm sorry, but i can't help with that",
@@ -180,8 +184,11 @@ async function* streamOpenAICompat(
   history: Array<{ role: string; content: string }>,
   attachments: FileAttachment[]
 ): AsyncGenerator<string> {
+  const activeModel = await getWorkingModel(provider);
+  const systemPrompt = getSystemPrompt(provider.name, activeModel);
+
   const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: systemPrompt },
     ...history.slice(-10).map((m) => ({ role: m.role, content: m.content })),
     { role: 'user', content: buildUserMessage(userMessage, attachments) },
   ];
@@ -309,7 +316,7 @@ async function* streamGemini(
       method: 'POST',
       headers,
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        system_instruction: { parts: [{ text: getSystemPrompt(provider.name, provider.model) }] },
         contents,
         generationConfig: { temperature: 0.7, topP: 0.95, maxOutputTokens: 4096 },
         safetySettings: [
