@@ -31,15 +31,15 @@ export default function QbrReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">QBR Reports</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">QBR Reports</h1>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>All Reports</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto w-full">
           {isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-10 w-full" />

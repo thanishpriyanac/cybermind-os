@@ -173,7 +173,7 @@ export default function HealthPage() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -222,7 +222,7 @@ export default function HealthPage() {
       )}
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* CPU */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">

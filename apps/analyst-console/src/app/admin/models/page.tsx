@@ -60,24 +60,24 @@ export default function AdminModelsPage() {
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
             <ShieldCheck className="h-6 w-6 text-primary" /> Admin AI Model Management
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Configure LLM inference providers, active models, fallback chains, and security key settings.
           </p>
         </div>
-        <Badge variant="outline" className="text-xs px-3 py-1 bg-primary/10 border-primary/30 text-primary flex items-center gap-1.5">
+        <Badge variant="outline" className="text-xs px-3 py-1 bg-primary/10 border-primary/30 text-primary flex items-center gap-1.5 w-fit">
           <CheckCircle2 className="h-3.5 w-3.5" /> Active Model: {activeModel}
         </Badge>
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
         <Card className="p-4 bg-card border-border flex items-center gap-4">
           <div className="p-3 bg-primary/10 rounded-lg text-primary">
             <Cpu className="h-6 w-6" />
@@ -129,7 +129,7 @@ export default function AdminModelsPage() {
       </Card>
 
       {/* Providers Table */}
-      <Card className="p-6 bg-card border-border space-y-4">
+      <Card className="p-3 sm:p-6 bg-card border-border space-y-4">
         <h2 className="text-lg font-semibold text-foreground">Configured AI Providers & Models</h2>
 
         {loading ? (
