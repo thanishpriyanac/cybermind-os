@@ -450,7 +450,9 @@ export default function AdminPage() {
               <CardContent className="p-4">
                 <span className="text-xs font-semibold text-muted-foreground uppercase">Target Web Sources</span>
                 <div className="text-2xl font-bold text-emerald-400 font-mono mt-1">{learningStatus?.sourcesCrawled ?? 30} Feeds</div>
-                <span className="text-[11px] text-muted-foreground font-mono">CISA, Tor, Telegram, News</span>
+                <span className="text-[11px] text-muted-foreground font-mono truncate block" title="The Hacker News, BleepingComputer, MITRE ATT&CK/ATLAS, CISA KEV, NIST NVD, Unit 42, Cisco Talos, OWASP, Krebs, Dark Web">
+                  THN, Bleeping, ATT&CK, CISA, NVD, Unit42, OWASP, Tor
+                </span>
               </CardContent>
             </Card>
             <Card className="bg-card border-border">
