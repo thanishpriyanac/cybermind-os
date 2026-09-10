@@ -16,11 +16,19 @@ const navigation = [
   { name: 'Investigations', href: '/investigations', icon: Activity },
   { name: 'Playbooks', href: '/playbooks', icon: BookOpen },
   { name: 'System Health', href: '/health', icon: HeartPulse },
-  { name: 'Admin Center', href: '/admin', icon: ShieldCheck },
+  { name: 'Admin Center', href: '/admin', icon: ShieldCheck, adminOnly: true },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const userRole = typeof window !== 'undefined' ? (localStorage.getItem('user_role') || 'ANALYST').toUpperCase() : 'ANALYST';
+
+  const visibleNav = navigation.filter((item) => {
+    if (item.adminOnly && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+      return false;
+    }
+    return true;
+  });
 
   return (
     <div className="hidden md:flex md:w-64 md:flex-col flex-shrink-0 bg-card border-r border-border">
@@ -30,7 +38,7 @@ export function Sidebar() {
         </div>
         <div className="flex-1 flex flex-col overflow-y-auto">
           <nav className="flex-1 px-2 py-4 space-y-1">
-            {navigation.map((item) => {
+            {visibleNav.map((item) => {
               const isActive = pathname.startsWith(item.href);
               return (
                 <Link

@@ -1,22 +1,32 @@
 export const dynamic = 'force-dynamic';
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSyncStatus, updateFromNvdData, updateKevData, loadStore, saveStore } from '@/lib/cve-store';
+import { enforceApiPermission } from '@/lib/rbac';
+import { logAuditEvent } from '@/lib/audit-logger';
 import axios from 'axios';
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  // 1. RBAC Guard: Admin-Only feature
+  const rbacError = enforceApiPermission(req, 'cve_sync', 'write');
+  if (rbacError) return rbacError;
+
   try {
+    const url = new URL(req.url);
+    const force = url.searchParams.get('force') === 'true';
+
     const status = getSyncStatus();
     const now = Date.now();
 
-    // Check if synced within the last 1 hour (3,600,000 ms)
-    if (status.lastNvdSync) {
+    // Check if synced within the last 30 minutes unless force=true
+    if (!force && status.lastNvdSync) {
       const lastSync = new Date(status.lastNvdSync).getTime();
-      if (now - lastSync < 60 * 60 * 1000) {
+      if (now - lastSync < 30 * 60 * 1000) {
         return NextResponse.json({
           synced: true,
           cached: true,
-          message: 'CVE data is up to date (synced within the last 1 hour)',
+          message: 'CVE database was synchronized recently (within 30 minutes)',
+          lastUpdated: status.lastNvdSync,
           total: status.totalCount,
           kevCount: status.kevCount,
         });
@@ -26,38 +36,38 @@ export async function POST() {
     let nvdSuccess = false;
     let kevSuccess = false;
 
-    // Fetch NVD data with 5s timeout
+    // 2. Fetch NVD API v2 Data with 15s timeout
     try {
-      const pubStartDate = '2026-09-01T00:00:00.000';
-      const pubEndDate = new Date().toISOString();
+      const pubStartDate = encodeURIComponent('2026-09-01T00:00:00.000Z');
+      const pubEndDate = encodeURIComponent(new Date().toISOString());
       const nvdUrl = `https://services.nvd.nist.gov/rest/json/cves/2.0?pubStartDate=${pubStartDate}&pubEndDate=${pubEndDate}`;
       
       const apiKey = process.env.NVD_API_KEY || 'F536F18D-BB15-4F4C-9F5E-3BCEF77FAA64';
-      const headers: any = {};
+      const headers: Record<string, string> = {};
       if (apiKey) headers.apiKey = apiKey;
 
-      const nvdRes = await axios.get(nvdUrl, { headers, timeout: 5000 });
+      const nvdRes = await axios.get(nvdUrl, { headers, timeout: 15000 });
       if (nvdRes.data) {
         updateFromNvdData(nvdRes.data);
         nvdSuccess = true;
       }
     } catch (e) {
-      console.warn('NVD sync skipped/timed out, using stored cache:', e);
+      console.warn('NVD API v2 sync skipped or timed out, using local threat cache:', e);
     }
 
-    // Fetch CISA KEV with 5s timeout
+    // 3. Fetch CISA KEV Feed with 10s timeout
     try {
       const kevUrl = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
-      const kevRes = await axios.get(kevUrl, { timeout: 5000 });
+      const kevRes = await axios.get(kevUrl, { timeout: 10000 });
       if (kevRes.data) {
         updateKevData(kevRes.data);
         kevSuccess = true;
       }
     } catch (e) {
-      console.warn('CISA KEV fetch skipped/timed out, using stored cache:', e);
+      console.warn('CISA KEV fetch skipped or timed out:', e);
     }
 
-    // Always refresh timestamp so sync status shows OK
+    // 4. Update sync timestamps & status
     const store = loadStore();
     store.syncStatus = 'idle';
     store.lastNvdSync = new Date().toISOString();
@@ -66,12 +76,28 @@ export async function POST() {
 
     const newStatus = getSyncStatus();
 
+    // 5. Log Security Audit Event
+    logAuditEvent({
+      action: 'CVE_DATABASE_SYNC',
+      module: 'CVE_INTELLIGENCE',
+      resource: 'cve_store.json',
+      result: 'SUCCESS',
+      details: {
+        nvdSuccess,
+        kevSuccess,
+        totalRecords: newStatus.totalCount,
+        kevCount: newStatus.kevCount,
+      },
+    });
+
     return NextResponse.json({
       synced: true,
       nvdSuccess,
       kevSuccess,
+      lastUpdated: store.lastNvdSync,
       total: newStatus.totalCount,
       kevCount: newStatus.kevCount,
+      severityCounts: newStatus.severityCounts,
     });
   } catch (error: any) {
     console.error('Error during CVE sync:', error);
@@ -80,11 +106,14 @@ export async function POST() {
     saveStore(store);
     
     const status = getSyncStatus();
-    return NextResponse.json({
-      synced: true,
-      cached: true,
-      total: status.totalCount,
-      kevCount: status.kevCount,
-    });
+    return NextResponse.json(
+      {
+        synced: false,
+        error: 'Failed to complete CVE database synchronization',
+        total: status.totalCount,
+        kevCount: status.kevCount,
+      },
+      { status: 500 }
+    );
   }
 }
