@@ -90,14 +90,14 @@ const PROVIDERS = {
   },
   nvidia_pro: {
     name: 'NVIDIA DeepSeek V4 Pro',
-    apiKey: process.env.NVIDIA_API_KEY_PRO || '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',
+    apiKey: process.env.NVIDIA_API_KEY_PRO || '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',
     model: 'deepseek-ai/deepseek-v4-pro-0813',
     baseUrl: 'https://integrate.api.nvidia.com/v1',
     style: 'openai',
   },
   nvidia_flash: {
     name: 'NVIDIA DeepSeek V4 Flash',
-    apiKey: process.env.NVIDIA_API_KEY_FLASH || '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',
+    apiKey: process.env.NVIDIA_API_KEY_FLASH || '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',
     model: 'deepseek-ai/deepseek-v4-flash-0731',
     baseUrl: 'https://integrate.api.nvidia.com/v1',
     style: 'openai',
