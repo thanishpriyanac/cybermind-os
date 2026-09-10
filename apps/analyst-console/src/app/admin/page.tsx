@@ -251,7 +251,7 @@ export default function AdminPage() {
             Zero-delay real-time server governance, process telemetry, and AI model health.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 flex items-center gap-2 text-xs font-mono">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             {isStreaming ? 'Live Stream (0ms)' : 'Real-Time SSE'}
@@ -259,14 +259,14 @@ export default function AdminPage() {
           <Button variant="outline" size="sm" onClick={() => refetchHealth()} disabled={isRefetching} className="gap-1 text-xs">
             <RefreshCw className={`w-3.5 h-3.5 ${isRefetching ? 'animate-spin' : ''}`} /> Refresh
           </Button>
-          <Badge className="bg-primary/10 text-primary border border-primary/20 text-xs py-1.5 px-3 font-mono">
+          <Badge className="bg-primary/10 text-primary border border-primary/20 text-xs py-1.5 px-3 font-mono hidden sm:inline-flex">
             Tenant: cybermind-master-tenant
           </Badge>
         </div>
       </div>
 
       {/* Admin Tabs */}
-      <div className="flex items-center gap-2 border-b border-border overflow-x-auto pb-2">
+      <div className="flex items-center gap-2 border-b border-border overflow-x-auto pb-2 whitespace-nowrap">
         <button
           onClick={() => setActiveTab('OVERVIEW')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-medium transition-colors ${

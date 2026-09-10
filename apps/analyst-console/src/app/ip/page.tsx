@@ -76,8 +76,8 @@ export default function IpIntelligencePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
           <ShieldAlert className="h-8 w-8 text-primary" />
           IP Intelligence
         </h1>
@@ -234,7 +234,7 @@ export default function IpIntelligencePage() {
         <CardHeader>
           <CardTitle>Investigation History</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto w-full">
           {historyLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-10 w-full" />

@@ -75,9 +75,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Platform Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Platform Dashboard</h1>
           <p className="text-xs text-muted-foreground mt-1">Real-time cybersecurity operations & threat intelligence overview.</p>
         </div>
         {healthLoading ? (
@@ -91,7 +91,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Row 1: Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active System Alerts</CardTitle>

@@ -59,20 +59,20 @@ export default function FirewallAssessmentsPage() {
   const openAssessments = assessments?.filter(a => a.status === 'draft').length || 0;
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Firewall Health Check</h2>
+    <div className="flex-1 space-y-4 p-3 sm:p-6 md:p-8 pt-4 sm:pt-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Firewall Health Check</h2>
         <div className="flex items-center space-x-2">
           <Link href="/firewall/new">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
+            <Button size="sm" className="gap-1">
+              <Plus className="h-4 w-4" />
               New Assessment
             </Button>
           </Link>
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Assessments</CardTitle>
@@ -115,7 +115,7 @@ export default function FirewallAssessmentsPage() {
         <CardHeader>
           <CardTitle>Recent Assessments</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="overflow-x-auto w-full">
           {isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-10 w-full" />

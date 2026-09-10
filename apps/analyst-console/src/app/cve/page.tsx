@@ -128,7 +128,7 @@ export default function CveIntelligencePage() {
         <span className="text-cyan-400">⚡ Auto-Sync Schedule: Every 1 Hour</span>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total CVEs</CardTitle>
@@ -218,7 +218,7 @@ export default function CveIntelligencePage() {
       </div>
 
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto w-full">
           <Table>
             <TableHeader>
               <TableRow>
