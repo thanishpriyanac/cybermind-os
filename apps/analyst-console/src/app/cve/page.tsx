@@ -45,8 +45,9 @@ export default function CveIntelligencePage() {
   });
 
   const syncMutation = useMutation({
-    mutationFn: async (force: boolean = true) => {
-      const res = await api.post(`/v1/cve/sync${force ? '?force=true' : ''}`);
+    mutationFn: async (force?: boolean) => {
+      const isForce = force !== false;
+      const res = await api.post(`/v1/cve/sync${isForce ? '?force=true' : ''}`);
       return res.data;
     },
     onSuccess: () => {
@@ -67,14 +68,14 @@ export default function CveIntelligencePage() {
       !syncMutation.isPending &&
       statusData.syncStatus !== 'syncing'
     ) {
-      syncMutation.mutate();
+      syncMutation.mutate(true);
     }
   }, [statusData]);
 
   // Set up 1-hour interval timer (3600000 ms)
   useEffect(() => {
     const interval = setInterval(() => {
-      syncMutation.mutate();
+      syncMutation.mutate(true);
     }, 60 * 60 * 1000); // Auto-sync every 1 hour
 
     return () => clearInterval(interval);
