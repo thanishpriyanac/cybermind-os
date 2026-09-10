@@ -34,7 +34,8 @@ export interface CtiFeedSource {
 
 export interface CtiEntityCorrelation {
   cveId?: string;
-  cweIds: string[];
+  cwes: string[];
+  cweIds?: string[];
   threatActors: string[];
   malwareFamilies: string[];
   attackTechniques: string[]; // e.g. T1059.001, T1068
