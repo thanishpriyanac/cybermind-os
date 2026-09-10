@@ -211,7 +211,7 @@ export default function HealthPage() {
       {/* Server Info Banner */}
       {health && (
         <div className="p-3 bg-muted/30 border border-border rounded-lg flex flex-wrap gap-4 text-xs text-muted-foreground font-mono">
-          <span>🐧 Distro: <strong className="text-emerald-400">{health.server.distro || 'Parrot Security OS'}</strong></span>
+          <span>🐧 Distro: <strong className="text-emerald-400">{health.server.distro || 'Linux OS'}</strong></span>
           <span>🖥 Host: <strong className="text-foreground">{health.server.hostname}</strong> ({health.server.kernel || health.server.platform})</span>
           <span>⚙️ Processes: <strong className="text-cyan-400">{health.systemProcesses?.totalProcesses || 142} Active</strong></span>
           <span>⏱ Uptime: <strong className="text-foreground">{health.server.uptime}</strong></span>
