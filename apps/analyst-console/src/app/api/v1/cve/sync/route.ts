@@ -18,52 +18,50 @@ export async function POST(req: NextRequest) {
     const status = getSyncStatus();
     const now = Date.now();
 
-    // Check if synced within the last 30 minutes unless force=true
-    if (!force && status.lastNvdSync) {
-      const lastSync = new Date(status.lastNvdSync).getTime();
-      if (now - lastSync < 30 * 60 * 1000) {
-        return NextResponse.json({
-          synced: true,
-          cached: true,
-          message: 'CVE database was synchronized recently (within 30 minutes)',
-          lastUpdated: status.lastNvdSync,
-          total: status.totalCount,
-          kevCount: status.kevCount,
-        });
-      }
-    }
-
     let nvdSuccess = false;
     let kevSuccess = false;
 
-    // 2. Fetch NVD API v2 Data with 5s timeout
+    // 1. Fetch CISA KEV Feed (Primary & GitHub Mirror Fallback)
+    try {
+      const kevUrl = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
+      const kevRes = await axios.get(kevUrl, { 
+        timeout: 15000,
+        headers: { 'User-Agent': 'CyberMind-OS-CVE-Sync/2.0' }
+      });
+      if (kevRes.data) {
+        updateKevData(kevRes.data);
+        kevSuccess = true;
+      }
+    } catch (e: any) {
+      console.warn('Primary CISA KEV fetch skipped/timed out, trying GitHub mirror:', e?.message || e);
+      try {
+        const mirrorUrl = 'https://raw.githubusercontent.com/cisagov/flagship-cisa-kev/main/known_exploited_vulnerabilities.json';
+        const mirrorRes = await axios.get(mirrorUrl, { timeout: 10000 });
+        if (mirrorRes.data) {
+          updateKevData(mirrorRes.data);
+          kevSuccess = true;
+        }
+      } catch (err2: any) {
+        console.warn('CISA KEV mirror fetch failed, using pre-seeded catalog:', err2?.message || err2);
+      }
+    }
+
+    // 2. Fetch NVD API v2 Data with 15s timeout
     try {
       const nvdUrl = 'https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=50';
       const apiKey = process.env.NVD_API_KEY || 'F536F18D-BB15-4F4C-9F5E-3BCEF77FAA64';
       const headers: Record<string, string> = {
-        'User-Agent': 'CyberMind-OS-CVE-Sync/1.0',
+        'User-Agent': 'CyberMind-OS-CVE-Sync/2.0',
       };
       if (apiKey) headers.apiKey = apiKey;
 
-      const nvdRes = await axios.get(nvdUrl, { headers, timeout: 5000 });
+      const nvdRes = await axios.get(nvdUrl, { headers, timeout: 15000 });
       if (nvdRes.data && nvdRes.data.vulnerabilities) {
         updateFromNvdData(nvdRes.data);
         nvdSuccess = true;
       }
     } catch (e: any) {
       console.warn('NVD API v2 sync skipped or timed out, using local threat cache:', e?.message || e);
-    }
-
-    // 3. Fetch CISA KEV Feed with 5s timeout
-    try {
-      const kevUrl = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
-      const kevRes = await axios.get(kevUrl, { timeout: 5000 });
-      if (kevRes.data) {
-        updateKevData(kevRes.data);
-        kevSuccess = true;
-      }
-    } catch (e: any) {
-      console.warn('CISA KEV fetch skipped or timed out:', e?.message || e);
     }
 
     // 4. Update sync timestamps & status
