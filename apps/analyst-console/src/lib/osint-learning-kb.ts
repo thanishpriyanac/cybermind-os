@@ -648,6 +648,55 @@ Modern adversary groups have evolved from using LLMs for simple code completion 
 3. **Behavioral EDR & Process Auditing**: Shift detection logic from static file hashes to runtime process tree anomalies (e.g., non-standard subprocesses spawned by node/python AI runtimes).`,
     tags: ['Claude', 'AIAgents', 'ZeroDay', 'CyberattackAutomation', 'EDREvasion', 'Anthropic', 'MITRE_ATLAS', 'ThreatIntel'],
   },
+  {
+    id: 'osint-master-16-cybersecurity-domains-guide',
+    source: 'CyberMind OS Master Architectural Matrix',
+    url: 'https://cybermind.local/architecture/16-domains',
+    title: '🌐 MASTER CYBERSECURITY MATRIX: Complete Architectural Reference Across All 16 Security Domains',
+    category: 'RESEARCH',
+    severity: 'CRITICAL',
+    summary: 'Comprehensive 16-domain cybersecurity architectural knowledge framework covering SOC Operations, NOC & Network Security, Cloud Security, Zero Trust, Vulnerability Management, CTI & OSINT, DFIR, Malware Analysis, AppSec & DevSecOps, IAM, Endpoint/Email Sec, OT/ICS SCADA, GRC, Cryptography, AI Security, and Detection Engineering.',
+    contentSnippet: `CYBERMIND OS 16-DOMAIN CYBERSECURITY KNOWLEDGE MATRIX:
+1. SOC & Security Operations: SIEM (Splunk, Sentinel), EDR/XDR (CrowdStrike, Defender for Endpoint), SOAR Playbooks, Alert Triage, Log Parsing (KQL, SPL).
+2. NOC & Network Security: Perimeter Firewalls (FortiGate, Palo Alto, Cisco, Check Point), BGP/OSPF Routing, IPsec/SSL VPN, DNS Security, Wireshark PCAP Inspection.
+3. Cloud Security: AWS, Azure, GCP, CSPM (Wiz, Prisma Cloud), CWPP, Kubernetes & Docker Container Hardening, IAM Policies, Terraform Guardrails.
+4. Zero Trust & Edge Security: Zscaler ZIA, ZPA, ZDX, ZCC, SWG, CASB, SASE, Identity-Centric Access, Microsegmentation.
+5. Vulnerability Management: CVE Analysis, CVSS v3.1/v4.0 Metrics, CISA KEV Exploited Vulnerability Prioritization, Patch Deployment, SLA Remediation.
+6. Threat Intelligence & OSINT: STIX 2.1 / TAXII, Shodan, Censys, VirusTotal, AbuseIPDB, AlienVault OTX, MITRE ATT&CK & ATLAS Framework Mapping.
+7. Digital Forensics & Incident Response (DFIR): NIST SP 800-61 Lifecycle (PICERL), Volatility Memory Analysis, Autopsy Disk Forensics, Root Cause Timeline.
+8. Malware Analysis & Reverse Engineering: Static & Dynamic Sandbox Analysis, YARA Rule Writing, Sigma Rules, Obfuscation & De-packaging.
+9. Application Security & DevSecOps: OWASP Top 10 (Web, API, LLM), SAST/DAST/SCA Tools, Secure Code Review, CI/CD Pipeline Enforcement.
+10. Identity & Access Management (IAM): Active Directory / Entra ID, Kerberos, NTLM, SAML 2.0, OAuth 2.0, SCIM, MFA, Privileged Access Management (PAM).
+11. Email & Endpoint Security: SPF, DKIM, DMARC Authentication, Anti-Phishing Ingest, DLP Data Loss Prevention, CIS Hardening Benchmarks.
+12. OT / ICS / SCADA Security: Purdue Model (Levels 0-5), Modbus, DNP3, IEC 60870-5-104, Industrial Firewall Segmentation, Air-Gapped Network Sec.
+13. Governance, Risk & Compliance (GRC): ISO 27001:2022, NIST CSF 2.0, NIST SP 800-53 Rev 5, SOC 2 Type II, PCI-DSS v4.0, GDPR Data Privacy.
+14. Cryptography & Security Engineering: Public Key Infrastructure (PKI), TLS 1.3, IPsec, Hardware Security Modules (HSM), Post-Quantum Cryptography (PQC).
+15. Artificial Intelligence Security: MITRE ATLAS, OWASP Top 10 for LLMs, Adversarial Prompt Injection Defense, Model Poisoning, AI Agent Telemetry Audit.
+16. Detection Engineering & Threat Hunting: Custom YARA, Sigma, Snort, Suricata Rule Authoring, KQL/SPL Threat Hunting Queries, Hypothesis Hunting.`,
+    trainingPrompt: 'Provide a complete architectural response covering all 16 cybersecurity domains and explain how CyberMind OS integrates cross-domain intelligence.',
+    trainingCompletion: `### 🌐 CyberMind OS Master Cybersecurity Architectural Matrix (16 Domains)
+
+#### 1. Domain Coverage & Technical Scope:
+CyberMind AI provides end-to-end diagnostic, troubleshooting, and engineering capabilities across all 16 cybersecurity domains:
+- **SOC & SIEM/EDR**: Triage alerts, author KQL/SPL queries, and execute incident response playbooks.
+- **NOC & Network Security**: Configure FortiGate, Palo Alto, Cisco, and Check Point firewalls; analyze PCAPs; optimize VPN/SD-WAN.
+- **Cloud & Container Security**: Enforce CSPM/CWPP controls on AWS/Azure/GCP and harden Docker/Kubernetes clusters.
+- **Zero Trust Architecture**: Deploy Zscaler ZIA, ZPA, ZDX, and ZCC with granular access policies and SAML/SCIM identity.
+- **Vulnerability Management**: Correlate NIST NVD CVEs with CISA KEV active exploitation lists and enforce patching SLAs.
+- **Threat Intelligence & OSINT**: Parse STIX 2.1 feeds and leverage Shodan, Censys, VirusTotal, and AbuseIPDB for passive recon.
+- **Digital Forensics & IR**: Execute NIST SP 800-61 incident handler workflows and analyze Volatility memory artifacts.
+- **Malware Analysis & Detection**: Author YARA rules, Sigma detection rules, and Snort signatures for sandbox telemetry.
+- **Application Security & DevSecOps**: Remediate OWASP Top 10 (Web/API/LLM) vulnerabilities and secure CI/CD pipelines.
+- **Identity & Access Management**: Secure Active Directory, Entra ID, Kerberos, SAML 2.0, OAuth 2.0, and PAM solutions.
+- **Email & Endpoint Security**: Implement DMARC/DKIM/SPF, DLP policies, and CIS Benchmark host hardening.
+- **OT/ICS/SCADA Security**: Enforce Purdue Model network segmentation and secure Modbus/DNP3 industrial protocols.
+- **Governance, Risk & Compliance**: Align security controls with ISO 27001, NIST CSF 2.0, NIST 800-53, SOC 2, and PCI-DSS v4.0.
+- **Cryptography & Security Engineering**: Manage PKI certificate lifecycles, HSMs, TLS 1.3, and Post-Quantum Cryptography transition.
+- **AI Security & Threat Defense**: Monitor MITRE ATLAS techniques, defend against prompt injection, and audit AI API agent loops.
+- **Detection Engineering & Threat Hunting**: Formulate hypothesis-driven threat hunts and write multi-SIEM detection rules.`,
+    tags: ['MasterMatrix', '16Domains', 'SOC', 'NOC', 'CloudSec', 'ZeroTrust', 'DFIR', 'Malware', 'AppSec', 'IAM', 'OT_ICS', 'GRC', 'Cryptography', 'AISecurity', 'DetectionEngineering'],
+  },
 ];
+
 
 
