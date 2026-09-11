@@ -136,22 +136,31 @@ export async function processImageOcr(input: { base64Data?: string; imageUrl?: s
   const ctiRecord: StructuredCtiRecord = {
     id: `ocr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     title: `OCR Intel: ${input.filename || 'Threat Screenshot'}`,
-    rawContent: extractedText,
-    summary,
-    threatType: category === 'MALWARE_RANSOM_NOTE' ? 'MALWARE' : category === 'DARK_WEB_CAPTURE' ? 'DARK_WEB' : 'OSINT',
-    cveIds: iocs.cves,
-    iocs: {
-      ips: iocs.ipAddresses,
-      domains: iocs.domains,
-      hashes: iocs.hashes,
-      urls: iocs.urls
-    },
-    mitreTactics: iocs.mitreTechniques.length > 0 ? ['Initial Access', 'Execution'] : [],
-    mitreTechniques: iocs.mitreTechniques,
-    affectedSystems: ['Windows Enterprise', 'Linux Server', 'Cloud Infrastructure'],
-    recommendedSeverity,
+    sourceId: 'ocr-engine',
+    sourceName: 'CyberMind OCR Engine',
+    sourcePriority: 'P1',
     confidenceScore: confidence,
-    extractedAt: new Date().toISOString()
+    category,
+    verificationStatus: 'PRIMARY_VERIFIED',
+    entities: {
+      cveId: iocs.cves[0],
+      cwes: [],
+      threatActors: [],
+      malwareFamilies: category === 'MALWARE_RANSOM_NOTE' ? ['Ransomware'] : [],
+      attackTechniques: iocs.mitreTechniques,
+      iocs: [
+        ...iocs.ipAddresses.map((ip) => ({ type: 'IP' as const, value: ip })),
+        ...iocs.domains.map((d) => ({ type: 'DOMAIN' as const, value: d })),
+        ...iocs.hashes.map((h) => ({ type: 'HASH_SHA256' as const, value: h })),
+      ],
+      affectedProducts: ['Enterprise Host', 'Linux Kernel'],
+      detectionRules: [],
+      mitigations: ['Block IP perimeter', 'Quarantine file hash'],
+    },
+    trainingPrompt: `Analyze OCR Threat Screenshot: ${input.filename || 'Image Artifact'}`,
+    trainingCompletion: summary,
+    publishedAt: new Date().toISOString(),
+    scrapedAt: new Date().toISOString(),
   };
 
   return {
