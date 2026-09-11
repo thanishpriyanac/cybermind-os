@@ -86,7 +86,7 @@ export default function AdminPage() {
   // Custom URL Ingest Mutation
   const ingestMutation = useMutation({
     mutationFn: async () => {
-      const res = await api.post('/api/v1/learning/ingest', {
+      const res = await api.post('/v1/learning/ingest', {
         url: customUrlInput,
         category: customCategory,
       });
@@ -113,7 +113,7 @@ export default function AdminPage() {
 
   const ocrMutation = useMutation({
     mutationFn: async () => {
-      const res = await api.post('/api/v1/learning/ocr', {
+      const res = await api.post('/v1/learning/ocr', {
         base64Data: ocrBase64,
         imageUrl: ocrImageUrl,
         rawText: ocrRawText,
@@ -140,7 +140,7 @@ export default function AdminPage() {
   const { data: rulesData } = useQuery({
     queryKey: ['learning-rules'],
     queryFn: async () => {
-      const res = await api.get('/api/v1/learning/rules');
+      const res = await api.get('/v1/learning/rules');
       return res.data;
     },
     enabled: activeTab === 'LEARNING',
