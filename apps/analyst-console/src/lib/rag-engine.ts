@@ -11,6 +11,7 @@
 
 import { OSINT_MASTER_KNOWLEDGE_BASE } from './osint-learning-kb';
 import { ZSCALER_ATOZ_CONFIG_GUIDES } from './zscaler-config-kb';
+import { MASTER_CYBER_TRAINING_PLATFORMS } from './cyber-training-kb';
 
 export interface DocumentChunk {
   id: string;
@@ -77,7 +78,7 @@ export function chunkDocument(documentName: string, text: string, metadata: Reco
 }
 
 /**
- * Automatically pre-indexes all built-in Knowledge Base entries (OSINT + Zscaler Playbooks)
+ * Automatically pre-indexes all built-in Knowledge Base entries (OSINT + Zscaler + Cyber Training)
  */
 export function initializeRagEngine() {
   if (isInitialized) return;
@@ -92,6 +93,14 @@ export function initializeRagEngine() {
   for (const guide of ZSCALER_ATOZ_CONFIG_GUIDES) {
     const fullText = `ZSCALER CONFIG GUIDE: ${guide.title}\nMODULE: ${guide.module} | CATEGORY: ${guide.category}\nSUMMARY: ${guide.summary}\n\nPREREQUISITES:\n${guide.prerequisites.join('\n')}\n\nSTEP BY STEP CONFIG:\n${guide.stepByStepConfig.join('\n')}\n\nVERIFICATION COMMANDS:\n${guide.verificationCommands.join('\n')}\n\nBEST PRACTICES:\n${guide.bestPractices.join('\n')}\n\nTRAINING COMPLETION:\n${guide.trainingCompletion}`;
     chunkDocument(`Zscaler Guide: ${guide.title}`, fullText, { module: guide.module, category: guide.category, id: guide.id });
+  }
+
+  // 3. Index Master Cybersecurity Training Platforms & Scenario Labs
+  for (const platform of MASTER_CYBER_TRAINING_PLATFORMS) {
+    for (const lab of platform.sampleLabs) {
+      const fullText = `CYBER TRAINING LAB (${platform.name}): ${lab.title}\nPLATFORM: ${platform.name} (${platform.url})\nLEVEL: ${lab.level} | CATEGORY: ${platform.category}\nSUMMARY: ${lab.summary}\n\nSCENARIO TELEMETRY:\n${lab.scenarioDetails}\n\nINVESTIGATION STEPS:\n${lab.investigationSteps.join('\n')}\n\nREMEDIATION PLAYBOOK:\n${lab.mitigationPlaybook}`;
+      chunkDocument(`Training Lab: ${platform.name} - ${lab.title}`, fullText, { platform: platform.name, level: lab.level, tags: lab.tags });
+    }
   }
 
   isInitialized = true;
@@ -219,6 +228,7 @@ export function getRagStats() {
     totalChunks: vectorStoreCache.length,
     osintKnowledgeBaseCount: OSINT_MASTER_KNOWLEDGE_BASE.length,
     zscalerConfigGuideCount: ZSCALER_ATOZ_CONFIG_GUIDES.length,
+    trainingPlatformCount: MASTER_CYBER_TRAINING_PLATFORMS.length,
     status: 'ACTIVE_HYBRID_RAG',
   };
 }
