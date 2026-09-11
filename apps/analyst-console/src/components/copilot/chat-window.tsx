@@ -17,8 +17,27 @@ import {
   UploadCloud,
   X,
   File as FileIcon,
+import {
+  Send,
+  Bot,
+  User,
+  StopCircle,
+  RefreshCcw,
+  Info,
+  Check,
+  Copy,
+  Paperclip,
+  FileCode,
+  Network,
+  FileText,
+  UploadCloud,
+  X,
+  File as FileIcon,
   PanelLeft,
   Activity,
+  Camera,
+  Scan,
+  Eye,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -31,6 +50,17 @@ export interface AttachedFile {
   size: number;
   type: string;
   preview?: string;
+  ocrText?: string;
+  iocs?: {
+    cves: string[];
+    ipAddresses: string[];
+    hashes: string[];
+    domains: string[];
+    urls?: string[];
+    mitreTechniques?: string[];
+  };
+  confidence?: number;
+  category?: string;
 }
 
 interface Message {
@@ -65,15 +95,16 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function getFileCategory(filename: string): 'pcap' | 'config' | 'log' | 'doc' {
+function getFileCategory(filename: string): 'pcap' | 'config' | 'log' | 'doc' | 'image' {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   if (['pcap', 'pcapng', 'cap'].includes(ext)) return 'pcap';
   if (['yaml', 'yml', 'json', 'conf', 'rules', 'sigma'].includes(ext)) return 'config';
   if (['log', 'txt', 'csv', 'evtx'].includes(ext)) return 'log';
+  if (['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'tiff'].includes(ext)) return 'image';
   return 'doc';
 }
 
-function renderFileIcon(category: 'pcap' | 'config' | 'log' | 'doc', className: string) {
+function renderFileIcon(category: 'pcap' | 'config' | 'log' | 'doc' | 'image', className: string) {
   switch (category) {
     case 'pcap':
       return <Network className={className} />;
@@ -81,6 +112,8 @@ function renderFileIcon(category: 'pcap' | 'config' | 'log' | 'doc', className: 
       return <FileCode className={className} />;
     case 'log':
       return <FileText className={className} />;
+    case 'image':
+      return <Camera className={className} />;
     default:
       return <FileIcon className={className} />;
   }
@@ -169,18 +202,55 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
     }
   };
 
-  const handleFilesAdded = async (fileList: FileList | null) => {
+  const handleFilesAdded = async (fileList: FileList | Array<File> | null) => {
     if (!fileList || fileList.length === 0) return;
 
     const newFiles: AttachedFile[] = [];
+    const filesArray = Array.from(fileList);
 
-    for (let i = 0; i < fileList.length; i++) {
-      const f = fileList[i];
+    for (let i = 0; i < filesArray.length; i++) {
+      const f = filesArray[i];
       let preview = '';
+      let ocrText = '';
+      let iocs = undefined;
+      let confidence = undefined;
+      let imageCategory = undefined;
 
-      // If text or config file, read preview snippet
       const category = getFileCategory(f.name);
-      if (f.size < 500_000 && category !== 'pcap') {
+      
+      // Handle Image OCR processing
+      if (category === 'image' || f.type.startsWith('image/')) {
+        try {
+          const base64Data = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target?.result as string);
+            reader.readAsDataURL(f);
+          });
+          preview = base64Data; // Use image base64 data URL for thumbnail preview
+
+          const ocrRes = await fetch('/api/v1/learning/ocr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              base64Data,
+              filename: f.name,
+              autoIngest: false
+            })
+          });
+
+          if (ocrRes.ok) {
+            const data = await ocrRes.json();
+            if (data.result) {
+              ocrText = data.result.extractedText;
+              iocs = data.result.iocs;
+              confidence = data.result.confidence;
+              imageCategory = data.result.category;
+            }
+          }
+        } catch (e) {
+          console.error('[CYBERAI] Image OCR Analysis failed:', e);
+        }
+      } else if (f.size < 500_000 && category !== 'pcap') {
         try {
           preview = (await f.text()).slice(0, 2000);
         } catch {
@@ -193,10 +263,30 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
         size: f.size,
         type: f.type || category,
         preview,
+        ocrText,
+        iocs,
+        confidence,
+        category: imageCategory
       });
     }
 
     setAttachedFiles((prev) => [...prev, ...newFiles]);
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    if (e.clipboardData && e.clipboardData.files && e.clipboardData.files.length > 0) {
+      const imageFiles: File[] = [];
+      for (let i = 0; i < e.clipboardData.files.length; i++) {
+        const item = e.clipboardData.files[i];
+        if (item.type.startsWith('image/')) {
+          imageFiles.push(item);
+        }
+      }
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        await handleFilesAdded(imageFiles);
+      }
+    }
   };
 
   const removeAttachedFile = (index: number) => {
@@ -479,19 +569,63 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
                   >
                     {/* Render Attachments if present on user message */}
                     {isUser && msg.attachments && msg.attachments.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-2.5 pb-2 border-b border-primary-foreground/20">
+                      <div className="flex flex-col gap-2 mb-2.5 pb-2 border-b border-primary-foreground/20">
                         {msg.attachments.map((file, fIdx) => {
                           const cat = getFileCategory(file.name);
+                          const isImage = cat === 'image' || file.type?.startsWith('image/');
+                          
                           return (
-                            <div
-                              key={fIdx}
-                              className="flex items-center gap-1.5 bg-black/20 dark:bg-white/10 px-2 py-1 rounded text-xs"
-                            >
-                              {renderFileIcon(cat, 'w-3.5 h-3.5 opacity-90')}
-                              <span className="font-medium truncate max-w-[160px]">{file.name}</span>
-                              <span className="text-[10px] opacity-75">
-                                ({formatFileSize(file.size)})
-                              </span>
+                            <div key={fIdx} className="space-y-1.5 bg-black/20 dark:bg-white/10 p-2 rounded-lg text-xs">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  {renderFileIcon(cat, 'w-3.5 h-3.5 opacity-90 text-cyan-400')}
+                                  <span className="font-medium truncate max-w-[180px]">{file.name}</span>
+                                  <span className="text-[10px] opacity-75">({formatFileSize(file.size)})</span>
+                                </div>
+                                {isImage && (
+                                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                                    📸 OCR ANALYZED
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Image Thumbnail Preview & IOC Badges */}
+                              {isImage && file.preview && file.preview.startsWith('data:image/') && (
+                                <div className="flex flex-col sm:flex-row gap-2.5 pt-1 items-start">
+                                  <img 
+                                    src={file.preview} 
+                                    alt={file.name} 
+                                    className="max-h-28 max-w-full rounded border border-white/20 object-contain bg-black/40"
+                                  />
+                                  {file.iocs && (
+                                    <div className="space-y-1 flex-1">
+                                      <div className="text-[10px] font-mono font-semibold text-emerald-300">Detected Image Telemetry:</div>
+                                      <div className="flex flex-wrap gap-1">
+                                        {(file.iocs.cves || []).map((cve) => (
+                                          <span key={cve} className="bg-red-500/30 text-red-200 text-[9px] font-mono px-1.5 py-0.5 rounded border border-red-500/40">
+                                            CVE: {cve}
+                                          </span>
+                                        ))}
+                                        {(file.iocs.ipAddresses || []).map((ip) => (
+                                          <span key={ip} className="bg-amber-500/30 text-amber-200 text-[9px] font-mono px-1.5 py-0.5 rounded border border-amber-500/40">
+                                            IP: {ip}
+                                          </span>
+                                        ))}
+                                        {(file.iocs.hashes || []).map((h) => (
+                                          <span key={h} className="bg-purple-500/30 text-purple-200 text-[9px] font-mono px-1.5 py-0.5 rounded border border-purple-500/40">
+                                            HASH: {h.substring(0, 8)}...
+                                          </span>
+                                        ))}
+                                        {(file.iocs.domains || []).map((d) => (
+                                          <span key={d} className="bg-cyan-500/30 text-cyan-200 text-[9px] font-mono px-1.5 py-0.5 rounded border border-cyan-500/40">
+                                            DOMAIN: {d}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -556,27 +690,37 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
             <div className="flex flex-wrap gap-2 px-2 pb-2 mb-1 border-b border-border/60">
               {attachedFiles.map((file, idx) => {
                 const cat = getFileCategory(file.name);
+                const isImage = cat === 'image' || file.type?.startsWith('image/');
+
                 return (
                   <div
                     key={idx}
-                    className="flex items-center gap-1.5 bg-background border border-border px-2.5 py-1 rounded-lg text-xs shadow-sm animate-in fade-in duration-200"
+                    className="flex items-center gap-2 bg-background border border-border p-1.5 rounded-lg text-xs shadow-sm animate-in fade-in duration-200"
                   >
-                    {renderFileIcon(
-                      cat,
-                      cat === 'pcap'
-                        ? 'w-3.5 h-3.5 text-blue-500'
-                        : cat === 'config'
-                        ? 'w-3.5 h-3.5 text-amber-500'
-                        : 'w-3.5 h-3.5 text-green-500'
+                    {isImage && file.preview && file.preview.startsWith('data:image/') ? (
+                      <img src={file.preview} alt={file.name} className="w-7 h-7 rounded object-cover border border-cyan-500/40" />
+                    ) : (
+                      renderFileIcon(
+                        cat,
+                        cat === 'pcap'
+                          ? 'w-3.5 h-3.5 text-blue-500'
+                          : cat === 'config'
+                          ? 'w-3.5 h-3.5 text-amber-500'
+                          : cat === 'image'
+                          ? 'w-3.5 h-3.5 text-emerald-500'
+                          : 'w-3.5 h-3.5 text-green-500'
+                      )
                     )}
-                    <span className="font-medium truncate max-w-[150px]">{file.name}</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      ({formatFileSize(file.size)})
-                    </span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-medium truncate max-w-[130px]">{file.name}</span>
+                      <span className="text-[9px] text-muted-foreground">
+                        {isImage ? (file.ocrText ? '📸 OCR Extracted' : '📸 Image attached') : formatFileSize(file.size)}
+                      </span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeAttachedFile(idx)}
-                      className="text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted"
+                      className="text-muted-foreground hover:text-foreground p-0.5 rounded-full hover:bg-muted ml-1"
                       title="Remove file"
                     >
                       <X className="w-3 h-3" />
@@ -595,7 +739,7 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
               type="file"
               onChange={(e) => handleFilesAdded(e.target.files)}
               className="hidden"
-              accept=".pcap,.pcapng,.cap,.json,.yaml,.yml,.conf,.log,.txt,.csv,.xml,.rules,.sigma"
+              accept=".pcap,.pcapng,.cap,.json,.yaml,.yml,.conf,.log,.txt,.csv,.xml,.rules,.sigma,.png,.jpg,.jpeg,.webp,.gif,.bmp"
               multiple
             />
 
@@ -604,7 +748,7 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-background/80 text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 mb-0.5"
-              title="Attach PCAP, Config, Rule, or Log file"
+              title="Attach PCAP, Config, Rule, Log, or Screenshot Image (PNG/JPG)"
             >
               <Paperclip className="w-4 h-4" />
             </button>
@@ -614,10 +758,11 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder={
                 attachedFiles.length > 0
-                  ? 'Add instructions or press Send to analyze attached files...'
-                  : 'Ask CyberAI anything, or attach PCAP / config files...'
+                  ? 'Add instructions or press Send to analyze attached files & images...'
+                  : 'Ask CyberAI anything, attach files, or paste screenshots (Ctrl+V)...'
               }
               className="w-full max-h-48 min-h-[40px] bg-transparent border-0 resize-none focus:ring-0 text-sm py-2 px-1 text-foreground placeholder:text-muted-foreground"
               rows={1}

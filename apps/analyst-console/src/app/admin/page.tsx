@@ -37,7 +37,12 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
-  Code
+  Code,
+  Camera,
+  FileImage,
+  UploadCloud,
+  Scan,
+  Eye
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -97,6 +102,39 @@ export default function AdminPage() {
       showToast(`❌ Ingestion Error: ${msg}`);
     },
   });
+
+  // OCR Threat Scanner State & Mutation
+  const [ocrBase64, setOcrBase64] = useState<string>('');
+  const [ocrFilename, setOcrFilename] = useState<string>('');
+  const [ocrRawText, setOcrRawText] = useState<string>('');
+  const [ocrImageUrl, setOcrImageUrl] = useState<string>('');
+  const [ocrAutoIngest, setOcrAutoIngest] = useState<boolean>(true);
+  const [ocrScanResult, setOcrScanResult] = useState<any>(null);
+
+  const ocrMutation = useMutation({
+    mutationFn: async () => {
+      const res = await api.post('/api/v1/learning/ocr', {
+        base64Data: ocrBase64,
+        imageUrl: ocrImageUrl,
+        rawText: ocrRawText,
+        filename: ocrFilename || 'threat_screenshot.png',
+        autoIngest: ocrAutoIngest,
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      showToast(`📸 OCR Analysis Complete: Extracted ${data.result.iocs?.cves?.length || 0} CVEs & ${data.result.iocs?.ipAddresses?.length || 0} IPs!`);
+      setOcrScanResult(data.result);
+      if (data.ingestedArticle) {
+        refetchLearning();
+      }
+    },
+    onError: (err: any) => {
+      const msg = err?.response?.data?.error || err?.message || 'Failed to analyze image with OCR';
+      showToast(`❌ OCR Scan Error: ${msg}`);
+    },
+  });
+
 
   // Auto-Generated Detection Rules Query
   const { data: rulesData } = useQuery({
@@ -889,6 +927,153 @@ export default function AdminPage() {
                   )}
                 </Button>
               </form>
+            </CardContent>
+          </Card>
+
+          {/* OCR Threat Image Scanner & Auto-Extractor Card */}
+          <Card className="bg-card border-border border-cyan-500/20 shadow-lg">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-emerald-400" />
+                    📸 OCR Threat Image Scanner & Threat Intelligence Auto-Extractor
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Upload or paste security screenshots, malware ransom notes, dark web image captures, or advisory infographics to extract text & IOCs (IPs, CVEs, Hashes, Domains).
+                  </CardDescription>
+                </div>
+                <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-mono">
+                  ● TESSERACT OCR + IOC REGEX
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Upload Zone */}
+                <div className="space-y-3">
+                  <div className="border-2 border-dashed border-cyan-500/30 hover:border-cyan-500/60 rounded-xl p-4 text-center bg-muted/10 transition-colors">
+                    <UploadCloud className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-foreground">Drag & drop threat image or click to select</p>
+                    <p className="text-[10px] text-muted-foreground mt-1">Supports PNG, JPG, WEBP, GIF screenshots</p>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setOcrFilename(file.name);
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            setOcrBase64(event.target?.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="mt-3 block w-full text-xs text-muted-foreground file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Input 
+                      type="text" 
+                      placeholder="Or paste image URL (e.g. https://example.com/ransom_note.png)"
+                      value={ocrImageUrl}
+                      onChange={(e) => {
+                        setOcrImageUrl(e.target.value);
+                        if (e.target.value) {
+                          setOcrFilename(e.target.value.split('/').pop() || 'image_url.png');
+                        }
+                      }}
+                      className="font-mono text-xs bg-muted/30"
+                    />
+                    <div className="flex items-center gap-2 pt-1">
+                      <label className="flex items-center gap-2 text-xs font-mono text-muted-foreground cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={ocrAutoIngest} 
+                          onChange={(e) => setOcrAutoIngest(e.target.checked)}
+                          className="rounded border-input text-cyan-500 focus:ring-cyan-500 bg-muted/40"
+                        />
+                        <span>Auto-Ingest OCR Threat Intel into AI Fine-Tuning Model</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <Button 
+                    onClick={() => ocrMutation.mutate()}
+                    disabled={(!ocrBase64 && !ocrImageUrl && !ocrRawText) || ocrMutation.isPending}
+                    className="w-full text-xs font-mono gap-2 bg-emerald-600 hover:bg-emerald-500 text-white"
+                  >
+                    {ocrMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Performing OCR & Extracting IOCs...
+                      </>
+                    ) : (
+                      <>
+                        <Scan className="w-3.5 h-3.5" /> Run OCR Threat Extraction
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* OCR Result View */}
+                <div className="space-y-3 bg-black/60 rounded-xl p-3.5 border border-border/80 min-h-[180px] flex flex-col justify-between">
+                  {ocrScanResult ? (
+                    <div className="space-y-3 text-xs">
+                      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-border">
+                        <Badge className="bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-mono text-[10px]">
+                          📸 {ocrFilename || 'Uploaded Image'}
+                        </Badge>
+                        <Badge className={
+                          ocrScanResult.recommendedSeverity === 'CRITICAL' ? 'bg-red-500/10 text-red-400 border border-red-500/30' :
+                          ocrScanResult.recommendedSeverity === 'HIGH' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' :
+                          'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'
+                        }>
+                          {ocrScanResult.recommendedSeverity} SEVERITY
+                        </Badge>
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          Confidence: {Math.round((ocrScanResult.confidence || 0.9) * 100)}%
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-semibold text-emerald-400 font-mono">Recognized IOC Badges:</span>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {(ocrScanResult.iocs?.cves || []).map((cve: string) => (
+                            <Badge key={cve} className="bg-red-500/20 text-red-300 font-mono text-[10px]">CVE: {cve}</Badge>
+                          ))}
+                          {(ocrScanResult.iocs?.ipAddresses || []).map((ip: string) => (
+                            <Badge key={ip} className="bg-amber-500/20 text-amber-300 font-mono text-[10px]">IP: {ip}</Badge>
+                          ))}
+                          {(ocrScanResult.iocs?.hashes || []).map((h: string) => (
+                            <Badge key={h} className="bg-purple-500/20 text-purple-300 font-mono text-[10px]">HASH: {h.substring(0, 10)}...</Badge>
+                          ))}
+                          {(ocrScanResult.iocs?.domains || []).map((d: string) => (
+                            <Badge key={d} className="bg-cyan-500/20 text-cyan-300 font-mono text-[10px]">DOMAIN: {d}</Badge>
+                          ))}
+                          {(!ocrScanResult.iocs?.cves?.length && !ocrScanResult.iocs?.ipAddresses?.length && !ocrScanResult.iocs?.hashes?.length) && (
+                            <span className="text-[10px] text-muted-foreground italic">No standalone IOC strings detected. Text processed.</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-semibold text-cyan-400 font-mono">Extracted OCR Text Preview:</span>
+                        <div className="p-2 bg-zinc-950 rounded text-[11px] font-mono text-zinc-300 max-h-28 overflow-y-auto border border-zinc-800">
+                          {ocrScanResult.extractedText}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center my-auto text-muted-foreground p-4 space-y-2">
+                      <FileImage className="w-10 h-10 text-cyan-500/40" />
+                      <p className="text-xs font-mono">No image scanned yet</p>
+                      <p className="text-[10px]">Upload a screenshot or paste an image URL to inspect OCR indicators.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
 

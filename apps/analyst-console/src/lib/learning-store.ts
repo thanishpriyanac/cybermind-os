@@ -743,6 +743,64 @@ Observed attack vectors indicate threat activity aligned with ${detectedAttckTtp
   return newArticle;
 }
 
+export function ingestOcrData(ocrResult: any, filename = 'Threat Image'): LearningArticle {
+  const store = getLearningStore();
+  const cveId = ocrResult.iocs?.cves?.[0] || 'CVE-2026-OCR';
+  const severity = ocrResult.recommendedSeverity || 'HIGH';
+  const category = ocrResult.category || 'OSINT';
+  const iocs = ocrResult.iocs || { ipAddresses: [], hashes: [], domains: [], cves: [] };
+  
+  const articleId = `ocr-art-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const title = `[OCR Intel] ${filename}: ${ocrResult.summary || 'Extracted Image Threat Telemetry'}`;
+  
+  const newArticle: LearningArticle = {
+    id: articleId,
+    url: `file://ocr-upload/${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
+    title,
+    source: 'CyberMind OCR Engine',
+    category: category.includes('RANSOM') ? 'MALWARE' : category.includes('DARK_WEB') ? 'DARK_WEB' : 'OSINT',
+    cveId: ocrResult.iocs?.cves?.[0],
+    severity,
+    summary: ocrResult.summary || 'Threat intelligence extracted via Optical Character Recognition image scanning.',
+    contentSnippet: ocrResult.extractedText ? ocrResult.extractedText.substring(0, 500) + '...' : 'No text preview.',
+    trainingPrompt: `Analyze threat telemetry and IOC indicators extracted via OCR from security screenshot (${filename}):\n\nExtracted Text:\n"${ocrResult.extractedText?.substring(0, 1000)}"\n\nIOC Summary:\n- CVEs: ${iocs.cves?.join(', ') || 'None'}\n- IPs: ${iocs.ipAddresses?.join(', ') || 'None'}\n- Hashes: ${iocs.hashes?.join(', ') || 'None'}\n- Domains: ${iocs.domains?.join(', ') || 'None'}`,
+    trainingCompletion: `### CyberMind Threat Analysis & OCR Synthesis Report
+
+#### 1. Image Classification & Threat Score:
+- Source: ${filename}
+- Category: ${category}
+- Recommended Severity: ${severity}
+- Confidence: ${Math.round((ocrResult.confidence || 0.9) * 100)}%
+
+#### 2. Extracted Indicators of Compromise (IOCs):
+- Identified CVEs: ${iocs.cves?.length > 0 ? iocs.cves.join(', ') : 'None'}
+- Malicious IPs: ${iocs.ipAddresses?.length > 0 ? iocs.ipAddresses.join(', ') : 'None'}
+- File Hashes: ${iocs.hashes?.length > 0 ? iocs.hashes.join(', ') : 'None'}
+- Suspicious Domains: ${iocs.domains?.length > 0 ? iocs.domains.join(', ') : 'None'}
+
+#### 3. Analyst Action Plan & SIEM Mitigation:
+1. Block identified IP addresses at firewall perimeter.
+2. Ingest extracted file hashes into endpoint EDR detection rules.
+3. Update SOC triage dashboard with image telemetry summary.`,
+    tags: ['OCR_INTEL', category, severity, ... (iocs.cves || [])],
+    scrapedAt: new Date().toISOString(),
+  };
+
+  store.articles.unshift(newArticle);
+  store.totalArticles = store.articles.length;
+  store.totalTrainingPairs += 1;
+  
+  store.liveLogs.unshift({
+    timestamp: new Date().toISOString(),
+    level: 'success',
+    message: `📸 OCR Ingest Complete: Extracted ${iocs.cves?.length || 0} CVEs and ${iocs.ipAddresses?.length || 0} IPs from ${filename}. Ingested into AI Model Training Pairs.`,
+  });
+
+  saveLearningStore(store);
+  return newArticle;
+}
+
+
 // 24/7 Overnight Scraper Daemon (18:00 to 09:00 IST schedule, 3 min interval)
 if (typeof window === 'undefined') {
   const g = globalThis as any;

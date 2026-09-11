@@ -10,6 +10,14 @@ interface FileAttachment {
   size: number;
   type?: string;
   preview?: string;
+  ocrText?: string;
+  iocs?: {
+    cves: string[];
+    ipAddresses: string[];
+    hashes: string[];
+    domains: string[];
+  };
+  confidence?: number;
 }
 
 export const usageTracker = {
@@ -424,8 +432,26 @@ function buildUserMessage(userMessage: string, attachments: FileAttachment[]): s
 
   const file = attachments[0];
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
+  const isImage = file.type?.startsWith('image/') || ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'].includes(ext);
+
   let msg = `User uploaded file: "${file.name}" (${(file.size / 1024).toFixed(1)} KB, type: ${ext})\n\n`;
-  if (file.preview) {
+  
+  if (isImage || file.ocrText) {
+    msg += `📸 [OCR THREAT SCREENSHOT TELEMETRY & EXTRACTED INTEL]\n`;
+    msg += `Image Source: ${file.name}\n`;
+    if (file.iocs) {
+      if (file.iocs.cves?.length) msg += `- Identified CVEs: ${file.iocs.cves.join(', ')}\n`;
+      if (file.iocs.ipAddresses?.length) msg += `- Malicious IPs: ${file.iocs.ipAddresses.join(', ')}\n`;
+      if (file.iocs.hashes?.length) msg += `- File Hashes: ${file.iocs.hashes.join(', ')}\n`;
+      if (file.iocs.domains?.length) msg += `- Suspicious Domains: ${file.iocs.domains.join(', ')}\n`;
+    }
+    const extractedText = file.ocrText || (file.preview && !file.preview.startsWith('data:image/') ? file.preview : '');
+    if (extractedText) {
+      msg += `\nExtracted Optical Text Content (OCR):\n\`\`\`\n${extractedText.slice(0, 3000)}\n\`\`\`\n\n`;
+    } else {
+      msg += `\nImage artifact analyzed for visual threat indicators.\n\n`;
+    }
+  } else if (file.preview && !file.preview.startsWith('data:image/')) {
     msg += `File content snippet:\n\`\`\`\n${file.preview.slice(0, 3000)}\n\`\`\`\n\n`;
   }
   msg += `User question: ${userMessage}${ragContext}`;
