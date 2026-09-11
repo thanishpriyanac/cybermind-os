@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+// @ts-ignore
 import jwt from 'jsonwebtoken';
 
 // Known seeded accounts from services/identity/prisma/seed.js
