@@ -438,7 +438,7 @@ Syslog
 #### 3. Immediate Containment Roadmap:
 1. **Perimeter Isolation**: Block public internet access to ports 443/8443 on FMC interfaces.
 2. **Apply Cisco Security Patch**: Upgrade FMC software releases to patched builds (7.4.2.1+ / 7.2.9+).
-3. **Forensic Audit**: Sweep `/var/sf/detection_engines/` and cron jobs for newly created backdoor scripts.`,
+3. **Forensic Audit**: Sweep '/var/sf/detection_engines/' and cron jobs for newly created backdoor scripts.`,
     tags: ['Cisco', 'FMC', 'CVE-2026-20079', 'ActiveExploitation', 'Critical', 'RCE', 'Snort'],
   },
   {
@@ -499,12 +499,12 @@ level: critical`,
     trainingCompletion: `### 🔴 Microsoft Patch Tuesday Threat Intelligence (September 2026 Zero-Days)
 
 #### 1. Vulnerability Analysis:
-- **CVE-2026-85880 (Windows ALPC)**: Local unprivileged users or malware processes exploit RPC message queues to elevate privileges directly to \`NT AUTHORITY\\SYSTEM\`.
+- **CVE-2026-85880 (Windows ALPC)**: Local unprivileged users or malware processes exploit RPC message queues to elevate privileges directly to 'NT AUTHORITY\SYSTEM'.
 - **CVE-2026-81963 (Windows Update Stack)**: Attackers leverage update service file handling to bypass EDR drivers and tamper with security agents during system reboot.
 
 #### 2. SOC Action Roadmap:
 1. **Priority Patching**: Deploy September 2026 Cumulative Update (KB5061298 / KB5061299) to domain controllers and critical servers within 24 hours.
-2. **EDR Audit**: Monitor for process creation originating from \`lsass.exe\` or \`svchost.exe (netsvcs)\` spawning un-signed PowerShell or CMD sessions.`,
+2. **EDR Audit**: Monitor for process creation originating from 'lsass.exe' or 'svchost.exe (netsvcs)' spawning un-signed PowerShell or CMD sessions.`,
     tags: ['Microsoft', 'PatchTuesday', 'ZeroDay', 'CVE-2026-85880', 'CVE-2026-81963', 'Windows', 'PrivEsc'],
   },
   {
