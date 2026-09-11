@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Skeleton } from '../../../components/ui/skeleton';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft, Bot, ShieldAlert, ExternalLink, Shield } from 'lucide-react';
+import { ArrowLeft, Bot, ShieldAlert, ExternalLink, Shield, ShieldCheck, Cpu } from 'lucide-react';
 import { useParams } from 'next/navigation';
 
 export default function CveDetailPage() {
@@ -209,6 +209,70 @@ export default function CveDetailPage() {
                 if (!cwe) return null;
                 return <Badge key={idx} variant="secondary">{cwe}</Badge>;
               })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 🔴 AFFECTS RELATIONSHIP CARD */}
+      {cve.affectsProducts && cve.affectsProducts.length > 0 && (
+        <Card className="border-red-500/30 bg-red-500/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center text-red-400">
+              <Cpu className="mr-2 h-5 w-5 text-red-400" />
+              Threat Graph: Vulnerability <span className="mx-2 font-mono text-red-300">AFFECTS</span> Component Tree
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {cve.affectsProducts.map((rel: any, idx: number) => {
+                const getStatusBadge = (s: string) => {
+                  switch (s) {
+                    case 'patched': return <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40">Patched</Badge>;
+                    case 'mitigated': return <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/40">Mitigated</Badge>;
+                    case 'not_impacted': return <Badge variant="outline" className="text-muted-foreground border-muted">Not Impacted</Badge>;
+                    case 'vulnerable': return <Badge variant="destructive" className="bg-red-600">Vulnerable</Badge>;
+                    default: return <Badge variant="outline">{s}</Badge>;
+                  }
+                };
+                return (
+                  <div key={idx} className="p-3 rounded-lg border border-border/60 bg-background/50 flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-sm text-foreground">{rel.vendor} {rel.product}</span>
+                      {getStatusBadge(rel.status)}
+                    </div>
+                    {rel.component && <div className="text-xs text-muted-foreground font-mono">Component: {rel.component}</div>}
+                    {rel.notes && <div className="text-xs text-muted-foreground/80 mt-1 italic">{rel.notes}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 🛡️ PROTECTED_BY RELATIONSHIP CARD */}
+      {cve.protectedBy && cve.protectedBy.length > 0 && (
+        <Card className="border-emerald-500/30 bg-emerald-500/5">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg flex items-center text-emerald-400">
+              <ShieldCheck className="mr-2 h-5 w-5 text-emerald-400" />
+              Threat Graph: Vulnerability <span className="mx-2 font-mono text-emerald-300">PROTECTED_BY</span> Security Platform
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {cve.protectedBy.map((rel: any, idx: number) => (
+                <div key={idx} className="p-3 rounded-lg border border-emerald-500/30 bg-background/50 flex flex-col justify-between">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-semibold text-sm text-emerald-300">{rel.vendor} — {rel.platform}</span>
+                    <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40">Protected</Badge>
+                  </div>
+                  <div className="text-xs text-foreground/90 font-medium">Feature: {rel.feature}</div>
+                  <div className="text-xs text-muted-foreground font-mono mt-0.5">Policy: {rel.policy}</div>
+                  {rel.details && <div className="text-xs text-muted-foreground/80 mt-1">{rel.details}</div>}
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

@@ -561,5 +561,48 @@ MITRE ATLAS & ATT&CK CROSS-MAPPING:
 - **Confidence Rating**: **85% (High)** — Verified via Anthropic API audit logs and correlated with CISA / Microsoft threat intelligence indicators.`,
     tags: ['Anthropic', 'Claude', 'MidnightBlizzard', 'APT29', 'AI_Security', 'MalwareObfuscation', 'ThreatIntel'],
   },
+  {
+    id: 'osint-zscaler-cve-2026-31431-and-mapp-protection',
+    source: 'Zscaler Security Advisories & Zscaler Trust Portal',
+    url: 'https://www.zscaler.com/security-advisories',
+    title: '🛡️ ZSCALER THREAT GRAPH & ADVISORY: CVE-2026-31431 (Kernel LPE) & Dual Relationship Graph Architecture',
+    category: 'ADVISORY',
+    severity: 'HIGH',
+    summary: 'Zscaler Security Advisory covering Linux Kernel LPE (CVE-2026-31431) affecting ZPA App Connector/PSE/PCC/ZTB (ZIA Not Impacted) and proactive MAPP protection for Microsoft Windows September 2026 CVEs. Defines CyberMind OS dual-relationship graph ontology (AFFECTS vs PROTECTED_BY).',
+    contentSnippet: `ZSCALER SECURITY ADVISORIES & DUAL RELATIONSHIP ARCHITECTURE:
+1. Zscaler Infrastructure Vulnerability:
+   - CVE-2026-31431: Linux kernel Local Privilege Escalation (kernel >=4.14)
+   - Status: Patched/Mitigated across Zscaler Cloud nodes.
+   - Affected Components: ZPA App Connector, Network Connector, Private Service Edge (PSE), Private Cloud Controller (PCC), Zero Trust Branch (ZTB).
+   - Unaffected: ZIA (Zscaler Internet Access) distributed products.
+
+2. Zscaler Protective Coverage (MAPP Program):
+   - CVE-2026-69779 (Windows Remote Code Execution)
+   - CVE-2026-69274 (Windows RPC Privilege Escalation)
+   - CVE-2026-68876 (Windows MSHTML Info Disclosure)
+   - CVE-2026-68846 (SmartScreen Security Bypass)
+   - Zscaler Role: Proactive protection deployed across ZIA/ZPA inline IPS & Sandbox.
+
+3. CyberMind Threat Graph Ontology:
+   - Vulnerability -- AFFECTS --> Target Product / Infrastructure Component
+   - Vulnerability -- PROTECTED_BY --> Security Platform / Inline IPS Vendor
+   - Distinguishes 'Zscaler HAS CVE-2026-31431' from 'Zscaler PROTECTS AGAINST Microsoft CVE-2026-69779'.`,
+    trainingPrompt: 'Explain the dual-relationship model in CyberMind Threat Graph for Zscaler Security Advisories (CVE-2026-31431 vs MAPP Windows CVE protections).',
+    trainingCompletion: `### 🛡️ Zscaler Security Advisories & Dual Relationship Threat Graph
+
+#### 1. Zscaler Infrastructure Advisory (CVE-2026-31431):
+- **Vulnerability**: Linux Kernel Local Privilege Escalation (LPE) affecting kernel 4.14+.
+- **Component Impact**:
+  - **AFFECTS**: ZPA App Connector, Network Connector, PSE, PCC, ZTB (Patched/Mitigated).
+  - **NOT IMPACTED**: Zscaler Internet Access (ZIA) distributed products.
+
+#### 2. Protective Coverage (Microsoft MAPP Program):
+- **Vendor Protection**: Zscaler provides proactive inline block signatures for Windows September 2026 CVEs (CVE-2026-69779, CVE-2026-69274, CVE-2026-68876, CVE-2026-68846).
+
+#### 3. Dual Relationship Graph Rules:
+- **Rule 1 (AFFECTS)**: Use 'AFFECTS' when a vulnerability resides in the vendor product code.
+- **Rule 2 (PROTECTED_BY)**: Use 'PROTECTED_BY' when a security vendor delivers inline inspection/mitigation for a third-party product.`,
+    tags: ['Zscaler', 'SecurityAdvisory', 'CVE-2026-31431', 'ZPA', 'PSE', 'ZTB', 'MAPP', 'ThreatGraph', 'DualRelationship'],
+  },
 ];
 
