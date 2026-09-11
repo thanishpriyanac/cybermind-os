@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import { loadLearningStore, getLearningScheduleInfo } from '@/lib/learning-store';
 import { getCtiRegistrySummary, CYBERMIND_CTI_REGISTRY } from '@/lib/cti-pipeline';
+import { getRagStats } from '@/lib/rag-engine';
 import fs from 'fs';
 import path from 'path';
 
 export const dynamic = 'force-dynamic';
+
 
 function getStorageMetrics() {
   const cwd = process.cwd();
@@ -102,6 +104,7 @@ export async function GET() {
         p2IntelligenceFeeds: ctiRegistryMetrics.p2Count,
         registryFeeds: CYBERMIND_CTI_REGISTRY,
       },
+      ragEngine: getRagStats(),
       lastRunAt: store.lastRunAt,
       currentUrl: store.currentUrl,
       currentQuery: store.currentQuery,
