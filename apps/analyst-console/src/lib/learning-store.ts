@@ -744,7 +744,7 @@ Observed attack vectors indicate threat activity aligned with ${detectedAttckTtp
 }
 
 export function ingestOcrData(ocrResult: any, filename = 'Threat Image'): LearningArticle {
-  const store = getLearningStore();
+  const store = loadLearningStore();
   const cveId = ocrResult.iocs?.cves?.[0] || 'CVE-2026-OCR';
   const severity = ocrResult.recommendedSeverity || 'HIGH';
   const category = ocrResult.category || 'OSINT';
