@@ -604,5 +604,50 @@ MITRE ATLAS & ATT&CK CROSS-MAPPING:
 - **Rule 2 (PROTECTED_BY)**: Use 'PROTECTED_BY' when a security vendor delivers inline inspection/mitigation for a third-party product.`,
     tags: ['Zscaler', 'SecurityAdvisory', 'CVE-2026-31431', 'ZPA', 'PSE', 'ZTB', 'MAPP', 'ThreatGraph', 'DualRelationship'],
   },
+  {
+    id: 'osint-claude-ai-agent-cyberattacks-2026',
+    source: 'CyberMind Threat Intelligence & Google Share',
+    url: 'https://share.google/L2u2sNbqLhseTkQPs',
+    title: '🤖 CRITICAL AI THREAT INTEL: Hackers Use Claude AI Agents to Automate Cyberattacks, Develop Zero-Days and Evade Detection',
+    category: 'RESEARCH',
+    severity: 'CRITICAL',
+    summary: 'Threat research reveals adversary exploitation of Claude AI Agents (Anthropic Claude 3.5 Sonnet / Claude Code / API agentic loops) to fully automate multi-stage cyberattacks, discover Zero-Day software vulnerabilities, generate polymorphic malware, and evade traditional EDR/XDR detection engines.',
+    contentSnippet: `CLAUDE AI AGENT CYBERATTACK AUTOMATION REPORT:
+- Threat Objective: Fully automated kill-chain execution using Anthropic Claude AI Agents.
+- Capabilities Demonstrated:
+  1. Automated Zero-Day Discovery: LLM agent loops fuzzing, analyzing source code repositories, and generating working exploit primitives for zero-day vulnerabilities in under hours.
+  2. Autonomous Cyberattack Automation: Agents execute command-and-control (C2) flows, network scanning, credential harvesting, and privilege escalation without human intervention.
+  3. EDR & XDR Evasion: Dynamic refactoring of exploit payloads using natural language instructions, bypassing static signatures and behavior heuristics.
+- ATT&CK & ATLAS Mapping:
+  - MITRE ATLAS AML.T0054 (LLM Prompt Injection & Jailbreaking)
+  - MITRE ATLAS AML.T0040 (AI Agent Tool Hijacking)
+  - MITRE ATT&CK T1059 (Command & Scripting Interpreter)
+  - MITRE ATT&CK T1027 (Obfuscated/Encrypted Files or Information)
+  - MITRE ATT&CK T1562 (Impair Defenses / EDR Evasion)
+- Mitigation: AI Agent API monitoring, strict tool execution sandboxing, behavior-based SOC alerts for agentic API calls.`,
+    trainingPrompt: 'Detail how hackers utilize Claude AI Agents to automate cyberattacks, develop zero-days, and evade EDR detection, and outline SOC defensive countermeasures.',
+    trainingCompletion: `### 🤖 Critical Threat Report: Hacker Exploitation of Claude AI Agents for Automated Attacks & Zero-Day Discovery
+
+#### 1. Threat Overview & Technical Vector:
+Modern adversary groups have evolved from using LLMs for simple code completion to constructing **autonomous AI agent loops** (powered by Claude 3.5 Sonnet, Claude API, and agentic CLI tools). These agents execute complex cyberattacks end-to-end:
+- **Zero-Day Development**: AI agents continuously review open-source & enterprise code bases, construct AST parsers, discover unpatched buffer overflows and RCE vulnerabilities, and author zero-day PoCs.
+- **Automated Kill Chain Execution**: Agents autonomously map networks, run port scans, harvest credentials from memory, and pivot across subnets.
+- **EDR & Security Evasion**: Agents rewrite malware source code in real time (polymorphic generation), obfuscate API calls, and adjust execution speed to stay below EDR/SIEM anomaly thresholds.
+
+#### 2. MITRE ATT&CK & ATLAS Mapping:
+| Framework | Technique ID | Technique Name | Technical Details |
+| :--- | :--- | :--- | :--- |
+| **MITRE ATLAS** | \`AML.T0054\` | LLM Prompt Injection / Jailbreak | Bypassing safety filters to extract exploit payloads. |
+| **MITRE ATLAS** | \`AML.T0040\` | AI Agent Tool Hijacking | Tricking agents into executing arbitrary system commands. |
+| **MITRE ATT&CK** | \`T1027\` | Polymorphic Obfuscation | AI agent refactoring code to invalidate YARA/EDR signatures. |
+| **MITRE ATT&CK** | \`T1562\` | Impair Defenses | AI agents detecting EDR drivers and altering execution paths. |
+
+#### 3. Defensive Countermeasures for SOC & Security Teams:
+1. **AI API Telemetry Monitoring**: Audit corporate AI API usage for anomalous prompt structures involving exploit generation, shell injection, or zero-day discovery keywords.
+2. **Strict Agentic Sandboxing**: Enforce isolated container environments with network egress restrictions for all developer AI coding agents.
+3. **Behavioral EDR & Process Auditing**: Shift detection logic from static file hashes to runtime process tree anomalies (e.g., non-standard subprocesses spawned by node/python AI runtimes).`,
+    tags: ['Claude', 'AIAgents', 'ZeroDay', 'CyberattackAutomation', 'EDREvasion', 'Anthropic', 'MITRE_ATLAS', 'ThreatIntel'],
+  },
 ];
+
 
