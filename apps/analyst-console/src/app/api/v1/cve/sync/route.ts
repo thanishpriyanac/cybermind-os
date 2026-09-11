@@ -36,35 +36,34 @@ export async function POST(req: NextRequest) {
     let nvdSuccess = false;
     let kevSuccess = false;
 
-    // 2. Fetch NVD API v2 Data with 15s timeout
+    // 2. Fetch NVD API v2 Data with 5s timeout
     try {
-      const pubStartDate = encodeURIComponent('2026-09-01T00:00:00.000Z');
-      const pubEndDate = encodeURIComponent(new Date().toISOString());
-      const nvdUrl = `https://services.nvd.nist.gov/rest/json/cves/2.0?pubStartDate=${pubStartDate}&pubEndDate=${pubEndDate}`;
-      
+      const nvdUrl = 'https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=50';
       const apiKey = process.env.NVD_API_KEY || 'F536F18D-BB15-4F4C-9F5E-3BCEF77FAA64';
-      const headers: Record<string, string> = {};
+      const headers: Record<string, string> = {
+        'User-Agent': 'CyberMind-OS-CVE-Sync/1.0',
+      };
       if (apiKey) headers.apiKey = apiKey;
 
-      const nvdRes = await axios.get(nvdUrl, { headers, timeout: 15000 });
-      if (nvdRes.data) {
+      const nvdRes = await axios.get(nvdUrl, { headers, timeout: 5000 });
+      if (nvdRes.data && nvdRes.data.vulnerabilities) {
         updateFromNvdData(nvdRes.data);
         nvdSuccess = true;
       }
-    } catch (e) {
-      console.warn('NVD API v2 sync skipped or timed out, using local threat cache:', e);
+    } catch (e: any) {
+      console.warn('NVD API v2 sync skipped or timed out, using local threat cache:', e?.message || e);
     }
 
-    // 3. Fetch CISA KEV Feed with 10s timeout
+    // 3. Fetch CISA KEV Feed with 5s timeout
     try {
       const kevUrl = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
-      const kevRes = await axios.get(kevUrl, { timeout: 10000 });
+      const kevRes = await axios.get(kevUrl, { timeout: 5000 });
       if (kevRes.data) {
         updateKevData(kevRes.data);
         kevSuccess = true;
       }
-    } catch (e) {
-      console.warn('CISA KEV fetch skipped or timed out:', e);
+    } catch (e: any) {
+      console.warn('CISA KEV fetch skipped or timed out:', e?.message || e);
     }
 
     // 4. Update sync timestamps & status

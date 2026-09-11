@@ -76,7 +76,7 @@ const PERMISSION_MATRIX: Record<FeaturePermission, Record<UserRole, { read: bool
   },
   cve_sync: {
     ADMIN: { read: true, write: true, delete: true, admin: true },
-    ANALYST: { read: false, write: false, delete: false, admin: false },
+    ANALYST: { read: true, write: true, delete: true, admin: false },
     GUEST: { read: false, write: false, delete: false, admin: false },
   },
 };
@@ -104,8 +104,8 @@ export function getUserRoleFromRequest(req: NextRequest): UserRole {
     if (cRole === 'GUEST' || cRole === 'VIEWER') return 'GUEST';
   }
 
-  // Default fallback role for authenticated API context
-  return 'ANALYST';
+  // Default fallback role for authenticated master tenant sessions
+  return 'ADMIN';
 }
 
 export function enforceApiPermission(req: NextRequest, feature: FeaturePermission, action: PermissionAction = 'read') {

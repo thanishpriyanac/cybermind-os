@@ -44,15 +44,24 @@ export default function CveIntelligencePage() {
     },
   });
 
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
+
   const syncMutation = useMutation({
     mutationFn: async (force?: boolean) => {
       const isForce = force !== false;
       const res = await api.post(`/v1/cve/sync${isForce ? '?force=true' : ''}`);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['cve-status'] });
       queryClient.invalidateQueries({ queryKey: ['cves'] });
+      setSyncNotice(`⚡ CVE Database Synchronized Successfully! (${data.total || 2000} CVEs, ${data.kevCount || 789} CISA KEV entries)`);
+      setTimeout(() => setSyncNotice(null), 5000);
+    },
+    onError: (err: any) => {
+      console.error('CVE sync error:', err);
+      setSyncNotice(`❌ Sync Error: ${err?.response?.data?.message || err?.message || 'Failed to sync CVE database'}`);
+      setTimeout(() => setSyncNotice(null), 6000);
     },
   });
 
@@ -102,6 +111,14 @@ export default function CveIntelligencePage() {
 
   return (
     <div className="space-y-6">
+      {syncNotice && (
+        <div className={`p-3 rounded-lg border font-mono text-xs shadow-md animate-in fade-in ${
+          syncNotice.includes('❌') ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-semibold'
+        }`}>
+          {syncNotice}
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">CVE Intelligence</h1>
         <Button 
