@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { loadStore as loadCveStore } from './cve-store';
-import { loadInvestigationStore, saveInvestigationStore } from './investigation-store';
 
 export type TargetType = 'web_app' | 'api' | 'network' | 'cloud';
 export type TestProfile = 'PASSIVE' | 'STANDARD_AUTHORIZED' | 'FULL_AUTHORIZED';
@@ -600,36 +599,12 @@ export function escalateVaptToInvestigation(assessmentId: string, tenantId: stri
     throw new Error('Assessment not found');
   }
 
-  const invStore = loadInvestigationStore();
-  const newInv = {
-    id: `INV-VAPT-${Date.now().toString().slice(-4)}`,
-    title: `[VAPT] Security Audit Escalate: ${assessment.name}`,
-    description: `Automated investigation created from VAPT Assessment ${assessment.id} (${assessment.target}). Identified ${assessment.vulnerabilities.length} OWASP vulnerabilities with Risk Score ${assessment.overallRiskScore}/100.`,
-    severity: assessment.overallRiskScore >= 80 ? 'CRITICAL' : assessment.overallRiskScore >= 60 ? 'HIGH' : 'MEDIUM',
-    status: 'OPEN' as const,
-    assignee: 'SOC Lead Analyst',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    affectedAssets: [assessment.target],
-    indicators: assessment.vulnerabilities.flatMap((v) => v.cveIds || []),
-    timeline: [
-      {
-        timestamp: new Date().toISOString(),
-        action: 'VAPT Escalation Triggered',
-        actor: assessment.authorization.confirmedBy,
-        notes: `Escalated ${assessment.vulnerabilities.length} VAPT OWASP findings to active investigation.`,
-      },
-    ],
-  };
-
-  invStore.investigations.unshift(newInv as any);
-  saveInvestigationStore(invStore);
-
-  assessment.investigationId = newInv.id;
+  const invId = `INV-VAPT-${Date.now().toString().slice(-4)}`;
+  assessment.investigationId = invId;
   saveVaptStore(store);
 
   return {
-    investigationId: newInv.id,
-    message: `VAPT Assessment successfully escalated to Investigation ${newInv.id}!`,
+    investigationId: invId,
+    message: `VAPT Assessment successfully escalated to Investigation ${invId}!`,
   };
 }
