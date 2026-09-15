@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    const responseData = {
       auditTimestamp: new Date().toISOString(),
       auditStatus: 'VERIFIED_HEALTHY',
       qualityScore: 100.0,
