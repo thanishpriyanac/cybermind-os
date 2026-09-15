@@ -223,7 +223,7 @@ const INITIAL_LOGS: LearningLog[] = [
   { timestamp: new Date(Date.now() - 1000 * 60 * 12).toISOString(), level: 'info', message: 'Overnight Web Learning Engine active (18:00 - 09:00 IST schedule).' },
   { timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(), level: 'info', message: 'Executing unrestricted web & Dark Web crawler pass across Tor onion forums, Telegram feeds & news...' },
   { timestamp: new Date(Date.now() - 1000 * 60 * 6).toISOString(), level: 'success', message: 'Scraped 6 portals including Dark Web Tor feeds, HackerNews, and SecurityWeek. Extracted 6 training samples.' },
-  { timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(), level: 'info', message: 'Updating model fine-tuning dataset: model_training_dataset.jsonl (Total samples: 1428).' },
+  { timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(), level: 'success', message: 'Ingested 34,407 cybersecurity instruction tuning pairs into model_training_dataset.jsonl.' },
 ];
 
 function generateDefaultStore(): LearningStore {
@@ -233,7 +233,7 @@ function generateDefaultStore(): LearningStore {
     currentUrl: 'http://breached27onion4x.onion/thread/credential-dump-enterprise-2026',
     currentQuery: 'dark web breach leaks zero day exploits 2026',
     totalArticles: INITIAL_ARTICLES.length,
-    totalTrainingPairs: 1428,
+    totalTrainingPairs: 34407,
     sourcesCrawled: 24,
     liveLogs: INITIAL_LOGS,
     articles: INITIAL_ARTICLES,
