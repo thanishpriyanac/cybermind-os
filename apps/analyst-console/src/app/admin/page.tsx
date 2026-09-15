@@ -275,7 +275,7 @@ export default function AdminPage() {
       const data = await res.json();
       return data.data || [];
     },
-    enabled: activeTab === 'LEARNING',
+    enabled: activeTab === 'LEARNING' || activeTab === 'OVERVIEW',
     refetchInterval: 30000,
     staleTime: 10000,
   });
@@ -1273,7 +1273,7 @@ export default function AdminPage() {
           {/* Learned Articles Table */}
           <Card className="bg-card border-border">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">Learned Cybersecurity Knowledge Database ({learningArticles.length})</CardTitle>
+              <CardTitle className="text-sm font-semibold">Learned Cybersecurity Knowledge Database ({learningArticles.length || learningStatus?.totalArticles || 0})</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-border">
