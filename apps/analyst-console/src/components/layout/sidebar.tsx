@@ -35,6 +35,7 @@ export const navigationGroups: NavGroup[] = [
     groupName: 'SECURITY ANALYSIS',
     items: [
       { name: 'CyberAI', href: '/copilot', icon: Bot },
+      { name: 'VAPT Assessment', href: '/vapt', icon: ShieldAlert },
       { name: 'Firewall Health', href: '/firewall', icon: Server },
       { name: 'Playbooks', href: '/playbooks', icon: BookOpen },
     ],
