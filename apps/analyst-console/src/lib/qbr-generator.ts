@@ -234,6 +234,8 @@ export function formatQbrHtmlReport(data: ExecutiveQbrReportData): string {
       </tbody>
     </table>
   </div>
+</body>
+</html>`;
 }
 
 export interface StructuredQbrJsonSchema {
