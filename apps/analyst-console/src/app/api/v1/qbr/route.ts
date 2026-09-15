@@ -3,8 +3,11 @@ import { qbrStore } from '@/lib/qbr-store';
 import { firewallStore } from '@/lib/firewall-store';
 import { getVendorControls } from '@/lib/vendors';
 
-export async function GET() {
-  const reports = qbrStore.listReports();
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get('status') || undefined;
+  const search = searchParams.get('search') || undefined;
+  const reports = qbrStore.listReports({ status, search });
   return Response.json({ success: true, data: reports });
 }
 
