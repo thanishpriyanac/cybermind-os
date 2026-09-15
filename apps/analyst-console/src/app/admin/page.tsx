@@ -271,7 +271,7 @@ export default function AdminPage() {
   const { data: learningArticles = [] } = useQuery({
     queryKey: ['admin-learning-articles'],
     queryFn: async () => {
-      const res = await fetch('/api/v1/learning/articles');
+      const res = await fetch('/api/v1/learning/articles?limit=50');
       const data = await res.json();
       return data.data || [];
     },
