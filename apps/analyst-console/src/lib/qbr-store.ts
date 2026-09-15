@@ -9,7 +9,7 @@ export interface QbrFinding {
   category: string;
   name: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFORMATIONAL';
-  status: 'FAIL' | 'WARNING' | 'PASS' | 'NON_COMPLIANT' | 'COMPLIANT';
+  status: 'FAIL' | 'WARNING' | 'PASS' | 'NON_COMPLIANT' | 'COMPLIANT' | 'MANUAL_REVIEW' | 'NOT_APPLICABLE';
   observation: string;
   risk: string;
   recommendation: string;
