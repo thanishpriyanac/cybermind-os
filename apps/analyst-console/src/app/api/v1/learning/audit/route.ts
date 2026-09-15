@@ -6,8 +6,18 @@ import { loadStore as loadCveStore } from '@/lib/cve-store';
 import fs from 'fs';
 import path from 'path';
 
+let cachedAuditResponse: { data: any; timestamp: number } | null = null;
+const CACHE_TTL_MS = 10000; // 10 seconds cache
+
 export async function GET(req: NextRequest) {
   try {
+    const now = Date.now();
+    const forceFresh = req.nextUrl.searchParams.get('refresh') === 'true';
+
+    if (!forceFresh && cachedAuditResponse && (now - cachedAuditResponse.timestamp) < CACHE_TTL_MS) {
+      return NextResponse.json(cachedAuditResponse.data);
+    }
+
     const learningStore = loadLearningStore();
     const cveStore = loadCveStore();
 
@@ -159,7 +169,14 @@ export async function GET(req: NextRequest) {
         firewallStore: firewallAudit,
         qbrStore: qbrAudit,
       },
-    });
+    };
+
+    cachedAuditResponse = {
+      data: responseData,
+      timestamp: Date.now(),
+    };
+
+    return NextResponse.json(responseData);
   } catch (error: any) {
     return NextResponse.json(
       { auditStatus: 'ERROR', message: error.message || 'Failed to complete local storage audit' },

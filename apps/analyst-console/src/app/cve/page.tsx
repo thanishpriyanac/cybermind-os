@@ -15,12 +15,22 @@ import { Loader2, Search, ShieldAlert, Shield } from 'lucide-react';
 
 export default function CveIntelligencePage() {
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [severity, setSeverity] = useState('');
   const [kevOnly, setKevOnly] = useState(false);
   const [page, setPage] = useState(1);
 
-  const { data: statusData, isLoading: isLoadingStatus } = useQuery({
+  // Debounce search input by 300ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const { data: statusData, isLoading: isLoadingStatus, isError: isErrorStatus } = useQuery({
     queryKey: ['cve-status'],
     queryFn: async () => {
       const res = await api.get('/v1/cve/status');
@@ -29,11 +39,11 @@ export default function CveIntelligencePage() {
     refetchInterval: 10000,
   });
 
-  const { data: cveData, isLoading: isLoadingCves } = useQuery({
-    queryKey: ['cves', search, severity, kevOnly, page],
+  const { data: cveData, isLoading: isLoadingCves, isError: isErrorCves, refetch: refetchCves } = useQuery({
+    queryKey: ['cves', debouncedSearch, severity, kevOnly, page],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (search) params.append('search', search);
+      if (debouncedSearch) params.append('search', debouncedSearch);
       if (severity) params.append('severity', severity);
       if (kevOnly) params.append('kev', 'true');
       params.append('page', page.toString());
@@ -203,14 +213,14 @@ export default function CveIntelligencePage() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-center">
-        <div className="relative flex-1">
+        <div className="relative flex-1 w-full">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search CVE ID or description..."
+            placeholder="Search CVE ID, description, or vendor..."
             className="pl-8"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
           />
         </div>
         <select 
@@ -227,17 +237,36 @@ export default function CveIntelligencePage() {
         <Button 
           variant={kevOnly ? "default" : "outline"}
           onClick={() => { setKevOnly(!kevOnly); setPage(1); }}
-          className={kevOnly ? "bg-orange-500 hover:bg-orange-600 text-white" : ""}
+          className={kevOnly ? "bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto" : "w-full sm:w-auto"}
         >
           <ShieldAlert className="mr-2 h-4 w-4" />
           KEV Only
         </Button>
       </div>
 
+      {isErrorCves && (
+        <Card className="border-red-500/40 bg-red-500/10">
+          <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <ShieldAlert className="h-6 w-6 text-red-400 shrink-0" />
+              <div>
+                <h3 className="font-semibold text-red-300 text-sm">Unable to retrieve NVD / CVE intelligence data</h3>
+                <p className="text-xs text-red-200/80">
+                  Backend sync endpoint did not respond or encountered an upstream network issue. Cached intelligence remains available.
+                </p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => refetchCves()} className="border-red-500/40 text-red-300 hover:bg-red-500/20 shrink-0">
+              Retry Connection
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="p-0 overflow-x-auto w-full">
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 bg-card z-10 border-b border-border">
               <TableRow>
                 <TableHead>CVE ID</TableHead>
                 <TableHead>Published</TableHead>
@@ -245,6 +274,7 @@ export default function CveIntelligencePage() {
                 <TableHead>Severity</TableHead>
                 <TableHead>Vector</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -257,40 +287,48 @@ export default function CveIntelligencePage() {
                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-full max-w-[300px]" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : cveData?.data?.length > 0 ? (
                 cveData.data.map((cve: any) => {
                   const metric = cve.metrics?.cvssMetricV31?.[0]?.cvssData;
-                  const desc = cve.descriptions?.find((d: any) => d.lang === 'en')?.value || cve.descriptions?.[0]?.value || '';
+                  const desc = cve.descriptions?.find((d: any) => d.lang === 'en')?.value || cve.descriptions?.[0]?.value || 'Not available from source';
                   const isKev = cveData.kevCveIds?.includes(cve.id);
                   
                   return (
-                    <TableRow key={cve.id}>
+                    <TableRow key={cve.id} className="hover:bg-muted/40 transition-colors">
                       <TableCell className="font-medium whitespace-nowrap">
-                        <Link href={`/cve/${cve.id}`} className="text-primary hover:underline">
+                        <Link href={`/cve/${cve.id}`} className="text-primary font-mono hover:underline">
                           {cve.id}
                         </Link>
                         {isKev && (
                           <Badge variant="destructive" className="ml-2 bg-orange-500 text-[10px] px-1 py-0 h-4">KEV</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                         {format(new Date(cve.published), 'MMM dd, yyyy')}
                       </TableCell>
                       <TableCell className={getCvssScoreColor(metric?.baseScore)}>
-                        {metric?.baseScore?.toFixed(1) || '-'}
+                        {metric?.baseScore ? metric.baseScore.toFixed(1) : '-'}
                       </TableCell>
                       <TableCell>
                         {getSeverityBadge(metric?.baseSeverity)}
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                        {metric?.attackVector || '-'}
+                      <TableCell className="text-muted-foreground text-xs whitespace-nowrap font-mono">
+                        {metric?.attackVector || 'Not available from source'}
                       </TableCell>
-                      <TableCell className="max-w-[400px]">
-                        <div className="truncate" title={desc}>
+                      <TableCell className="max-w-[380px]">
+                        <div className="truncate text-xs text-muted-foreground" title={desc}>
                           {desc}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link href={`/cve/${cve.id}`}>
+                          <Button size="sm" variant="ghost" className="h-8 text-xs text-primary hover:text-primary">
+                            Details →
+                          </Button>
+                        </Link>
                       </TableCell>
                     </TableRow>
                   );

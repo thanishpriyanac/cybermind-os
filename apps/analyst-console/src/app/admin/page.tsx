@@ -73,7 +73,7 @@ const INITIAL_USERS: UserRecord[] = [
 ];
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'CONVERSATIONS' | 'AI_PROVIDERS' | 'LEARNING'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'USERS' | 'CONVERSATIONS' | 'AI_PROVIDERS' | 'LEARNING' | 'SECURITY' | 'AUDIT' | 'SYSTEM'>('OVERVIEW');
   const [users] = useState<UserRecord[]>(INITIAL_USERS);
   const [toast, setToast] = useState<string | null>(null);
   const [streamData, setStreamData] = useState<any | null>(null);
@@ -143,7 +143,7 @@ export default function AdminPage() {
       const res = await api.get('/v1/learning/rules');
       return res.data;
     },
-    enabled: activeTab === 'LEARNING',
+    enabled: activeTab === 'LEARNING' || activeTab === 'SECURITY',
   });
 
   // Live Client-Side Browser localStorage Audit State
@@ -208,56 +208,64 @@ export default function AdminPage() {
     };
   }, []);
 
-  // Rapid 500ms Polling Fallback if SSE stream is disconnected
+  // System Health Query (enabled when activeTab is OVERVIEW or SYSTEM, or fallback if SSE unavailable)
   const { data: fallbackHealth, isLoading: healthLoading, refetch: refetchHealth, isRefetching } = useQuery({
     queryKey: ['admin-system-health-real'],
     queryFn: async () => {
       const res = await api.get('/v1/health');
       return res.data;
     },
-    enabled: !isStreaming || !streamData,
-    refetchInterval: 500,
-    staleTime: 200,
+    enabled: (activeTab === 'OVERVIEW' || activeTab === 'SYSTEM') && (!isStreaming || !streamData),
+    refetchInterval: 15000,
+    staleTime: 5000,
   });
 
-  // Live AI Usage Metrics
+  // Live AI Usage Metrics (enabled on AI_PROVIDERS or OVERVIEW)
   const { data: aiUsage, isLoading: aiLoading } = useQuery({
     queryKey: ['admin-ai-usage'],
     queryFn: async () => {
       const res = await fetch('/api/v1/ai/usage');
       return res.json();
     },
-    refetchInterval: 2000,
+    enabled: activeTab === 'AI_PROVIDERS' || activeTab === 'OVERVIEW',
+    refetchInterval: 30000,
+    staleTime: 10000,
   });
 
-  // Real Copilot Conversations for Audit
+  // Real Copilot Conversations for Audit (enabled on CONVERSATIONS or AUDIT)
   const { data: conversations = [] } = useQuery({
     queryKey: ['admin-conversations'],
     queryFn: async () => {
       const res = await fetch('/api/v1/ai/conversations');
       return res.json();
     },
-    refetchInterval: 3000,
+    enabled: activeTab === 'CONVERSATIONS' || activeTab === 'AUDIT' || activeTab === 'AI_PROVIDERS',
+    refetchInterval: 30000,
+    staleTime: 10000,
   });
 
-  // Live Active User Sessions (IP, network, device, location)
+  // Live Active User Sessions (enabled on USERS or SECURITY)
   const { data: userSessions } = useQuery({
     queryKey: ['admin-user-sessions'],
     queryFn: async () => {
       const res = await fetch('/api/v1/identity/users');
       return res.json();
     },
-    refetchInterval: 2000,
+    enabled: activeTab === 'USERS' || activeTab === 'SECURITY' || activeTab === 'OVERVIEW',
+    refetchInterval: 30000,
+    staleTime: 10000,
   });
 
-  // Web Learning Engine Status & Learned Knowledge
+  // Web Learning Engine Status & Learned Knowledge (enabled on LEARNING or OVERVIEW)
   const { data: learningStatus, refetch: refetchLearning } = useQuery({
     queryKey: ['admin-learning-status'],
     queryFn: async () => {
       const res = await fetch('/api/v1/learning/status');
       return res.json();
     },
-    refetchInterval: 5000,
+    enabled: activeTab === 'LEARNING' || activeTab === 'OVERVIEW',
+    refetchInterval: 30000,
+    staleTime: 10000,
   });
 
   const { data: learningArticles = [] } = useQuery({
@@ -267,7 +275,9 @@ export default function AdminPage() {
       const data = await res.json();
       return data.data || [];
     },
-    refetchInterval: 5000,
+    enabled: activeTab === 'LEARNING',
+    refetchInterval: 30000,
+    staleTime: 10000,
   });
 
   const { data: learningAudit, refetch: refetchAudit } = useQuery({
@@ -276,7 +286,9 @@ export default function AdminPage() {
       const res = await fetch('/api/v1/learning/audit');
       return res.json();
     },
-    refetchInterval: 5000,
+    enabled: activeTab === 'AUDIT' || activeTab === 'SYSTEM',
+    refetchInterval: 30000,
+    staleTime: 10000,
   });
 
   const triggerLearningMutation = useMutation({

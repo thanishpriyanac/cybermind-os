@@ -44,7 +44,7 @@ export default function CveDetailPage() {
   }
 
   const metric = cve.metrics?.cvssMetricV31?.[0]?.cvssData;
-  const desc = cve.descriptions?.find((d: any) => d.lang === 'en')?.value || cve.descriptions?.[0]?.value || 'No description available.';
+  const desc = cve.descriptions?.find((d: any) => d.lang === 'en')?.value || cve.descriptions?.[0]?.value || 'Not available from source';
   const severity = metric?.baseSeverity || 'UNKNOWN';
   
   const getSeverityBadge = (s: string) => {

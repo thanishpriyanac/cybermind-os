@@ -5,18 +5,53 @@ import { usePathname } from 'next/navigation';
 import { Activity, LayoutDashboard, ShieldAlert, BookOpen, HeartPulse, Bot, ShieldCheck, Shield, Globe, Server, FileText, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-export const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Alerts', href: '/alerts', icon: ShieldAlert },
-  { name: 'CyberAI', href: '/copilot', icon: Bot },
-  { name: 'CVE Intelligence', href: '/cve', icon: Shield },
-  { name: 'IP Intelligence', href: '/ip', icon: Globe },
-  { name: 'Firewall Health', href: '/firewall', icon: Server },
-  { name: 'QBR Reports', href: '/qbr', icon: FileText },
-  { name: 'Investigations', href: '/investigations', icon: Activity },
-  { name: 'Playbooks', href: '/playbooks', icon: BookOpen },
-  { name: 'System Health', href: '/health', icon: HeartPulse },
-  { name: 'Admin Center', href: '/admin', icon: ShieldCheck, adminOnly: true },
+export interface NavGroup {
+  groupName: string;
+  items: {
+    name: string;
+    href: string;
+    icon: any;
+    adminOnly?: boolean;
+  }[];
+}
+
+export const navigationGroups: NavGroup[] = [
+  {
+    groupName: 'OPERATIONS',
+    items: [
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Alerts', href: '/alerts', icon: ShieldAlert },
+      { name: 'Investigations', href: '/investigations', icon: Activity },
+    ],
+  },
+  {
+    groupName: 'THREAT INTELLIGENCE',
+    items: [
+      { name: 'CVE Intelligence', href: '/cve', icon: Shield },
+      { name: 'IP Intelligence', href: '/ip', icon: Globe },
+    ],
+  },
+  {
+    groupName: 'SECURITY ANALYSIS',
+    items: [
+      { name: 'CyberAI', href: '/copilot', icon: Bot },
+      { name: 'Firewall Health', href: '/firewall', icon: Server },
+      { name: 'Playbooks', href: '/playbooks', icon: BookOpen },
+    ],
+  },
+  {
+    groupName: 'REPORTING',
+    items: [
+      { name: 'QBR Reports', href: '/qbr', icon: FileText },
+    ],
+  },
+  {
+    groupName: 'PLATFORM',
+    items: [
+      { name: 'System Health', href: '/health', icon: HeartPulse },
+      { name: 'Admin Center', href: '/admin', icon: ShieldCheck, adminOnly: true },
+    ],
+  },
 ];
 
 interface SidebarProps {
@@ -30,38 +65,49 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     ? (localStorage.getItem('user_role') || 'ADMIN').toUpperCase() 
     : 'ADMIN';
 
-  const visibleNav = navigation.filter((item) => {
-    if (item.adminOnly && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
-      return false;
-    }
-    return true;
-  });
-
   const renderNavItems = () => (
-    <nav className="flex-1 px-3 py-4 space-y-1">
-      {visibleNav.map((item) => {
-        const isActive = pathname.startsWith(item.href);
+    <nav className="flex-1 px-3 py-3 space-y-4">
+      {navigationGroups.map((group) => {
+        const visibleItems = group.items.filter((item) => {
+          if (item.adminOnly && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+            return false;
+          }
+          return true;
+        });
+
+        if (visibleItems.length === 0) return null;
+
         return (
-          <Link
-            key={item.name}
-            href={item.href}
-            onClick={onClose}
-            className={cn(
-              isActive
-                ? 'bg-primary/15 text-primary font-bold border-l-2 border-primary'
-                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-              'group flex items-center px-3 py-2.5 text-sm font-medium rounded-md transition-all'
-            )}
-          >
-            <item.icon
-              className={cn(
-                isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground',
-                'mr-3 flex-shrink-0 h-5 w-5'
-              )}
-              aria-hidden="true"
-            />
-            {item.name}
-          </Link>
+          <div key={group.groupName} className="space-y-1">
+            <div className="px-3 text-[10px] font-bold tracking-wider text-muted-foreground/70 uppercase font-mono">
+              {group.groupName}
+            </div>
+            {visibleItems.map((item) => {
+              const isActive = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={onClose}
+                  className={cn(
+                    isActive
+                      ? 'bg-primary/15 text-primary font-bold border-l-2 border-primary'
+                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                    'group flex items-center px-3 py-2 text-xs font-medium rounded-md transition-all'
+                  )}
+                >
+                  <item.icon
+                    className={cn(
+                      isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground',
+                      'mr-2.5 flex-shrink-0 h-4 w-4'
+                    )}
+                    aria-hidden="true"
+                  />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
         );
       })}
     </nav>
@@ -113,3 +159,4 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     </>
   );
 }
+
