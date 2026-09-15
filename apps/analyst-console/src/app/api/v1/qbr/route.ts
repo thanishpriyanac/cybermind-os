@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       executiveSummary: executiveSummary || '',
       findings,
       remediationPlan,
-      status: 'draft'
+      status: 'DRAFT'
     });
 
     return Response.json({ success: true, data: report });
