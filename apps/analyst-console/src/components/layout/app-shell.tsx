@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { CyberSidebar } from '../cybermind/CyberSidebar';
 import { CyberTopbar } from '../cybermind/CyberTopbar';
 import { CyberCommandPalette } from '../cybermind/CyberCommandPalette';
