@@ -17,51 +17,58 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
+const DEFAULT_USER: User = {
+  email: 'admin@cybermind.local',
+  tenantId: 'cybermind-master-tenant',
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(DEFAULT_USER);
+  const [token, setToken] = useState<string | null>('demo-token');
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Check local storage on mount
-    const storedToken = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    const storedEmail = typeof window !== 'undefined' ? localStorage.getItem('email') : null;
-    const storedTenantId = typeof window !== 'undefined' ? localStorage.getItem('tenantId') : null;
-
-    if (storedToken && storedEmail && storedTenantId) {
-      setToken(storedToken);
-      setUser({ email: storedEmail, tenantId: storedTenantId });
-    } else {
-      // Default master tenant session for seamless access
-      const defaultUser = { email: 'admin@cybermind.local', tenantId: 'cybermind-master-tenant' };
-      setUser(defaultUser);
-      setToken('demo-token');
+    try {
       if (typeof window !== 'undefined') {
-        localStorage.setItem('email', defaultUser.email);
-        localStorage.setItem('tenantId', defaultUser.tenantId);
-        localStorage.setItem('token', 'demo-token');
-        localStorage.setItem('user_role', 'ADMIN');
+        const storedToken = localStorage.getItem('token');
+        const storedEmail = localStorage.getItem('email');
+        const storedTenantId = localStorage.getItem('tenantId');
+
+        if (storedToken && storedEmail && storedTenantId) {
+          setToken(storedToken);
+          setUser({ email: storedEmail, tenantId: storedTenantId });
+        } else {
+          localStorage.setItem('email', DEFAULT_USER.email);
+          localStorage.setItem('tenantId', DEFAULT_USER.tenantId);
+          localStorage.setItem('token', 'demo-token');
+          localStorage.setItem('user_role', 'ADMIN');
+        }
       }
+    } catch (e) {
+      console.error('Auth context sync error:', e);
     }
-    setIsLoading(false);
   }, []);
 
   const login = (newToken: string, email: string, tenantId: string) => {
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('email', email);
-    localStorage.setItem('tenantId', tenantId);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('token', newToken);
+      localStorage.setItem('email', email);
+      localStorage.setItem('tenantId', tenantId);
+    }
     setToken(newToken);
     setUser({ email, tenantId });
     router.push('/dashboard');
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('email');
-    localStorage.removeItem('tenantId');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('email');
+      localStorage.removeItem('tenantId');
+    }
     setToken(null);
     setUser(null);
     router.push('/login');

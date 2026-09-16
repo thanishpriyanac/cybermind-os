@@ -8,7 +8,7 @@ import { useAuth } from '../../contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -16,23 +16,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !user && pathname !== '/login') {
+    if (!user && pathname !== '/login') {
       router.push('/login');
     }
-  }, [isLoading, user, pathname, router]);
-
-  if (isLoading) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center bg-background text-primary font-mono text-xs space-y-2">
-        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-        <span>CYBERMIND OS — Initializing SOC Engine...</span>
-      </div>
-    );
-  }
-
-  if (!user && pathname !== '/login') {
-    return null;
-  }
+  }, [user, pathname, router]);
 
   if (pathname === '/login') {
     return <>{children}</>;
