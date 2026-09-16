@@ -87,11 +87,13 @@ export interface CyberCardProps {
   children: React.ReactNode;
   className?: string;
   hoverEffect?: boolean;
+  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
 }
 
-export function CyberCard({ children, className = '', hoverEffect = false }: CyberCardProps) {
+export function CyberCard({ children, className = '', hoverEffect = false, onClick }: CyberCardProps) {
   return (
     <div
+      onClick={onClick}
       className={`bg-slate-950/80 border border-slate-800/80 rounded-lg shadow-sm transition-all duration-150 ${
         hoverEffect ? 'hover:border-slate-700/80 hover:bg-slate-900/50' : ''
       } ${className}`}
