@@ -15,6 +15,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
+  useEffect(() => {
+    if (!isLoading && !user && pathname !== '/login') {
+      router.push('/login');
+    }
+  }, [isLoading, user, pathname, router]);
+
   if (isLoading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-background text-primary font-mono text-xs space-y-2">
@@ -25,7 +31,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   if (!user && pathname !== '/login') {
-    router.push('/login');
     return null;
   }
 
