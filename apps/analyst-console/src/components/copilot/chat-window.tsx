@@ -22,6 +22,10 @@ import {
   Camera,
   Scan,
   Eye,
+  Layers,
+  Shield,
+  CheckCircle2,
+  ArrowRight,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -62,6 +66,8 @@ interface ChatWindowProps {
   conversationId: string | null;
   onConversationCreated: (id: string) => void;
   onToggleSidebar?: () => void;
+  onToggleContextPanel?: () => void;
+  isContextPanelOpen?: boolean;
 }
 
 const MODELS = [
@@ -103,7 +109,7 @@ function renderFileIcon(category: 'pcap' | 'config' | 'log' | 'doc' | 'image', c
   }
 }
 
-export function ChatWindow({ conversationId, onConversationCreated, onToggleSidebar }: ChatWindowProps) {
+export function ChatWindow({ conversationId, onConversationCreated, onToggleSidebar, onToggleContextPanel, isContextPanelOpen }: ChatWindowProps) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -478,10 +484,24 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {onToggleContextPanel && (
+            <button
+              onClick={onToggleContextPanel}
+              className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-colors flex items-center gap-1.5 border ${
+                isContextPanelOpen
+                  ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/40'
+                  : 'bg-muted text-muted-foreground border-border hover:text-foreground'
+              }`}
+              title="Toggle Investigation Cockpit Context Panel"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Cockpit Context</span>
+            </button>
+          )}
           <select
             value={selectedModel}
             onChange={(e) => setSelectedModel(e.target.value)}
-            className="text-sm bg-muted border border-border rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
+            className="text-xs font-mono bg-muted border border-border rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
           >
             {MODELS.map((m) => (
               <option key={m.id} value={m.id}>
@@ -680,15 +700,58 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
                     {isUser ? (
                       <div className="whitespace-pre-wrap">{msg.content}</div>
                     ) : (
-                      <div className="prose prose-sm dark:prose-invert max-w-none">
-                        {msg.content === '' && isGenerating && index === messages.length - 1 ? (
-                          <div className="flex gap-1 items-center h-5">
-                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                            <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></span>
+                      <div className="space-y-3">
+                        {/* Tool Execution Badges */}
+                        {msg.content && (
+                          <div className="flex flex-wrap items-center gap-1.5 pb-2 border-b border-border/50 text-[10px] font-mono">
+                            <span className="text-emerald-400 font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" /> CVE Intelligence
+                            </span>
+                            <span className="text-slate-600">•</span>
+                            <span className="text-emerald-400 font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" /> Firewall Policy Audit
+                            </span>
+                            <span className="text-slate-600">•</span>
+                            <span className="text-cyan-400 font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-cyan-400 shrink-0" /> RAG Vector Store
+                            </span>
                           </div>
-                        ) : (
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                        )}
+
+                        <div className="prose prose-sm dark:prose-invert max-w-none font-sans text-xs sm:text-sm leading-relaxed">
+                          {msg.content === '' && isGenerating && index === messages.length - 1 ? (
+                            <div className="flex gap-1 items-center h-5">
+                              <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                              <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                              <span className="w-1.5 h-1.5 bg-current rounded-full animate-bounce"></span>
+                            </div>
+                          ) : (
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                          )}
+                        </div>
+
+                        {/* Structured Action CTAs */}
+                        {msg.content && (
+                          <div className="pt-2 border-t border-border/50 flex flex-wrap items-center gap-2 font-mono text-[11px]">
+                            <button
+                              onClick={() => setInput('Create first-class incident investigation for this finding')}
+                              className="px-2.5 py-1 rounded bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/40 flex items-center gap-1 transition-colors font-bold"
+                            >
+                              <Layers className="w-3 h-3" /> Create Investigation
+                            </button>
+                            <button
+                              onClick={() => setInput('Generate Sigma detection rule for this finding')}
+                              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1 transition-colors"
+                            >
+                              <FileCode className="w-3 h-3 text-amber-400" /> Generate Sigma Rule
+                            </button>
+                            <button
+                              onClick={() => setInput('Generate executive incident report for this finding')}
+                              className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1 transition-colors"
+                            >
+                              <FileText className="w-3 h-3 text-purple-400" /> Generate Report
+                            </button>
+                          </div>
                         )}
                       </div>
                     )}
@@ -708,7 +771,7 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
                       )}
 
                       {expandedMetadata[msg.id] && msg.metadata && (
-                        <div className="flex items-center gap-3 border-l pl-3 border-border">
+                        <div className="flex items-center gap-3 border-l pl-3 border-border font-mono text-[11px]">
                           {msg.latencyMs !== undefined && <span>{msg.latencyMs}ms</span>}
                           {msg.tokenUsage !== undefined && <span>{msg.tokenUsage} tokens</span>}
                           <span>Provider: {msg.metadata.provider || 'auto'}</span>
