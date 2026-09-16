@@ -65,6 +65,22 @@ export function CyberCommandPalette({ isOpen, onClose }: CyberCommandPaletteProp
     { label: 'Go to QBR Executive Reports', path: '/qbr', category: 'NAVIGATION', icon: FileText },
     { label: 'Go to System Health & Telemetry', path: '/health', category: 'NAVIGATION', icon: HeartPulse },
     { label: 'Go to Platform Admin Center', path: '/admin', category: 'NAVIGATION', icon: ShieldCheck },
+    { label: 'Toolkit: IP Port Scanner', path: '/toolkit/ip-scanner', category: 'TOOLKIT', icon: Globe },
+    { label: 'Toolkit: Central IOC Analyzer', path: '/toolkit/ioc-analyzer', category: 'TOOLKIT', icon: Activity },
+    { label: 'Toolkit: URL Security Analyzer', path: '/toolkit/url-analyzer', category: 'TOOLKIT', icon: BookOpen },
+    { label: 'Toolkit: Firewall Rule Analyzer', path: '/toolkit/firewall-rules', category: 'TOOLKIT', icon: Server },
+    { label: 'Toolkit: Firewall Policy Simulator', path: '/toolkit/firewall-simulator', category: 'TOOLKIT', icon: Lock },
+    { label: 'Toolkit: CVE Explainer', path: '/toolkit/cve-explainer', category: 'TOOLKIT', icon: Shield },
+    { label: 'Toolkit: Security Log Analyzer', path: '/toolkit/log-analyzer', category: 'TOOLKIT', icon: FileText },
+    { label: 'Toolkit: Log Converter / Normalizer', path: '/toolkit/log-converter', category: 'TOOLKIT', icon: Activity },
+    { label: 'Toolkit: Active Directory Security Checker', path: '/toolkit/ad-checker', category: 'TOOLKIT', icon: ShieldCheck },
+    { label: 'Toolkit: DNS Security Analyzer', path: '/toolkit/dns-analyzer', category: 'TOOLKIT', icon: Globe },
+    { label: 'Toolkit: DNS Resolver Troubleshooter', path: '/toolkit/dns-troubleshooter', category: 'TOOLKIT', icon: Activity },
+    { label: 'Toolkit: Network Connectivity Diagnostic', path: '/toolkit/connectivity-tester', category: 'TOOLKIT', icon: HeartPulse },
+    { label: 'Toolkit: Traceroute Visualizer', path: '/toolkit/traceroute', category: 'TOOLKIT', icon: Activity },
+    { label: 'Toolkit: PCAP Network Traffic Analyzer', path: '/toolkit/pcap-analyzer', category: 'TOOLKIT', icon: Server },
+    { label: 'Toolkit: Security Reference Cheat Sheets', path: '/toolkit/cheatsheets', category: 'TOOLKIT', icon: BookOpen },
+    { label: 'Toolkit: Explain This Command', path: '/toolkit/command-explainer', category: 'TOOLKIT', icon: Bot },
   ];
 
   const quickActions = [

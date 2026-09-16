@@ -60,6 +60,27 @@ export const CYBERMIND_NAVIGATION_GROUPS: NavGroup[] = [
     ],
   },
   {
+    groupName: 'SECURITY TOOLKIT',
+    items: [
+      { name: 'IP Port Scanner', href: '/toolkit/ip-scanner', icon: Globe },
+      { name: 'IOC Analyzer', href: '/toolkit/ioc-analyzer', icon: Activity },
+      { name: 'URL Analyzer', href: '/toolkit/url-analyzer', icon: BookOpen },
+      { name: 'Firewall Rule Analyzer', href: '/toolkit/firewall-rules', icon: Server },
+      { name: 'Firewall Policy Simulator', href: '/toolkit/firewall-simulator', icon: Lock },
+      { name: 'CVE Explainer', href: '/toolkit/cve-explainer', icon: Shield },
+      { name: 'Log Analyzer', href: '/toolkit/log-analyzer', icon: FileText },
+      { name: 'Log Converter', href: '/toolkit/log-converter', icon: Activity },
+      { name: 'AD Security Checker', href: '/toolkit/ad-checker', icon: ShieldCheck },
+      { name: 'DNS Analyzer', href: '/toolkit/dns-analyzer', icon: Globe },
+      { name: 'DNS Troubleshooter', href: '/toolkit/dns-troubleshooter', icon: Activity },
+      { name: 'Connectivity Tester', href: '/toolkit/connectivity-tester', icon: HeartPulse },
+      { name: 'Traceroute Visualizer', href: '/toolkit/traceroute', icon: Activity },
+      { name: 'PCAP Analyzer', href: '/toolkit/pcap-analyzer', icon: Server },
+      { name: 'Security Cheat Sheets', href: '/toolkit/cheatsheets', icon: BookOpen },
+      { name: 'Explain This Command', href: '/toolkit/command-explainer', icon: Bot },
+    ],
+  },
+  {
     groupName: 'REPORTING',
     items: [
       { name: 'QBR Reports', href: '/qbr', icon: FileText },
