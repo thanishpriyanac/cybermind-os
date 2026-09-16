@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   Bot, 
@@ -21,13 +21,12 @@ import { Input } from '../../../components/ui/input';
 import { SecurityObject } from '../../../lib/toolkit/types';
 import { saveToolkitHistoryItem } from '../../../lib/toolkit/store';
 
-export default function CommandExplainerPage() {
+function CommandExplainerContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialCmd = searchParams.get('cmd') || 'diagnose debug application ike -1';
 
   const [cmdInput, setCmdInput] = useState(initialCmd);
-  const [explanationMode, setExplanationMode] = useState<'technical' | 'beginner' | 'troubleshooting'>('technical');
   const [isExplaining, setIsExplaining] = useState(false);
   const [explanationResult, setExplanationResult] = useState<any | null>(null);
 
@@ -248,5 +247,13 @@ export default function CommandExplainerPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CommandExplainerPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-xs font-mono text-cyan-400">Loading Command Explainer...</div>}>
+      <CommandExplainerContent />
+    </Suspense>
   );
 }

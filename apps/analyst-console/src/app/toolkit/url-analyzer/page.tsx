@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   BookOpen, 
@@ -23,7 +23,7 @@ import { Input } from '../../../components/ui/input';
 import { SecurityObject } from '../../../lib/toolkit/types';
 import { saveToolkitHistoryItem } from '../../../lib/toolkit/store';
 
-export default function UrlAnalyzerPage() {
+function UrlAnalyzerContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialUrl = searchParams.get('url') || 'http://login.secure-auth-update-portal.com/auth/verify?session=9283401&token=a8f9021';
@@ -266,5 +266,13 @@ export default function UrlAnalyzerPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function UrlAnalyzerPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-xs font-mono text-cyan-400">Loading URL Analyzer...</div>}>
+      <UrlAnalyzerContent />
+    </Suspense>
   );
 }

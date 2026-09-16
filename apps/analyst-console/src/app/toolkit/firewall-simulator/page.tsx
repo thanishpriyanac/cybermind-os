@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   Lock, 
@@ -22,7 +22,7 @@ import { Input } from '../../../components/ui/input';
 import { SecurityObject } from '../../../lib/toolkit/types';
 import { saveToolkitHistoryItem } from '../../../lib/toolkit/store';
 
-export default function FirewallPolicySimulatorPage() {
+function FirewallPolicySimulatorContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -277,5 +277,13 @@ export default function FirewallPolicySimulatorPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function FirewallPolicySimulatorPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-xs font-mono text-cyan-400">Loading Firewall Simulator...</div>}>
+      <FirewallPolicySimulatorContent />
+    </Suspense>
   );
 }

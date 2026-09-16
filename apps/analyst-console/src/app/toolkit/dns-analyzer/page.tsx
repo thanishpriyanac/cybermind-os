@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   Globe, 
@@ -22,7 +22,7 @@ import { Input } from '../../../components/ui/input';
 import { SecurityObject } from '../../../lib/toolkit/types';
 import { saveToolkitHistoryItem } from '../../../lib/toolkit/store';
 
-export default function DnsAnalyzerPage() {
+function DnsAnalyzerContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialDomain = searchParams.get('domain') || 'cybermind.local';
@@ -290,5 +290,13 @@ export default function DnsAnalyzerPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DnsAnalyzerPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-xs font-mono text-cyan-400">Loading DNS Analyzer...</div>}>
+      <DnsAnalyzerContent />
+    </Suspense>
   );
 }

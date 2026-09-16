@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   Search, 
@@ -26,7 +26,7 @@ import { Input } from '../../../components/ui/input';
 import { SecurityObject, SecurityObjectType } from '../../../lib/toolkit/types';
 import { saveToolkitHistoryItem } from '../../../lib/toolkit/store';
 
-export default function IocAnalyzerPage() {
+function IocAnalyzerContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTarget = searchParams.get('target') || '185.220.101.5';
@@ -40,23 +40,18 @@ export default function IocAnalyzerPage() {
     const trimmed = val.trim();
     if (!trimmed) return 'IOC';
 
-    // MD5 / SHA1 / SHA256 regex
     if (/^[a-fA-F0-9]{32}$/.test(trimmed) || /^[a-fA-F0-9]{40}$/.test(trimmed) || /^[a-fA-F0-9]{64}$/.test(trimmed)) {
       return 'HASH';
     }
-    // IPv4 / IPv6 regex
     if (/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(trimmed) || /^[0-9a-fA-F:]+$/.test(trimmed) && trimmed.includes(':')) {
       return 'IP';
     }
-    // URL
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       return 'URL';
     }
-    // Email
     if (trimmed.includes('@') && trimmed.includes('.')) {
       return 'USER';
     }
-    // Domain
     if (trimmed.includes('.')) {
       return 'DOMAIN';
     }
@@ -406,5 +401,13 @@ export default function IocAnalyzerPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function IocAnalyzerPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-xs font-mono text-cyan-400">Loading IOC Analyzer...</div>}>
+      <IocAnalyzerContent />
+    </Suspense>
   );
 }

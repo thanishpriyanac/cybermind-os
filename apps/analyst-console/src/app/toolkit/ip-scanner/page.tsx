@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   Globe, 
@@ -36,7 +36,7 @@ interface ScannedPort {
   cvePotential?: string;
 }
 
-export default function IpPortScannerPage() {
+function IpPortScannerContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTarget = searchParams.get('target') || '10.10.20.15';
@@ -356,5 +356,13 @@ export default function IpPortScannerPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function IpPortScannerPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-xs font-mono text-cyan-400">Loading Port Scanner...</div>}>
+      <IpPortScannerContent />
+    </Suspense>
   );
 }
