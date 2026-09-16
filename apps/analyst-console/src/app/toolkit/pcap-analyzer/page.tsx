@@ -143,7 +143,7 @@ export default function PcapAnalyzerPage() {
               title="Unique IP Endpoints"
               value={pcapResult.uniqueIps}
               subtitle="Sources & Destinations"
-              accentColor="purple"
+              accentColor="cyan"
               icon={<Globe />}
             />
             <CyberMetric

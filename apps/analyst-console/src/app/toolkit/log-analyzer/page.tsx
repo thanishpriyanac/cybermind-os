@@ -146,7 +146,7 @@ export default function LogAnalyzerPage() {
               title="Extracted IOCs"
               value={logAnalysisResult.extractedIocs.length}
               subtitle="IPs, Domains, Users"
-              accentColor="purple"
+              accentColor="cyan"
               icon={<Search />}
             />
             <CyberMetric
