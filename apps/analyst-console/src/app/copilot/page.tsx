@@ -7,7 +7,7 @@ import { ChatWindow } from '../../components/copilot/chat-window';
 import { CyberContextPanel } from '../../components/copilot/cyber-context-panel';
 import { useAuth } from '../../contexts/auth-context';
 
-export default function CopilotPage() {
+function CopilotContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -89,5 +89,13 @@ export default function CopilotPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CopilotPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-full p-6 font-mono text-xs text-cyan-400">Loading CyberAI Copilot...</div>}>
+      <CopilotContent />
+    </Suspense>
   );
 }
