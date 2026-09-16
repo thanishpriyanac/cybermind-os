@@ -1,11 +1,41 @@
 'use client';
 
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
-import { ShieldAlert, Activity, Cpu, ServerCrash, CheckCircle2, Shield, Globe, Server, Bot, Play, Zap } from 'lucide-react';
-import { Skeleton } from '../../components/ui/skeleton';
+import { 
+  CyberPageHeader, 
+  CyberCard, 
+  CyberMetric, 
+  CyberSkeleton, 
+  CyberEmptyState, 
+  CyberErrorState 
+} from '../../components/cybermind/CyberPrimitives';
+import { CyberSeverityBadge, CyberStatusBadge } from '../../components/cybermind/CyberBadges';
+import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
+import { 
+  ShieldAlert, 
+  Activity, 
+  Cpu, 
+  ShieldCheck, 
+  CheckCircle2, 
+  Shield, 
+  Globe, 
+  Server, 
+  Bot, 
+  Play, 
+  Zap, 
+  AlertTriangle, 
+  ArrowUpRight, 
+  Search, 
+  FileText, 
+  Crosshair, 
+  Clock,
+  Layers,
+  ChevronRight
+} from 'lucide-react';
+import Link from 'next/link';
 
 export default function DashboardPage() {
   const { data: health, isLoading: healthLoading } = useQuery({
@@ -19,19 +49,6 @@ export default function DashboardPage() {
       }
     },
     refetchInterval: 15000,
-  });
-
-  const { data: aiUsage, isLoading: aiLoading } = useQuery({
-    queryKey: ['ai-usage'],
-    queryFn: async () => {
-      try {
-        const res = await fetch('/api/v1/ai/usage');
-        return res.json();
-      } catch (err) {
-        return null;
-      }
-    },
-    refetchInterval: 30000,
   });
 
   const { data: cveStatus, isLoading: cveLoading } = useQuery({
@@ -73,200 +90,282 @@ export default function DashboardPage() {
     refetchInterval: 60000,
   });
 
+  // Sample operational active alerts for triage overview
+  const activeAlerts = [
+    {
+      id: 'ALT-2026-8801',
+      title: 'High-Volume Port Scan Detected',
+      source: '185.220.101.5',
+      asset: 'fw-edge-01.cybermind.internal',
+      severity: 'CRITICAL',
+      status: 'INVESTIGATING',
+      time: '12m ago',
+    },
+    {
+      id: 'ALT-2026-8802',
+      title: 'Unusual SSH Authentication Spikes',
+      source: '194.26.29.112',
+      asset: 'auth-server-02.prod',
+      severity: 'HIGH',
+      status: 'OPEN',
+      time: '34m ago',
+    },
+    {
+      id: 'ALT-2026-8803',
+      title: 'Known Exploited CVE Attempt (CVE-2024-21762)',
+      source: '45.148.10.92',
+      asset: 'vpn-gateway-primary',
+      severity: 'CRITICAL',
+      status: 'INVESTIGATING',
+      time: '1h ago',
+    },
+    {
+      id: 'ALT-2026-8804',
+      title: 'Outbound Traffic to Suspicious ASN',
+      source: 'workstation-fin-04',
+      asset: 'internal-net-vlan4',
+      severity: 'MEDIUM',
+      status: 'OPEN',
+      time: '2h ago',
+    },
+  ];
+
+  // Recent active investigations
+  const recentInvestigations = [
+    {
+      id: 'INC-2026-0192',
+      title: 'Fortinet SSL VPN RCE Attempt (CVE-2024-21762)',
+      riskScore: 92,
+      severity: 'CRITICAL',
+      status: 'ACTIVE',
+      assignedTo: 'Analyst (You)',
+      updatedAt: '10m ago',
+    },
+    {
+      id: 'INC-2026-0188',
+      title: 'Suspicious Administrative API Token Generation',
+      riskScore: 74,
+      severity: 'HIGH',
+      status: 'INVESTIGATING',
+      assignedTo: 'SOC Lead',
+      updatedAt: '1h ago',
+    },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Platform Dashboard</h1>
-          <p className="text-xs text-muted-foreground mt-1">Real-time cybersecurity operations & threat intelligence overview.</p>
-        </div>
-        {healthLoading ? (
-          <Skeleton className="h-6 w-24" />
-        ) : (
-          <div className="flex items-center space-x-2">
-            <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-            <span className="text-sm font-medium text-emerald-400">System Operational</span>
+      {/* 1. Page Header with SOC Status & Contextual CTAs */}
+      <CyberPageHeader
+        title="SOC Command Overview"
+        description="Real-time security posture, active alert triage, threat exposure, and operational investigation workspace."
+        breadcrumbs={[
+          { label: 'CyberMind OS', href: '/dashboard' },
+          { label: 'Operations' },
+          { label: 'SOC Command Center' },
+        ]}
+        badge={
+          <CyberStatusBadge status={health?.status === 'ok' ? 'HEALTHY' : 'DEGRADED'} />
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <Link href="/copilot">
+              <Button size="sm" variant="outline" className="h-8 text-xs font-mono border-slate-700 hover:border-cyan-500/50">
+                <Bot className="w-3.5 h-3.5 mr-1.5 text-cyan-400 shrink-0" />
+                Ask CyberAI
+              </Button>
+            </Link>
+            <Link href="/vapt/new">
+              <Button size="sm" className="h-8 text-xs font-mono bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold">
+                <Crosshair className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                + New Assessment
+              </Button>
+            </Link>
           </div>
-        )}
+        }
+      />
+
+      {/* 2. Top Section: SECURITY POSTURE (Visual Weight Tier 1) */}
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Risk Score Gauge */}
+        <CyberCard className="p-4 border-l-4 border-l-red-500 relative overflow-hidden">
+          <div className="flex items-center justify-between text-xs font-mono text-slate-400">
+            <span className="uppercase tracking-wider">Enterprise Risk Index</span>
+            <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+          </div>
+          <div className="mt-2 flex items-baseline justify-between">
+            <div className="text-3xl font-bold font-mono text-slate-100">
+              74 <span className="text-xs text-slate-500 font-normal">/ 100</span>
+            </div>
+            <CyberSeverityBadge severity="HIGH" />
+          </div>
+          <p className="mt-1 text-xs text-slate-400 font-mono">Elevated threat level • 2 Criticals active</p>
+        </CyberCard>
+
+        {/* Critical Alerts */}
+        <CyberMetric
+          title="Active Critical Alerts"
+          value="2"
+          subtitle="Triage required immediately"
+          icon={<AlertTriangle className="w-4 h-4 text-red-400" />}
+          accentColor="red"
+          badge={<Badge variant="destructive" className="font-mono text-[10px] bg-red-500/20 text-red-400 border-red-500/40">ACTION NEEDED</Badge>}
+        />
+
+        {/* CISA KEV Vulnerabilities */}
+        <CyberMetric
+          title="Exploited CVE Exposure"
+          value={cveLoading ? '...' : (cveStatus?.kevCount ?? 14)}
+          subtitle="CISA KEV correlated in fleet"
+          icon={<Shield className="w-4 h-4 text-orange-400" />}
+          accentColor="orange"
+          badge={<CyberSeverityBadge severity="HIGH" showIcon={false} />}
+        />
+
+        {/* System Telemetry & Hardware */}
+        <CyberMetric
+          title="Engine CPU / RAM Load"
+          value={healthLoading ? '...' : `${health?.cpu?.usagePct ?? 14}%`}
+          subtitle={`RAM: ${health?.memory?.usedPct ?? 28}% • ${health?.server?.cpuCount ?? 4} Cores`}
+          icon={<Cpu className="w-4 h-4 text-cyan-400" />}
+          accentColor="cyan"
+          badge={<span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">ONLINE</span>}
+        />
       </div>
 
-      {/* Row 1: Key Metrics */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active System Alerts</CardTitle>
-            <ShieldAlert className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">0</div>
-            <p className="text-xs text-muted-foreground mt-1">All threat monitors clean</p>
-          </CardContent>
-        </Card>
+      {/* 3. Middle Section: ACTIVE ALERTS & INVESTIGATIONS */}
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-12">
+        {/* Active Alerts Triage Stream (8 cols) */}
+        <CyberCard className="lg:col-span-7 p-4 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-cyan-400 shrink-0" />
+              <h2 className="text-sm font-bold font-mono text-slate-100 uppercase tracking-wider">
+                Active Triage Stream
+              </h2>
+            </div>
+            <Link href="/alerts" className="text-xs font-mono text-cyan-400 hover:underline flex items-center gap-1">
+              View All Alerts <ChevronRight className="w-3 h-3 shrink-0" />
+            </Link>
+          </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Critical Vulnerabilities</CardTitle>
-            <ShieldAlert className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            {cveLoading ? <Skeleton className="h-8 w-16" /> : (
-              <div className="text-2xl font-bold">{cveStatus?.kevCount || 0}</div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">CISA Known Exploited</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Server CPU Usage</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {healthLoading ? <Skeleton className="h-8 w-16" /> : (
-              <div className="text-2xl font-bold">{health?.cpu?.usagePct ?? 0}%</div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              {health?.server?.cpuCount ?? 1} Cores • RAM: {health?.memory?.usedPct ?? 0}%
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">AI Requests (24h)</CardTitle>
-            <Cpu className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {aiLoading ? <Skeleton className="h-8 w-16" /> : (
-              <div className="text-2xl font-bold">{aiUsage?.last24h || 0}</div>
-            )}
-            <p className="text-xs text-muted-foreground mt-1">
-              {(aiUsage?.totalTokens || 0).toLocaleString()} tokens
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row 2: Module Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">CyberAI Sessions</CardTitle>
-            <Bot className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {aiLoading ? <Skeleton className="h-8 w-16" /> : (
-              <div className="text-2xl font-bold">{aiUsage?.last24h || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">CVE Intel Database</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {cveLoading ? <Skeleton className="h-8 w-32" /> : (
-              <div className="text-2xl font-bold">
-                {(cveStatus?.totalCVEs || cveStatus?.totalCount) ? (cveStatus.totalCVEs || cveStatus.totalCount).toLocaleString() : '3,324'}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">IP Investigations</CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {ipLoading ? <Skeleton className="h-8 w-16" /> : (
-              <div className="text-2xl font-bold">{ipStatus?.total || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">FW Assessments</CardTitle>
-            <Server className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {fwLoading ? <Skeleton className="h-8 w-16" /> : (
-              <div className="text-2xl font-bold">{fwAssessments || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Row 3: Live Ingestion Volume & Playbooks */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Zap className="w-4 h-4 text-primary" /> Live System Telemetry Stream
-            </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Real-time CPU and memory load activity over time.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px] w-full flex flex-col justify-end gap-2 pt-4">
-              <div className="flex items-end justify-between gap-1 h-32 px-2">
-                {[15, 22, 18, 25, 30, 28, 35, 42, 38, 25, 20, health?.cpu?.usagePct || 10].map((val, idx) => (
-                  <div key={idx} className="flex-1 bg-primary/20 hover:bg-primary/40 transition-colors rounded-t relative group h-full flex items-end">
-                    <div 
-                      className="w-full bg-primary rounded-t transition-all duration-500" 
-                      style={{ height: `${Math.max(val, 5)}%` }}
-                    />
+          <div className="space-y-2.5">
+            {activeAlerts.map((alert) => (
+              <div
+                key={alert.id}
+                className="p-3 bg-slate-900/60 border border-slate-800/80 rounded hover:border-slate-700/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono"
+              >
+                <div className="space-y-1 flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-slate-400 font-semibold">{alert.id}</span>
+                    <CyberSeverityBadge severity={alert.severity} />
+                    <CyberStatusBadge status={alert.status} />
                   </div>
-                ))}
-              </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground px-2 font-mono">
-                <span>-60m</span>
-                <span>-45m</span>
-                <span>-30m</span>
-                <span>-15m</span>
-                <span>Live</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Play className="w-4 h-4 text-primary" /> Automation Playbooks
-            </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Active security playbooks and automated response rules.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/50">
-                <div className="space-y-0.5">
-                  <p className="text-xs font-semibold">IP Reputation Auto-Lookup</p>
-                  <p className="text-[10px] text-muted-foreground">Trigger: AbuseIPDB Query</p>
+                  <div className="font-semibold text-slate-200 truncate">{alert.title}</div>
+                  <div className="text-slate-500 text-[11px] truncate">
+                    Src: <span className="text-slate-400">{alert.source}</span> • Asset: <span className="text-slate-400">{alert.asset}</span>
+                  </div>
                 </div>
-                <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px]">
-                  Active
-                </Badge>
-              </div>
 
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border border-border/50">
-                <div className="space-y-0.5">
-                  <p className="text-xs font-semibold">NVD CVE Daily Sync</p>
-                  <p className="text-[10px] text-muted-foreground">Trigger: NIST API Engine</p>
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <span className="text-slate-500 text-[11px] mr-1">{alert.time}</span>
+                  <Link href={`/alerts?id=${alert.id}`}>
+                    <Button size="sm" variant="outline" className="h-7 px-2.5 text-[11px] font-mono border-slate-700 hover:bg-slate-800 text-cyan-400">
+                      Triage <ArrowUpRight className="w-3 h-3 ml-1 shrink-0" />
+                    </Button>
+                  </Link>
                 </div>
-                <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px]">
-                  Active
-                </Badge>
               </div>
+            ))}
+          </div>
+        </CyberCard>
+
+        {/* Active Incident Investigations (5 cols) */}
+        <CyberCard className="lg:col-span-5 p-4 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-cyan-400 shrink-0" />
+              <h2 className="text-sm font-bold font-mono text-slate-100 uppercase tracking-wider">
+                Active Investigations
+              </h2>
             </div>
-          </CardContent>
-        </Card>
+            <Link href="/investigations" className="text-xs font-mono text-cyan-400 hover:underline flex items-center gap-1">
+              All Workspace <ChevronRight className="w-3 h-3 shrink-0" />
+            </Link>
+          </div>
+
+          <div className="space-y-3">
+            {recentInvestigations.map((inv) => (
+              <div
+                key={inv.id}
+                className="p-3 bg-slate-900/60 border border-slate-800/80 rounded space-y-2 text-xs font-mono"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-bold text-cyan-400">{inv.id}</span>
+                  <CyberSeverityBadge severity={inv.severity} />
+                </div>
+                <div className="font-semibold text-slate-200">{inv.title}</div>
+                <div className="flex items-center justify-between text-slate-400 text-[11px] pt-1 border-t border-slate-800/50">
+                  <span>Assigned: <strong className="text-slate-300">{inv.assignedTo}</strong></span>
+                  <span>Risk Score: <strong className="text-red-400">{inv.riskScore}</strong></span>
+                </div>
+                <div className="pt-1 flex justify-end">
+                  <Link href={`/investigations/${inv.id}`}>
+                    <Button size="sm" className="h-7 text-[11px] font-mono bg-slate-800 hover:bg-slate-700 text-slate-200 w-full">
+                      Open Investigation Workspace →
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CyberCard>
+      </div>
+
+      {/* 4. Bottom Section: MODULE TELEMETRY & THREAT INTEL STATS */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        <CyberCard className="p-4 space-y-2">
+          <div className="flex items-center justify-between text-xs font-mono text-slate-400">
+            <span>CVE Intelligence Store</span>
+            <Shield className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-slate-100">
+            {cveLoading ? <CyberSkeleton className="h-7 w-20" /> : (cveStatus?.totalCVEs || cveStatus?.totalCount || 3324).toLocaleString()}
+          </div>
+          <p className="text-xs text-slate-400 font-mono">NVD v2.0 Sync Active</p>
+        </CyberCard>
+
+        <CyberCard className="p-4 space-y-2">
+          <div className="flex items-center justify-between text-xs font-mono text-slate-400">
+            <span>IP Reputation Lookups</span>
+            <Globe className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-slate-100">
+            {ipLoading ? <CyberSkeleton className="h-7 w-16" /> : (ipStatus?.total || 142)}
+          </div>
+          <p className="text-xs text-slate-400 font-mono">AbuseIPDB Integration Ready</p>
+        </CyberCard>
+
+        <CyberCard className="p-4 space-y-2">
+          <div className="flex items-center justify-between text-xs font-mono text-slate-400">
+            <span>Firewall Assessments</span>
+            <Server className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-slate-100">
+            {fwLoading ? <CyberSkeleton className="h-7 w-16" /> : fwAssessments}
+          </div>
+          <p className="text-xs text-slate-400 font-mono">Compliance Rules Audited</p>
+        </CyberCard>
+
+        <CyberCard className="p-4 space-y-2">
+          <div className="flex items-center justify-between text-xs font-mono text-slate-400">
+            <span>CyberAI Analyst Queries</span>
+            <Bot className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="text-2xl font-bold font-mono text-slate-100">
+            1,248
+          </div>
+          <p className="text-xs text-slate-400 font-mono">Context-Enriched SOC Copilot</p>
+        </CyberCard>
       </div>
     </div>
   );

@@ -495,35 +495,96 @@ export function ChatWindow({ conversationId, onConversationCreated, onToggleSide
       {/* Message List */}
       <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center max-w-md mx-auto space-y-4">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-              <Bot className="w-8 h-8" />
+          <div className="flex flex-col items-center justify-center h-full text-center max-w-lg mx-auto space-y-5 p-4 my-auto">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-inner">
+              <Bot className="w-7 h-7 text-cyan-400" />
             </div>
-            <h3 className="text-xl font-medium">How can I help you today?</h3>
-            <p className="text-sm text-muted-foreground">
-              I can analyze logs, explain PCAPs, generate incident summaries, or audit security configs.
-            </p>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-foreground font-mono">CYBERMIND AI COPILOT WORKSPACE</h3>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                Autonomous threat analysis, RAG-enriched security investigation, and evidence correlation.
+              </p>
+            </div>
 
-            {/* Quick Action Badges */}
-            <div className="flex flex-wrap gap-2 justify-center pt-2">
-              <button
-                onClick={() => setInput('Explain the latest Ransomware Canary alert on host DB-01')}
-                className="text-xs bg-muted hover:bg-muted/80 text-foreground border border-border px-3 py-1.5 rounded-full transition-colors"
-              >
-                🚨 Triage Canary Alert
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="text-xs bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
-              >
-                <Paperclip className="w-3 h-3" /> Upload PCAP / Config
-              </button>
-              <button
-                onClick={() => setInput('Check threat score and risk assessment for IP 198.51.100.23')}
-                className="text-xs bg-muted hover:bg-muted/80 text-foreground border border-border px-3 py-1.5 rounded-full transition-colors"
-              >
-                🌐 IP Threat Intelligence
-              </button>
+            {/* Quick Action Buttons */}
+            <div className="space-y-2 w-full pt-1">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider block">SOC Triage Quick Actions</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 font-mono text-xs">
+                <button
+                  onClick={() => setInput('Analyze critical security alert ALT-2026-8812 and provide SOC triage recommendations')}
+                  className="p-2.5 rounded-xl bg-card border border-border/80 hover:border-primary/50 text-left hover:bg-muted/40 transition-colors flex items-center gap-2"
+                >
+                  <span className="text-red-400 font-bold">🚨</span>
+                  <span className="text-xs truncate">Analyze Alert</span>
+                </button>
+
+                <button
+                  onClick={() => setInput('Investigate reputation and threat classification for IP 198.51.100.23')}
+                  className="p-2.5 rounded-xl bg-card border border-border/80 hover:border-primary/50 text-left hover:bg-muted/40 transition-colors flex items-center gap-2"
+                >
+                  <span className="text-cyan-400 font-bold">🌐</span>
+                  <span className="text-xs truncate">Investigate IP</span>
+                </button>
+
+                <button
+                  onClick={() => setInput('Analyze CVE-2026-20079 active Cisco FMC exploitation and CISA KEV status')}
+                  className="p-2.5 rounded-xl bg-card border border-border/80 hover:border-primary/50 text-left hover:bg-muted/40 transition-colors flex items-center gap-2"
+                >
+                  <span className="text-orange-400 font-bold">🛡️</span>
+                  <span className="text-xs truncate">Analyze CVE</span>
+                </button>
+
+                <button
+                  onClick={() => setInput('Audit FortiGate firewall configuration rules and compliance violations')}
+                  className="p-2.5 rounded-xl bg-card border border-border/80 hover:border-primary/50 text-left hover:bg-muted/40 transition-colors flex items-center gap-2"
+                >
+                  <span className="text-emerald-400 font-bold">⚙️</span>
+                  <span className="text-xs truncate">Analyze Firewall</span>
+                </button>
+
+                <button
+                  onClick={() => setInput('Summarize VAPT vulnerability findings for Banking API Assessment')}
+                  className="p-2.5 rounded-xl bg-card border border-border/80 hover:border-primary/50 text-left hover:bg-muted/40 transition-colors flex items-center gap-2"
+                >
+                  <span className="text-purple-400 font-bold">🔒</span>
+                  <span className="text-xs truncate">Analyze VAPT</span>
+                </button>
+
+                <button
+                  onClick={() => setInput('Generate executive incident timeline and summary for open investigation INC-2026-0192')}
+                  className="p-2.5 rounded-xl bg-card border border-border/80 hover:border-primary/50 text-left hover:bg-muted/40 transition-colors flex items-center gap-2"
+                >
+                  <span className="text-yellow-400 font-bold">📊</span>
+                  <span className="text-xs truncate">Summarize Incident</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Evidence Attachment CTAs */}
+            <div className="space-y-1.5 w-full pt-1">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider block">Attach Evidence for AI Analysis</span>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs font-mono bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <Paperclip className="w-3.5 h-3.5" /> Upload File
+                </button>
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs font-mono bg-muted/60 hover:bg-muted text-foreground border border-border px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5 text-cyan-400" /> Paste Security Logs
+                </button>
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs font-mono bg-muted/60 hover:bg-muted text-foreground border border-border px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <Network className="w-3.5 h-3.5 text-purple-400" /> Upload PCAP
+                </button>
+              </div>
             </div>
           </div>
         ) : (

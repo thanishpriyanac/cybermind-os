@@ -1,24 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
+import { 
+  CyberPageHeader, 
+  CyberCard, 
+  CyberMetric, 
+  CyberSkeleton 
+} from '../../components/cybermind/CyberPrimitives';
+import { CyberSeverityBadge, CyberStatusBadge } from '../../components/cybermind/CyberBadges';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
 import { 
   BookOpen, 
   Play, 
   CheckCircle2, 
-  ShieldAlert, 
   Zap, 
   Clock, 
-  Settings2, 
-  RefreshCw,
-  Search,
-  Server,
-  Lock,
-  Network,
-  Cpu
+  Search, 
+  ShieldAlert, 
+  Lock, 
+  RefreshCw 
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
-import { Button } from '../../components/ui/button';
 
 interface Playbook {
   id: string;
@@ -71,18 +74,6 @@ const INITIAL_PLAYBOOKS: Playbook[] = [
     enabled: true,
   },
   {
-    id: 'PB-SNAPSHOT-EBS',
-    name: 'Cloud EBS Forensic Disk Volume Snapshot',
-    category: 'FORENSICS',
-    triggerType: 'MANUAL',
-    description: 'Takes an immutable AWS/GCP cloud volume snapshot for offline memory analysis prior to host wipe.',
-    executionsTotal: 34,
-    successRate: '97.0%',
-    avgDuration: '4.2s',
-    lastRun: 'Yesterday',
-    enabled: true,
-  },
-  {
     id: 'PB-SIEM-BLOCK-IP',
     name: 'Edge Gateway Firewall Rule Injection',
     category: 'CONTAINMENT',
@@ -97,23 +88,17 @@ const INITIAL_PLAYBOOKS: Playbook[] = [
 ];
 
 export default function PlaybooksPage() {
-  const [playbooks, setPlaybooks] = useState<Playbook[]>(INITIAL_PLAYBOOKS);
+  const [playbooks] = useState<Playbook[]>(INITIAL_PLAYBOOKS);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('ALL');
   const [executingId, setExecutingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const togglePlaybook = (id: string) => {
-    setPlaybooks((prev) =>
-      prev.map((pb) => (pb.id === id ? { ...pb, enabled: !pb.enabled } : pb))
-    );
-  };
-
   const handleRunPlaybook = (id: string, name: string) => {
     setExecutingId(id);
     setTimeout(() => {
       setExecutingId(null);
-      setToastMessage(`✅ Playbook "${name}" executed successfully!`);
+      setToastMessage(`⚡ Playbook "${name}" executed successfully across SOAR engine!`);
       setTimeout(() => setToastMessage(null), 4000);
     }, 1200);
   };
@@ -128,170 +113,121 @@ export default function PlaybooksPage() {
   });
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Toast Notification */}
+    <div className="space-y-6">
+      {/* 1. Header */}
+      <CyberPageHeader
+        title="SOAR Automated Response Playbooks"
+        description="Automated security orchestration, active host isolation, IP blocking, and incident response playbooks."
+        breadcrumbs={[
+          { label: 'CyberMind OS', href: '/dashboard' },
+          { label: 'Security Analysis' },
+          { label: 'Playbooks' },
+        ]}
+        badge={
+          <Badge variant="outline" className="font-mono text-xs border-cyan-500/40 text-cyan-400 bg-cyan-500/10 font-bold">
+            SOAR Engine Active
+          </Badge>
+        }
+      />
+
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-emerald-500 text-black font-semibold px-4 py-3 rounded-xl shadow-lg animate-in fade-in slide-in-from-bottom-5">
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs rounded flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
           {toastMessage}
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <BookOpen className="w-7 h-7 text-primary" />
-            SOAR Response Playbooks
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Automated security orchestration, active containment, and threat enrichment workflows.
-          </p>
-        </div>
-      </div>
-
-      {/* Stats */}
+      {/* 2. Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Active Playbooks</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-500">5 Ready</div>
-            <p className="text-xs text-muted-foreground mt-1">All triggers operational</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Total Automated Runs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">3,187</div>
-            <p className="text-xs text-muted-foreground mt-1">Past 30 days</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Success Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-400">99.4%</div>
-            <p className="text-xs text-emerald-500 mt-1">⚡ Zero playbook failures</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Avg Response Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">1.2s</div>
-            <p className="text-xs text-muted-foreground mt-1">Instant containment</p>
-          </CardContent>
-        </Card>
+        <CyberMetric title="Active Playbooks" value="4 Ready" icon={<Zap className="w-4 h-4 text-cyan-400" />} />
+        <CyberMetric title="Automated Runs (30d)" value="3,187" accentColor="cyan" />
+        <CyberMetric title="Execution Success Rate" value="99.4%" accentColor="emerald" />
+        <CyberMetric title="Avg Response Latency" value="0.9s" accentColor="blue" />
       </div>
 
-      {/* Search & Filter Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card p-4 rounded-xl border border-border">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search playbooks or categories..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-muted border border-border text-foreground text-sm rounded-lg pl-9 pr-4 py-2 focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
+      {/* 3. Search & Filter Bar */}
+      <CyberCard className="p-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs font-mono">
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400 shrink-0" />
+            <Input
+              placeholder="Search playbooks or categories..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-8 bg-slate-900/80 border-slate-800 text-xs font-mono focus:border-cyan-500/50"
+            />
+          </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-          {['ALL', 'CONTAINMENT', 'ENRICHMENT', 'REMEDIATION', 'FORENSICS'].map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setFilterCategory(cat)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                filterCategory === cat
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+          <div className="flex items-center gap-2 flex-wrap">
+            {['ALL', 'CONTAINMENT', 'ENRICHMENT', 'REMEDIATION'].map((cat) => (
+              <Button
+                key={cat}
+                size="sm"
+                variant={filterCategory === cat ? 'default' : 'outline'}
+                onClick={() => setFilterCategory(cat)}
+                className={`h-7 px-2.5 text-[11px] font-mono capitalize ${
+                  filterCategory === cat
+                    ? 'bg-cyan-600 text-slate-950 font-bold'
+                    : 'border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {cat}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
+      </CyberCard>
 
-      {/* Playbook List */}
+      {/* 4. Playbook Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredPlaybooks.map((pb) => (
-          <Card key={pb.id} className="bg-card border-border hover:border-primary/50 transition-colors flex flex-col justify-between">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <span className="font-mono text-xs text-primary font-semibold">{pb.id}</span>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
-                    {pb.category}
-                  </Badge>
-                  <Badge
-                    className={
-                      pb.triggerType === 'AUTOMATIC'
-                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
-                        : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
-                    }
-                  >
-                    {pb.triggerType}
-                  </Badge>
-                </div>
+          <CyberCard key={pb.id} hoverEffect className="p-4 space-y-3 font-mono text-xs flex flex-col justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-bold text-cyan-400">{pb.id}</span>
+                <CyberStatusBadge status={pb.triggerType} />
               </div>
-              <CardTitle className="text-base font-semibold">{pb.name}</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground leading-relaxed">
-                {pb.description}
-              </CardDescription>
-            </CardHeader>
+              <h3 className="text-sm font-bold text-slate-100">{pb.name}</h3>
+              <p className="text-slate-400 text-xs font-sans leading-relaxed">{pb.description}</p>
+            </div>
 
-            <CardContent className="pt-0 space-y-4">
-              {/* Telemetry info */}
-              <div className="grid grid-cols-3 gap-2 bg-muted/60 p-2.5 rounded-lg text-xs text-center border border-border/50">
+            <div className="space-y-3 pt-2 border-t border-slate-800/80">
+              <div className="grid grid-cols-3 gap-2 bg-slate-900 p-2 rounded text-center text-[11px]">
                 <div>
-                  <span className="text-[10px] text-muted-foreground block">Executions</span>
-                  <span className="font-medium text-foreground">{pb.executionsTotal}</span>
+                  <span className="text-slate-500 text-[10px] block">EXECUTIONS</span>
+                  <span className="font-bold text-slate-200">{pb.executionsTotal}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-muted-foreground block">Success</span>
-                  <span className="font-medium text-emerald-400">{pb.successRate}</span>
+                  <span className="text-slate-500 text-[10px] block">SUCCESS</span>
+                  <span className="font-bold text-emerald-400">{pb.successRate}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-muted-foreground block">Avg Duration</span>
-                  <span className="font-medium text-foreground">{pb.avgDuration}</span>
+                  <span className="text-slate-500 text-[10px] block">AVG TIME</span>
+                  <span className="font-bold text-slate-200">{pb.avgDuration}</span>
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="flex items-center justify-between pt-1">
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" /> Last run: {pb.lastRun}
-                </span>
-
+                <span className="text-[11px] text-slate-500">Last run: {pb.lastRun}</span>
                 <Button
                   size="sm"
                   disabled={executingId === pb.id}
                   onClick={() => handleRunPlaybook(pb.id, pb.name)}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90 gap-1.5 text-xs"
+                  className="h-7 px-3 text-[11px] font-mono bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold gap-1.5"
                 >
                   {executingId === pb.id ? (
                     <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Executing...
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Executing SOAR...
                     </>
                   ) : (
                     <>
-                      <Play className="w-3.5 h-3.5 fill-current" /> Run Playbook
+                      <Play className="w-3.5 h-3.5" /> Execute Playbook
                     </>
                   )}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CyberCard>
         ))}
       </div>
     </div>

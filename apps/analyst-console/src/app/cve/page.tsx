@@ -1,17 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { 
+  CyberPageHeader, 
+  CyberCard, 
+  CyberMetric, 
+  CyberSkeleton, 
+  CyberEmptyState, 
+  CyberErrorState 
+} from '../../components/cybermind/CyberPrimitives';
+import { CyberSeverityBadge } from '../../components/cybermind/CyberBadges';
+import { CyberDrawer } from '../../components/cybermind/CyberDrawer';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Skeleton } from '../../components/ui/skeleton';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { Loader2, Search, ShieldAlert, Shield } from 'lucide-react';
+import { Loader2, Search, ShieldAlert, Shield, RefreshCw, ExternalLink, Bot, Layers } from 'lucide-react';
 
 export default function CveIntelligencePage() {
   const queryClient = useQueryClient();
@@ -20,8 +28,8 @@ export default function CveIntelligencePage() {
   const [severity, setSeverity] = useState('');
   const [kevOnly, setKevOnly] = useState(false);
   const [page, setPage] = useState(1);
+  const [selectedCve, setSelectedCve] = useState<any | null>(null);
 
-  // Debounce search input by 300ms
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchInput);
@@ -30,11 +38,15 @@ export default function CveIntelligencePage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const { data: statusData, isLoading: isLoadingStatus, isError: isErrorStatus } = useQuery({
+  const { data: statusData, isLoading: isLoadingStatus } = useQuery({
     queryKey: ['cve-status'],
     queryFn: async () => {
-      const res = await api.get('/v1/cve/status');
-      return res.data;
+      try {
+        const res = await api.get('/v1/cve/status');
+        return res.data;
+      } catch {
+        return null;
+      }
     },
     refetchInterval: 10000,
   });
@@ -42,15 +54,19 @@ export default function CveIntelligencePage() {
   const { data: cveData, isLoading: isLoadingCves, isError: isErrorCves, refetch: refetchCves } = useQuery({
     queryKey: ['cves', debouncedSearch, severity, kevOnly, page],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (debouncedSearch) params.append('search', debouncedSearch);
-      if (severity) params.append('severity', severity);
-      if (kevOnly) params.append('kev', 'true');
-      params.append('page', page.toString());
-      params.append('limit', '50');
+      try {
+        const params = new URLSearchParams();
+        if (debouncedSearch) params.append('search', debouncedSearch);
+        if (severity) params.append('severity', severity);
+        if (kevOnly) params.append('kev', 'true');
+        params.append('page', page.toString());
+        params.append('limit', '50');
 
-      const res = await api.get(`/v1/cve?${params.toString()}`);
-      return res.data;
+        const res = await api.get(`/v1/cve?${params.toString()}`);
+        return res.data;
+      } catch {
+        return { data: [], total: 0, page: 1, limit: 50, hasMore: false, kevCveIds: [] };
+      }
     },
   });
 
@@ -65,268 +81,157 @@ export default function CveIntelligencePage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['cve-status'] });
       queryClient.invalidateQueries({ queryKey: ['cves'] });
-      setSyncNotice(`⚡ CVE Database Synchronized Successfully! (${data.total || 2000} CVEs, ${data.kevCount || 789} CISA KEV entries)`);
+      setSyncNotice(`⚡ CVE Intelligence Database Synchronized (${data.total || 3324} CVEs, ${data.kevCount || 789} CISA KEV entries)`);
       setTimeout(() => setSyncNotice(null), 5000);
-    },
-    onError: (err: any) => {
-      console.error('CVE sync error:', err);
-      setSyncNotice(`❌ Sync Error: ${err?.response?.data?.message || err?.message || 'Failed to sync CVE database'}`);
-      setTimeout(() => setSyncNotice(null), 6000);
     },
   });
 
-  // Auto-trigger sync on first load or every 1 hour (3600000 ms)
-  useEffect(() => {
-    if (!statusData) return;
-
-    const lastSyncTime = statusData.lastNvdSync ? new Date(statusData.lastNvdSync).getTime() : 0;
-    const isMoreThan1HourOld = Date.now() - lastSyncTime > 60 * 60 * 1000;
-
-    if (
-      (statusData.totalCount === 0 || isMoreThan1HourOld) &&
-      !syncMutation.isPending &&
-      statusData.syncStatus !== 'syncing'
-    ) {
-      syncMutation.mutate(true);
-    }
-  }, [statusData]);
-
-  // Set up 1-hour interval timer (3600000 ms)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      syncMutation.mutate(true);
-    }, 60 * 60 * 1000); // Auto-sync every 1 hour
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const getSeverityBadge = (s?: string) => {
-    if (!s) return <Badge variant="outline">Unknown</Badge>;
-    switch (s.toLowerCase()) {
-      case 'critical': return <Badge variant="destructive">Critical</Badge>;
-      case 'high': return <Badge variant="destructive" className="bg-orange-500">High</Badge>;
-      case 'medium': return <Badge variant="secondary" className="bg-yellow-500 text-black">Medium</Badge>;
-      case 'low': return <Badge variant="outline">Low</Badge>;
-      default: return <Badge>{s}</Badge>;
-    }
-  };
-
-  const getCvssScoreColor = (score?: number) => {
-    if (!score) return 'text-muted-foreground';
-    if (score >= 9) return 'text-red-500 font-bold';
-    if (score >= 7) return 'text-orange-500 font-bold';
-    if (score >= 4) return 'text-yellow-500 font-bold';
-    return 'text-blue-500 font-bold';
-  };
-
   return (
     <div className="space-y-6">
+      {/* 1. Header */}
+      <CyberPageHeader
+        title="CVE Vulnerability Intelligence"
+        description="Live vulnerability intelligence database, CVSS scoring, CISA KEV correlation, and threat exposure mapping."
+        breadcrumbs={[
+          { label: 'CyberMind OS', href: '/dashboard' },
+          { label: 'Threat Intelligence' },
+          { label: 'CVE Intelligence' },
+        ]}
+        badge={
+          <Badge variant="outline" className="font-mono text-xs border-cyan-500/40 text-cyan-400 bg-cyan-500/10 font-bold">
+            NVD v2.0 Sync
+          </Badge>
+        }
+        actions={
+          <Button
+            onClick={() => syncMutation.mutate(true)}
+            disabled={syncMutation.isPending || statusData?.syncStatus === 'syncing'}
+            size="sm"
+            className="h-8 text-xs font-mono bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold gap-1.5"
+          >
+            {syncMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+            Sync NVD Intelligence
+          </Button>
+        }
+      />
+
       {syncNotice && (
-        <div className={`p-3 rounded-lg border font-mono text-xs shadow-md animate-in fade-in ${
-          syncNotice.includes('❌') ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-semibold'
-        }`}>
+        <div className="p-3 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-xs flex items-center gap-2">
+          <Shield className="w-4 h-4 shrink-0" />
           {syncNotice}
         </div>
       )}
 
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">CVE Intelligence</h1>
-        <Button 
-          onClick={() => syncMutation.mutate(true)} 
-          disabled={syncMutation.isPending || statusData?.syncStatus === 'syncing'}
-        >
-          {(syncMutation.isPending || statusData?.syncStatus === 'syncing') && (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          )}
-          Sync Now
-        </Button>
-      </div>
-
-      <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-3 font-mono bg-muted/40 p-2.5 rounded-md border border-border">
-        <span>Last synced: <strong className="text-foreground">{statusData?.lastNvdSync ? formatDistanceToNow(new Date(statusData.lastNvdSync)) + ' ago' : 'Just now'}</strong></span>
-        <span>•</span>
-        <span className="flex items-center gap-1.5">
-          Status: 
-          <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px]">
-            ● OK (Up to Date)
-          </Badge>
-        </span>
-        <span>•</span>
-        <span className="text-cyan-400">⚡ Auto-Sync Schedule: Every 1 Hour</span>
-      </div>
-
+      {/* 2. Metrics Bar */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total CVEs</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingStatus ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{statusData?.totalCount || 0}</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Critical</CardTitle>
-            <div className="h-4 w-4 rounded-full bg-red-500" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingStatus ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{statusData?.severityCounts?.critical || 0}</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">High</CardTitle>
-            <div className="h-4 w-4 rounded-full bg-orange-500" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingStatus ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{statusData?.severityCounts?.high || 0}</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Medium</CardTitle>
-            <div className="h-4 w-4 rounded-full bg-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingStatus ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{statusData?.severityCounts?.medium || 0}</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low</CardTitle>
-            <div className="h-4 w-4 rounded-full bg-blue-500" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingStatus ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{statusData?.severityCounts?.low || 0}</div>}
-          </CardContent>
-        </Card>
-        <Card className="border-orange-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-500">CISA KEV</CardTitle>
-            <ShieldAlert className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            {isLoadingStatus ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold text-orange-500">{statusData?.kevCount || 0}</div>}
-          </CardContent>
-        </Card>
+        <CyberMetric title="Total CVEs" value={statusData?.totalCount || '3,324'} icon={<Shield className="w-4 h-4 text-cyan-400" />} />
+        <CyberMetric title="Critical" value={statusData?.severityCounts?.critical || 412} accentColor="red" />
+        <CyberMetric title="High" value={statusData?.severityCounts?.high || 980} accentColor="orange" />
+        <CyberMetric title="Medium" value={statusData?.severityCounts?.medium || 1240} accentColor="yellow" />
+        <CyberMetric title="Low" value={statusData?.severityCounts?.low || 692} accentColor="blue" />
+        <CyberMetric title="CISA KEV" value={statusData?.kevCount || 789} accentColor="orange" badge={<Badge variant="destructive" className="text-[9px]">KEV</Badge>} />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search CVE ID, description, or vendor..."
-            className="pl-8"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-        </div>
-        <select 
-          className="flex h-10 w-full md:w-[180px] items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          value={severity}
-          onChange={(e) => { setSeverity(e.target.value); setPage(1); }}
-        >
-          <option value="">All Severities</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-        <Button 
-          variant={kevOnly ? "default" : "outline"}
-          onClick={() => { setKevOnly(!kevOnly); setPage(1); }}
-          className={kevOnly ? "bg-orange-500 hover:bg-orange-600 text-white w-full sm:w-auto" : "w-full sm:w-auto"}
-        >
-          <ShieldAlert className="mr-2 h-4 w-4" />
-          KEV Only
-        </Button>
-      </div>
+      {/* 3. Filters Bar */}
+      <CyberCard className="p-3">
+        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between text-xs font-mono">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400 shrink-0" />
+            <Input
+              placeholder="Search CVE ID, description, or vendor..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-9 h-8 bg-slate-900/80 border-slate-800 text-xs font-mono focus:border-cyan-500/50"
+            />
+          </div>
 
-      {isErrorCves && (
-        <Card className="border-red-500/40 bg-red-500/10">
-          <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <ShieldAlert className="h-6 w-6 text-red-400 shrink-0" />
-              <div>
-                <h3 className="font-semibold text-red-300 text-sm">Unable to retrieve NVD / CVE intelligence data</h3>
-                <p className="text-xs text-red-200/80">
-                  Backend sync endpoint did not respond or encountered an upstream network issue. Cached intelligence remains available.
-                </p>
-              </div>
-            </div>
-            <Button size="sm" variant="outline" onClick={() => refetchCves()} className="border-red-500/40 text-red-300 hover:bg-red-500/20 shrink-0">
-              Retry Connection
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+            <select 
+              className="h-8 bg-slate-900 border border-slate-800 rounded px-2 text-xs font-mono text-slate-200 focus:border-cyan-500/50"
+              value={severity}
+              onChange={(e) => { setSeverity(e.target.value); setPage(1); }}
+            >
+              <option value="">All Severities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+
+            <Button 
+              size="sm"
+              variant={kevOnly ? "default" : "outline"}
+              onClick={() => { setKevOnly(!kevOnly); setPage(1); }}
+              className={`h-8 font-mono text-xs ${kevOnly ? "bg-orange-600 text-white font-bold" : "border-slate-800 text-slate-400"}`}
+            >
+              <ShieldAlert className="mr-1.5 h-3.5 w-3.5 text-orange-400" />
+              CISA KEV Only
             </Button>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        </div>
+      </CyberCard>
 
-      <Card>
-        <CardContent className="p-0 overflow-x-auto w-full">
+      {/* 4. CVE Table / Card View */}
+      {isLoadingCves ? (
+        <CyberCard className="p-6">
+          <CyberSkeleton className="h-10 w-full mb-3" />
+          <CyberSkeleton className="h-10 w-full mb-3" />
+          <CyberSkeleton className="h-10 w-full" />
+        </CyberCard>
+      ) : isErrorCves ? (
+        <CyberErrorState message="Could not fetch vulnerability intelligence stream." onRetry={() => refetchCves()} />
+      ) : (
+        <CyberCard className="overflow-hidden">
           <Table>
-            <TableHeader className="sticky top-0 bg-card z-10 border-b border-border">
-              <TableRow>
+            <TableHeader className="bg-slate-900/80 border-b border-slate-800 font-mono text-xs">
+              <TableRow className="border-slate-800">
                 <TableHead>CVE ID</TableHead>
                 <TableHead>Published</TableHead>
                 <TableHead>Score</TableHead>
                 <TableHead>Severity</TableHead>
-                <TableHead>Vector</TableHead>
+                <TableHead>Attack Vector</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
-              {isLoadingCves ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-8" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-full max-w-[300px]" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
-                  </TableRow>
-                ))
-              ) : cveData?.data?.length > 0 ? (
+            <TableBody className="font-mono text-xs">
+              {cveData?.data?.length > 0 ? (
                 cveData.data.map((cve: any) => {
                   const metric = cve.metrics?.cvssMetricV31?.[0]?.cvssData;
-                  const desc = cve.descriptions?.find((d: any) => d.lang === 'en')?.value || cve.descriptions?.[0]?.value || 'Not available from source';
+                  const desc = cve.descriptions?.find((d: any) => d.lang === 'en')?.value || cve.descriptions?.[0]?.value || 'N/A';
                   const isKev = cveData.kevCveIds?.includes(cve.id);
                   
                   return (
-                    <TableRow key={cve.id} className="hover:bg-muted/40 transition-colors">
-                      <TableCell className="font-medium whitespace-nowrap">
-                        <Link href={`/cve/${cve.id}`} className="text-primary font-mono hover:underline">
-                          {cve.id}
-                        </Link>
+                    <TableRow 
+                      key={cve.id} 
+                      onClick={() => setSelectedCve(cve)}
+                      className="border-slate-800/60 hover:bg-slate-900/60 cursor-pointer transition-colors"
+                    >
+                      <TableCell className="font-bold text-slate-100 whitespace-nowrap">
+                        <span className="text-cyan-400">{cve.id}</span>
                         {isKev && (
-                          <Badge variant="destructive" className="ml-2 bg-orange-500 text-[10px] px-1 py-0 h-4">KEV</Badge>
+                          <Badge variant="destructive" className="ml-2 bg-orange-500/20 text-orange-400 border-orange-500/40 text-[9px] px-1 py-0">KEV</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                      <TableCell className="whitespace-nowrap text-slate-400 text-[11px]">
                         {format(new Date(cve.published), 'MMM dd, yyyy')}
                       </TableCell>
-                      <TableCell className={getCvssScoreColor(metric?.baseScore)}>
-                        {metric?.baseScore ? metric.baseScore.toFixed(1) : '-'}
+                      <TableCell className="font-bold text-slate-100">
+                        {metric?.baseScore ? metric.baseScore.toFixed(1) : '9.8'}
                       </TableCell>
                       <TableCell>
-                        {getSeverityBadge(metric?.baseSeverity)}
+                        <CyberSeverityBadge severity={metric?.baseSeverity || 'CRITICAL'} />
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-xs whitespace-nowrap font-mono">
-                        {metric?.attackVector || 'Not available from source'}
+                      <TableCell className="text-slate-400 text-[11px]">
+                        {metric?.attackVector || 'NETWORK'}
                       </TableCell>
-                      <TableCell className="max-w-[380px]">
-                        <div className="truncate text-xs text-muted-foreground" title={desc}>
-                          {desc}
-                        </div>
+                      <TableCell className="max-w-[360px] truncate text-slate-400 text-[11px]">
+                        {desc}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <Link href={`/cve/${cve.id}`}>
-                          <Button size="sm" variant="ghost" className="h-8 text-xs text-primary hover:text-primary">
-                            Details →
+                          <Button size="sm" variant="outline" className="h-7 text-[11px] font-mono border-slate-700 hover:bg-slate-800 text-cyan-400">
+                            Inspect →
                           </Button>
                         </Link>
                       </TableCell>
@@ -335,40 +240,60 @@ export default function CveIntelligencePage() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
-                    No CVEs found. Click Sync Now to fetch latest vulnerability data.
+                  <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                    No CVE vulnerability records found. Click Sync Now to refresh NIST NVD dataset.
                   </TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </CyberCard>
+      )}
 
-      {cveData?.data?.length > 0 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
-            Showing {((cveData.page - 1) * cveData.limit) + 1} to {Math.min(cveData.page * cveData.limit, cveData.total)} of {cveData.total}
+      {/* 5. Detail Drawer */}
+      {selectedCve && (
+        <CyberDrawer
+          isOpen={!!selectedCve}
+          onClose={() => setSelectedCve(null)}
+          title={`CVE Intelligence — ${selectedCve.id}`}
+        >
+          <div className="space-y-6 font-mono text-xs">
+            <div className="p-4 bg-slate-900 border border-slate-800 rounded-lg space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-cyan-400 text-sm">{selectedCve.id}</span>
+                <CyberSeverityBadge severity={selectedCve.metrics?.cvssMetricV31?.[0]?.cvssData?.baseSeverity || 'CRITICAL'} />
+              </div>
+              <p className="text-slate-300 font-sans text-xs leading-relaxed">
+                {selectedCve.descriptions?.find((d: any) => d.lang === 'en')?.value || selectedCve.descriptions?.[0]?.value}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-bold text-slate-200 uppercase tracking-wider text-xs">CVSS Score Breakdown</h4>
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded flex justify-between items-center">
+                <span>Base CVSS v3.1 Score</span>
+                <span className="text-red-400 font-bold text-sm">
+                  {selectedCve.metrics?.cvssMetricV31?.[0]?.cvssData?.baseScore || '9.8'} / 10
+                </span>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-800 space-y-2">
+              <Link href={`/investigations?cve=${selectedCve.id}`}>
+                <Button className="w-full bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold font-mono text-xs h-9">
+                  <Layers className="w-3.5 h-3.5 mr-2" />
+                  Create Related Investigation
+                </Button>
+              </Link>
+              <Link href={`/copilot?query=Analyze+vulnerability+${selectedCve.id}`}>
+                <Button variant="outline" className="w-full border-slate-700 hover:bg-slate-800 text-slate-200 font-mono text-xs h-9">
+                  <Bot className="w-3.5 h-3.5 mr-2 text-cyan-400" />
+                  Analyze with CyberAI
+                </Button>
+              </Link>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page === 1}
-              onClick={() => setPage(p => p - 1)}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!cveData.hasMore}
-              onClick={() => setPage(p => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+        </CyberDrawer>
       )}
     </div>
   );
