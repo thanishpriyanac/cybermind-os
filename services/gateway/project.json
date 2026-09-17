@@ -47,21 +47,10 @@
       "executor": "nx:noop"
     },
     "serve": {
-      "continuous": true,
-      "executor": "@nx/js:node",
-      "defaultConfiguration": "development",
       "dependsOn": ["build"],
+      "executor": "nx:run-commands",
       "options": {
-        "buildTarget": "gateway-service:build",
-        "runBuildTargetDependencies": false
-      },
-      "configurations": {
-        "development": {
-          "buildTarget": "gateway-service:build:development"
-        },
-        "production": {
-          "buildTarget": "gateway-service:build:production"
-        }
+        "command": "node dist/services/gateway/main.js"
       }
     }
   },
