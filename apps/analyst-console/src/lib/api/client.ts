@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 // Centralized API Base URL Configuration
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api-cybermind.vellprint.in';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://cybermind-api.vellprint.in';
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
