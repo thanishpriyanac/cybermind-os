@@ -1,6 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-import crypto from 'crypto';
 import { loadStore as loadCveStore } from './cve-store';
 
 export type TargetType = 'web_app' | 'api' | 'network' | 'cloud';
@@ -175,7 +172,12 @@ export function redactSensitiveData(text: string): string {
 // Compute Scope Integrity Hash
 export function computeScopeHash(target: string, scope: ScopeDefinition): string {
   const payload = JSON.stringify({ target: target.toLowerCase(), allowed: scope.allowedPaths.sort(), excluded: scope.excludedPaths.sort() });
-  return crypto.createHash('sha256').update(payload).digest('hex').substring(0, 16);
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < payload.length; i++) {
+    hash ^= payload.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
 // Explainable Risk Score Calculator
@@ -219,20 +221,8 @@ export function calculateExplainableRisk(vulnerabilities: VaptVulnerability[]): 
 }
 
 function getStoreFilePath(): string {
-  const cwd = process.cwd();
-  const candidates = [
-    path.join(cwd, 'data', 'vapt_store.json'),
-    path.join(cwd, '..', 'data', 'vapt_store.json'),
-    path.join(cwd, '..', '..', 'data', 'vapt_store.json'),
-  ];
-  for (const cand of candidates) {
-    if (fs.existsSync(path.dirname(cand))) return cand;
-  }
-  const fallback = path.join(cwd, 'data');
-  try {
-    fs.mkdirSync(fallback, { recursive: true });
-  } catch { /* skip */ }
-  return path.join(fallback, 'vapt_store.json');
+  // No filesystem on edge runtime
+  return '/data/vapt_store.json';
 }
 
 let inMemoryStore: VaptStore | null = null;
@@ -246,8 +236,8 @@ const DEMO_ASSESSMENTS: VaptAssessment[] = [
     targetType: 'web_app',
     environment: 'DEMO',
     scope: {
-      allowedPaths: ['/api/v1/*', '/login', '/dashboard', '/transfer'],
-      excludedPaths: ['/admin/internal-backups', '/debug'],
+      allowedPaths: ['/api/v1/*', '/login'],
+      excludedPaths: ['/admin/debug'],
     },
     authorization: {
       status: 'AUTHORIZED',
@@ -259,7 +249,7 @@ const DEMO_ASSESSMENTS: VaptAssessment[] = [
     },
     testProfile: 'STANDARD_AUTHORIZED',
     status: 'COMPLETED',
-    overallRiskScore: 92,
+    overallRiskScore: 84,
     riskBreakdown: {
       severityScore: 35,
       exploitabilityScore: 25,
@@ -375,39 +365,16 @@ const DEMO_ASSESSMENTS: VaptAssessment[] = [
 
 export function loadVaptStore(): VaptStore {
   if (inMemoryStore) return inMemoryStore;
-  const filePath = getStoreFilePath();
-  try {
-    if (fs.existsSync(filePath)) {
-      const raw = fs.readFileSync(filePath, 'utf-8');
-      const parsed = JSON.parse(raw);
-      inMemoryStore = {
-        assessments: Array.isArray(parsed.assessments) ? parsed.assessments : DEMO_ASSESSMENTS,
-        executions: Array.isArray(parsed.executions) ? parsed.executions : [],
-      };
-      return inMemoryStore;
-    }
-  } catch (err) {
-    console.error('Failed to read vapt_store.json:', err);
-  }
-
   inMemoryStore = {
     assessments: DEMO_ASSESSMENTS,
     executions: [],
   };
-  saveVaptStore(inMemoryStore);
   return inMemoryStore;
 }
 
 export function saveVaptStore(store: VaptStore): void {
   inMemoryStore = store;
-  const filePath = getStoreFilePath();
-  try {
-    const tmpPath = `${filePath}.tmp.${Date.now()}`;
-    fs.writeFileSync(tmpPath, JSON.stringify(store, null, 2), 'utf-8');
-    fs.renameSync(tmpPath, filePath);
-  } catch (err) {
-    console.error('Failed to write vapt_store.json:', err);
-  }
+  // In-memory only — no filesystem on edge runtime
 }
 
 export function getAssessments(tenantId: string = 'cybermind-master-tenant'): VaptAssessment[] {

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest } from 'next/server';
 import { qbrStore } from '@/lib/qbr-store';
 import { firewallStore } from '@/lib/firewall-store';

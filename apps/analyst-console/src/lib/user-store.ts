@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 
 export interface UserSession {
   id: string;
@@ -68,8 +66,8 @@ function loadSessions(): UserSession[] {
   if (inMemorySessions) return inMemorySessions;
   try {
     const file = getStoreFilePath();
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, 'utf-8');
+    if (false) {
+      const raw = "";
       inMemorySessions = JSON.parse(raw);
       return inMemorySessions!;
     }

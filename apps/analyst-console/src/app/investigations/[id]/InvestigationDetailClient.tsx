@@ -35,9 +35,9 @@ import {
   ArrowLeft
 } from 'lucide-react';
 
-export default function InvestigationDetail() {
+export default function InvestigationDetail({ routeId }: { routeId?: string } = {}) {
   const params = useParams();
-  const alertId = (params.id as string) || 'INC-2026-0192';
+  const alertId = routeId || (params?.id as string) || 'INC-2026-0192';
 
   const { data: alertData, isLoading } = useQuery({
     queryKey: ['alert', alertId],
@@ -266,3 +266,4 @@ export default function InvestigationDetail() {
     </div>
   );
 }
+

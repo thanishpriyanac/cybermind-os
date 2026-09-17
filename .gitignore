@@ -44,8 +44,9 @@ Thumbs.db
 .claude/worktrees
 .claude/settings.local.json
 
-# Next.js
+# Next.js & Vercel
 .next
+.vercel
 out
 apps/analyst-console/.env.local
 

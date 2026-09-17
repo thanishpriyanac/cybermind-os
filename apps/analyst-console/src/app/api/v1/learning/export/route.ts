@@ -1,9 +1,8 @@
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { loadLearningStore } from '@/lib/learning-store';
-import fs from 'fs';
-import path from 'path';
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,41 +12,18 @@ export async function GET(req: NextRequest) {
     const learningStore = loadLearningStore();
     const articles = learningStore.articles || [];
 
-    const cwd = process.cwd();
-    const candidates = [
-      path.join(cwd, 'data'),
-      path.join(cwd, '..', 'data'),
-      path.join(cwd, '..', '..', 'data'),
-    ];
-
-    let dataDir = path.join(cwd, 'data');
-    for (const cand of candidates) {
-      if (fs.existsSync(cand)) {
-        dataDir = cand;
-        break;
-      }
-    }
-
-    const datasetPath = path.join(dataDir, 'model_training_dataset.jsonl');
-
     if (format === 'jsonl') {
-      let content = '';
-      if (fs.existsSync(datasetPath)) {
-        content = fs.readFileSync(datasetPath, 'utf-8');
-      } else {
-        // Fallback: generate JSONL from articles in memory
-        content = articles
-          .map((art) =>
-            JSON.stringify({
-              prompt: art.trainingPrompt || `Analyze threat report: ${art.title}`,
-              completion: art.trainingCompletion || art.summary,
-              category: art.category,
-              cveId: art.cveId || null,
-              source: art.source,
-            })
-          )
-          .join('\n');
-      }
+      const content = articles
+        .map((art) =>
+          JSON.stringify({
+            prompt: art.trainingPrompt || `Analyze threat report: ${art.title}`,
+            completion: art.trainingCompletion || art.summary,
+            category: art.category,
+            cveId: art.cveId || null,
+            source: art.source,
+          })
+        )
+        .join('\n');
 
       return new NextResponse(content, {
         headers: {

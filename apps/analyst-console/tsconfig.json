@@ -1,7 +1,7 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "jsx": "preserve",
+    "target": "es2015",
+    "jsx": "react-jsx",
     "strict": true,
     "noEmit": true,
     "emitDeclarationOnly": false,
@@ -10,27 +10,48 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext",
+      "es2020"
+    ],
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "incremental": true,
+    "sourceMap": true,
+    "declaration": false,
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     },
-    "plugins": [{ "name": "next" }]
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     "**/*.js",
     "**/*.jsx",
-    
-      "../../apps/analyst-console/.next/types/**/*.ts",
-      "../../dist/apps/analyst-console/.next/types/**/*.ts",
-    
     "index.d.ts",
-    "next-env.d.ts"
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "jest.config.ts", "jest.config.cts", "**/*.spec.ts", "**/*.test.ts"]
+  "exclude": [
+    "node_modules",
+    "jest.config.ts",
+    "jest.config.cts",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
 }

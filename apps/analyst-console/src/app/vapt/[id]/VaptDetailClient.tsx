@@ -30,10 +30,10 @@ import { VaptCveCard } from '../../../components/vapt/VaptCveCard';
 import { VaptRunningScreen } from '../../../components/vapt/VaptRunningScreen';
 import { VaptErrorState } from '../../../components/vapt/VaptErrorState';
 
-export default function VaptDetailPage() {
+export default function VaptDetailPage({ routeId }: { routeId?: string } = {}) {
   const params = useParams();
   const router = useRouter();
-  const id = params.id as string;
+  const id = routeId || (params?.id as string);
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'FINDINGS' | 'OWASP' | 'EVIDENCE' | 'CVE' | 'REMEDIATION'>('OVERVIEW');
   const [copiedNotice, setCopiedNotice] = useState<string | null>(null);
@@ -374,3 +374,4 @@ export default function VaptDetailPage() {
     </div>
   );
 }
+

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { usageTracker } from '../chat/stream/route';
 
 export const dynamic = 'force-dynamic';

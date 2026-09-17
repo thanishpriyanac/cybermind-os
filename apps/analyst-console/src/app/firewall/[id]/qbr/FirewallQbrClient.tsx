@@ -10,10 +10,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 
-export default function QbrBuilderPage() {
+export default function QbrBuilderPage({ routeId }: { routeId?: string } = {}) {
   const router = useRouter();
   const params = useParams();
-  const id = params.id as string;
+  const id = routeId || (params?.id as string);
   const [executiveSummary, setExecutiveSummary] = useState('');
   
   const { data: assessment, isLoading } = useQuery({
@@ -127,3 +127,4 @@ export default function QbrBuilderPage() {
     </div>
   );
 }
+

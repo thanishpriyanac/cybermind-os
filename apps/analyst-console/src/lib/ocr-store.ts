@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { OcrResult } from './ocr-engine';
 
 export interface OcrRecord {
@@ -19,63 +17,20 @@ export interface OcrStore {
   records: OcrRecord[];
 }
 
-let inMemoryStore: OcrStore | null = null;
-
-function getDataFilePath(): string {
-  const cwd = process.cwd();
-  const candidates = [
-    path.join(cwd, 'data', 'ocr_store.json'),
-    path.join(cwd, '..', 'data', 'ocr_store.json'),
-    path.join(cwd, '..', '..', 'data', 'ocr_store.json'),
-    path.join(cwd, '..', '..', '..', 'data', 'ocr_store.json'),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(path.dirname(c))) return c;
-  }
-  const fallbackDir = path.join(cwd, 'data');
-  try {
-    fs.mkdirSync(fallbackDir, { recursive: true });
-  } catch {}
-  return path.join(fallbackDir, 'ocr_store.json');
-}
+// In-memory store — no filesystem on edge runtime
+let inMemoryStore: OcrStore = {
+  totalScans: 0,
+  totalIngested: 0,
+  lastScanAt: null,
+  records: [],
+};
 
 export function loadOcrStore(): OcrStore {
-  if (inMemoryStore) return inMemoryStore;
-
-  const filePath = getDataFilePath();
-  if (fs.existsSync(filePath)) {
-    try {
-      const data = fs.readFileSync(filePath, 'utf-8');
-      inMemoryStore = JSON.parse(data);
-      return inMemoryStore!;
-    } catch (e) {
-      console.error('[OCR-STORE] Error reading store file:', e);
-    }
-  }
-
-  inMemoryStore = {
-    totalScans: 0,
-    totalIngested: 0,
-    lastScanAt: null,
-    records: []
-  };
-
-  saveOcrStore(inMemoryStore);
   return inMemoryStore;
 }
 
 export function saveOcrStore(store: OcrStore): void {
   inMemoryStore = store;
-  const filePath = getDataFilePath();
-  try {
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(filePath, JSON.stringify(store, null, 2), 'utf-8');
-  } catch (e) {
-    console.error('[OCR-STORE] Error saving store file:', e);
-  }
 }
 
 export function addOcrRecord(record: OcrRecord): OcrRecord {
@@ -95,11 +50,11 @@ export function addOcrRecord(record: OcrRecord): OcrRecord {
 
 export function markOcrRecordIngested(recordId: string, articleId: string): boolean {
   const store = loadOcrStore();
-  const record = store.records.find(r => r.id === recordId);
+  const record = store.records.find((r) => r.id === recordId);
   if (record) {
     record.ingestedToLearning = true;
     record.learningArticleId = articleId;
-    store.totalIngested = store.records.filter(r => r.ingestedToLearning).length;
+    store.totalIngested = store.records.filter((r) => r.ingestedToLearning).length;
     saveOcrStore(store);
     return true;
   }
@@ -107,6 +62,5 @@ export function markOcrRecordIngested(recordId: string, articleId: string): bool
 }
 
 export function getOcrRecords(limit = 50): OcrRecord[] {
-  const store = loadOcrStore();
-  return store.records.slice(0, limit);
+  return loadOcrStore().records.slice(0, limit);
 }

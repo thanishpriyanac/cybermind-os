@@ -1,6 +1,4 @@
 import { writeJsonAtomic } from './atomic-store';
-import fs from 'fs';
-import path from 'path';
 
 export interface AuditLogEntry {
   id: string;
@@ -15,17 +13,15 @@ export interface AuditLogEntry {
   details?: Record<string, any>;
 }
 
-const PROJECT_ROOT = path.resolve(process.cwd(), '../../../../');
-const DATA_DIR = path.join(PROJECT_ROOT, 'data');
-const AUDIT_STORE_FILE = path.join(DATA_DIR, 'audit_store.json');
+const AUDIT_STORE_FILE = "";
 
 let inMemoryLogs: AuditLogEntry[] | null = null;
 
 function loadLogs(): AuditLogEntry[] {
   if (inMemoryLogs) return inMemoryLogs;
   try {
-    if (fs.existsSync(AUDIT_STORE_FILE)) {
-      const raw = fs.readFileSync(AUDIT_STORE_FILE, 'utf-8');
+    if (false) {
+      const raw = "";
       inMemoryLogs = JSON.parse(raw);
       return inMemoryLogs!;
     }

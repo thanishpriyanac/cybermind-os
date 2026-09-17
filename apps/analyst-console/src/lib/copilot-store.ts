@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 
 export interface CopilotMessage {
   id: string;
@@ -42,16 +40,7 @@ let inMemoryStore: CopilotConversation[] | null = null;
 function loadStore(): CopilotConversation[] {
   if (inMemoryStore) return inMemoryStore;
 
-  try {
-    const file = getStoreFilePath();
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, 'utf-8');
-      inMemoryStore = JSON.parse(raw);
-      return inMemoryStore!;
-    }
-  } catch (err) {
-    console.error('Failed to read copilot store file, using defaults', err);
-  }
+  
 
   inMemoryStore = [...DEFAULT_CONVERSATIONS];
   saveStore(inMemoryStore);
@@ -60,12 +49,7 @@ function loadStore(): CopilotConversation[] {
 
 function saveStore(store: CopilotConversation[]) {
   inMemoryStore = store;
-  try {
-    const file = getStoreFilePath();
-    writeJsonAtomic(file, store);
-  } catch (err) {
-    console.error('Failed to write copilot store file', err);
-  }
+  
 }
 
 export const copilotStore = {

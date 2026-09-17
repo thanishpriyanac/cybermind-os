@@ -11,9 +11,9 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 
-export default function QbrReportView() {
+export default function QbrReportView({ routeId }: { routeId?: string } = {}) {
   const params = useParams();
-  const id = params.id as string;
+  const id = routeId || (params?.id as string);
   const queryClient = useQueryClient();
   const [updatingStatus, setUpdatingStatus] = useState<boolean>(false);
 
@@ -312,3 +312,4 @@ export default function QbrReportView() {
     </div>
   );
 }
+

@@ -1,8 +1,4 @@
-import fs from 'fs';
-import path from 'path';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const STORE_FILE = path.join(DATA_DIR, 'ip_store.json');
 
 export interface IpReport {
   reportedAt: string;
@@ -53,15 +49,7 @@ let inMemoryStore: IpStoreData | null = null;
 function loadStore(): IpStoreData {
   if (inMemoryStore) return inMemoryStore;
 
-  try {
-    if (fs.existsSync(STORE_FILE)) {
-      const raw = fs.readFileSync(STORE_FILE, 'utf-8');
-      inMemoryStore = JSON.parse(raw);
-      return inMemoryStore!;
-    }
-  } catch (err) {
-    console.error('Failed to read IP store file, using defaults', err);
-  }
+  
 
   inMemoryStore = {
     investigations: [],
@@ -74,14 +62,7 @@ function loadStore(): IpStoreData {
 
 function saveStore(store: IpStoreData) {
   inMemoryStore = store;
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(STORE_FILE, JSON.stringify(store, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Failed to write IP store file', err);
-  }
+  
 }
 
 export const ipStore = {

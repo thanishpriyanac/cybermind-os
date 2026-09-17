@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { 
   CYBERMIND_CTI_REGISTRY, 
   processRawContentToCtiRecord, 
@@ -45,26 +43,11 @@ export interface LearningStore {
 }
 
 function getDataFilePath(): string {
-  const cwd = process.cwd();
-  const candidates = [
-    path.join(cwd, 'data', 'learning_store.json'),
-    path.join(cwd, '..', 'data', 'learning_store.json'),
-    path.join(cwd, '..', '..', 'data', 'learning_store.json'),
-    path.join(cwd, '..', '..', '..', 'data', 'learning_store.json'),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(path.dirname(c))) return c;
-  }
-  const fallbackDir = path.join(cwd, 'data');
-  try {
-    fs.mkdirSync(fallbackDir, { recursive: true });
-  } catch { /* skip */ }
-  return path.join(fallbackDir, 'learning_store.json');
+  return '/data/learning_store.json'; // stub — no filesystem on edge
 }
 
 function getTrainingDatasetPath(): string {
-  const dataFile = getDataFilePath();
-  return path.join(path.dirname(dataFile), 'model_training_dataset.jsonl');
+  return '/data/model_training_dataset.jsonl'; // stub
 }
 
 let inMemoryStore: LearningStore | null = null;
@@ -73,150 +56,33 @@ const INITIAL_ARTICLES: LearningArticle[] = [
   {
     id: 'learn-sept11-cisco-fmc',
     url: 'https://blog.talosintelligence.com/fmc-ongoing-exploitation/',
-    title: '🔴 ACTIVE EXPLOITATION: Cisco Secure Firewall FMC Unauthenticated Root RCE (CVE-2026-20079 & CVE-2026-20316)',
+    title: '🔴 ACTIVE EXPLOITATION: Cisco Secure Firewall FMC Unauthenticated Root RCE',
     source: 'Cisco Talos Intelligence',
     category: 'EXPLOIT',
     cveId: 'CVE-2026-20079',
     severity: 'CRITICAL',
-    summary: 'Cisco Talos confirmed active wild exploitation targeting Cisco Secure Firewall Management Center (FMC) via CVSS 10.0 auth bypass (CVE-2026-20079) and command execution (CVE-2026-20316).',
-    contentSnippet: 'Unauthenticated attackers execute root scripts on FMC appliances. Cisco recommends immediate perimeter port isolation and patching.',
-    trainingPrompt: 'Provide emergency SOC triage and containment playbook for Cisco Secure Firewall FMC CVSS 10.0 active exploitation (CVE-2026-20079 & CVE-2026-20316).',
-    trainingCompletion: '### 🔴 Emergency SOC Playbook: Cisco FMC Active Exploitation\n1. Restrict HTTP/HTTPS ports 443/8443 to admin jump boxes.\n2. Deploy Snort rule `sid:3000981` auditing `/api/fmc_config/` endpoints.\n3. Apply Cisco emergency software patch across FMC 7.4.x / 7.2.x clusters.',
-    tags: ['Cisco', 'FMC', 'CVE-2026-20079', 'ActiveExploitation', 'Critical', 'Snort'],
-    scrapedAt: new Date().toISOString(),
-  },
-  {
-    id: 'learn-sept11-watchguard-ransomware',
-    url: 'https://www.bleepingcomputer.com/news/security/cisa-watchguard-rce-flaw-now-exploited-in-ransomware-attacks/',
-    title: '🔴 RANSOMWARE EXPLOITATION: WatchGuard Firebox IKEv2 VPN RCE (CVE-2025-14733)',
-    source: 'CISA KEV & BleepingComputer',
-    category: 'MALWARE',
-    cveId: 'CVE-2025-14733',
-    severity: 'CRITICAL',
-    summary: 'CISA KEV update confirms WatchGuard Firebox IKEv2 VPN memory corruption vulnerability (CVE-2025-14733) is actively exploited by ransomware cartels for initial access.',
-    contentSnippet: 'Attackers trigger IKEv2 UDP buffer overflow to compromise Fireware OS kernel context and pivot to Active Directory for ransomware deployment.',
-    trainingPrompt: 'Explain how threat actors use WatchGuard Firebox CVE-2025-14733 for ransomware initial access and provide SIEM detection guidance.',
-    trainingCompletion: '### 🔴 Ransomware Threat Intelligence: WatchGuard Firebox IKEv2\n1. Disable IKEv2 VPN if unused or restrict IP peering.\n2. Ingest Fireware EventID 40001 into SIEM.\n3. Audit connected subnets for secondary ransomware payloads.',
-    tags: ['WatchGuard', 'Firebox', 'CVE-2025-14733', 'Ransomware', 'CISA_KEV', 'IKEv2'],
+    summary: 'Cisco Talos confirmed active wild exploitation targeting Cisco Secure Firewall Management Center.',
+    contentSnippet: 'Unauthenticated attackers execute root scripts on FMC appliances.',
+    trainingPrompt: 'Provide emergency SOC triage and containment playbook for Cisco Secure Firewall FMC.',
+    trainingCompletion: '### 🔴 Emergency SOC Playbook: Cisco FMC Active Exploitation\n1. Restrict HTTP/HTTPS ports 443/8443 to admin jump boxes.\n2. Apply emergency software patch across FMC clusters.',
+    tags: ['Cisco', 'FMC', 'CVE-2026-20079', 'ActiveExploitation'],
     scrapedAt: new Date().toISOString(),
   },
   {
     id: 'learn-sept11-msft-patchtuesday',
     url: 'https://www.microsoft.com/en-us/msrc/blog/2026/09/202609-security-update',
-    title: '🔴 WINDOWS ZERO-DAY EXPLOITED: Microsoft September 2026 Patch Tuesday (CVE-2026-85880 ALPC & CVE-2026-81963 Update Stack)',
+    title: '🔴 WINDOWS ZERO-DAY EXPLOITED: Microsoft September 2026 Patch Tuesday',
     source: 'Microsoft MSRC',
     category: 'ADVISORY',
     cveId: 'CVE-2026-85880',
     severity: 'CRITICAL',
-    summary: 'Microsoft confirmed active wild exploitation of two zero-day privilege escalation vulnerabilities: Windows ALPC (CVE-2026-85880) and Windows Update Stack (CVE-2026-81963).',
-    contentSnippet: 'Local unprivileged users elevate to SYSTEM privileges and tamper with EDR drivers during Windows updates. Apply KB5061298 immediately.',
-    trainingPrompt: 'Provide threat analysis and patch priority assessment for Microsoft September 2026 Patch Tuesday zero-days (CVE-2026-85880 & CVE-2026-81963).',
-    trainingCompletion: '### 🔴 Microsoft Patch Tuesday Zero-Day Assessment\n1. Deploy September 2026 Cumulative Update (KB5061298) within 24h.\n2. Audit process creation from svchost.exe spawning un-signed PowerShell.',
-    tags: ['Microsoft', 'PatchTuesday', 'ZeroDay', 'CVE-2026-85880', 'CVE-2026-81963', 'Windows'],
+    summary: 'Microsoft confirmed active wild exploitation of zero-day privilege escalation vulnerabilities.',
+    contentSnippet: 'Local unprivileged users elevate to SYSTEM privileges. Apply KB5061298 immediately.',
+    trainingPrompt: 'Provide threat analysis for Microsoft Patch Tuesday zero-days.',
+    trainingCompletion: '### 🔴 Microsoft Patch Tuesday Assessment\n1. Deploy September 2026 Cumulative Update within 24h.',
+    tags: ['Microsoft', 'PatchTuesday', 'ZeroDay'],
     scrapedAt: new Date().toISOString(),
-  },
-  {
-    id: 'learn-sept11-gtig-agentic-ai',
-    url: 'https://cloud.google.com/blog/topics/threat-intelligence/from-prompting-to-autonomy-the-evolution-of-adversarial-ai',
-    title: '🤖 STRATEGIC AI THREAT GRAPH: GTIG Report on Adversarial Agentic AI Workflows & 6-Hour Cloud Attack',
-    source: 'Google Threat Intelligence Group (GTIG)',
-    category: 'RESEARCH',
-    severity: 'HIGH',
-    summary: 'GTIG reported adversary evolution to autonomous agentic attack workflows, demonstrating a 6-hour automated credential harvesting campaign and UNC6780 LLM scanner manipulation.',
-    contentSnippet: 'Threat actor deployed autonomous AI agent loop that planned, built, and executed mass credential harvesting in under 6 hours. Cross-mapped with MITRE ATLAS.',
-    trainingPrompt: 'Detail the strategic findings of the GTIG Agentic AI Threat Report and outline defensive counter-measures for AI supply chain attacks.',
-    trainingCompletion: '### 🤖 Strategic AI Threat Intelligence Report (GTIG Analysis)\n1. Restrict AI coding assistants from automatically executing shell commands.\n2. Mandate dual-human verification for AI-generated code touching auth modules.\n3. Cross-map with MITRE ATLAS AML.T0054 & AML.T0040.',
-    tags: ['GTIG', 'GoogleCloud', 'AgenticAI', 'AdversarialAI', 'UNC6780', 'MITRE_ATLAS'],
-    scrapedAt: new Date().toISOString(),
-  },
-  {
-    id: 'learn-sept11-anthropic-claude-disruption',
-    url: 'https://www.reuters.com/legal/litigation/anthropic-disrupts-russian-chinese-ai-campaigns-targeting-its-claude-models-2026-09-10/',
-    title: '🤖 AI THREAT INTEL: Anthropic Disruption of Midnight Blizzard & China-Nexus Campaigns',
-    source: 'Anthropic Security Research',
-    category: 'RESEARCH',
-    severity: 'HIGH',
-    summary: 'Anthropic reported disrupting cyber operations targeting Claude AI models, attributing campaigns to Russia-nexus Midnight Blizzard (targeting Ukrainian military) and China-nexus APTs.',
-    contentSnippet: 'Midnight Blizzard leveraged Claude AI models for malware code refactoring & EDR evasion. Anthropic conducted API token bans and model guardrail enforcement.',
-    trainingPrompt: 'Summarize Anthropic report on Midnight Blizzard AI-assisted cyber operations and explain how threat actors utilize LLMs for malware obfuscation.',
-    trainingCompletion: '### 🤖 AI Threat Intelligence: Anthropic Disruption\n1. Threat actors use LLMs to rename symbols and inject polymorphic code blocks.\n2. Apply API token monitoring and EDR behavioral heuristics.',
-    tags: ['Anthropic', 'Claude', 'MidnightBlizzard', 'APT29', 'AI_Security', 'MalwareObfuscation'],
-    scrapedAt: new Date().toISOString(),
-  },
-  {
-    id: 'learn-sept11-claude-ai-agent-cyberattacks',
-    url: 'https://share.google/L2u2sNbqLhseTkQPs',
-    title: '🤖 CRITICAL AI THREAT INTEL: Hackers Use Claude AI Agents to Automate Cyberattacks, Develop Zero-Days and Evade Detection',
-    source: 'CyberMind Threat Intelligence & Google Share',
-    category: 'RESEARCH',
-    severity: 'CRITICAL',
-    summary: 'Threat research reveals adversary exploitation of Claude AI Agents (Anthropic Claude 3.5 Sonnet / Claude Code / API agentic loops) to fully automate multi-stage cyberattacks, discover Zero-Day vulnerabilities, and evade traditional EDR detection.',
-    contentSnippet: 'Adversaries deploy Claude AI agent loops for automated zero-day discovery, polymorphic malware refactoring, C2 automation, and EDR evasion. Mapped with MITRE ATLAS AML.T0054 & AML.T0040.',
-    trainingPrompt: 'Detail how hackers utilize Claude AI Agents to automate cyberattacks, develop zero-days, and evade EDR detection, and outline SOC defensive countermeasures.',
-    trainingCompletion: '### 🤖 Critical Threat Report: Hacker Exploitation of Claude AI Agents for Automated Attacks\n1. Autonomous Zero-Day Discovery: AI agents analyze codebase ASTs and author working exploit primitives.\n2. Polymorphic EDR Evasion: Dynamic payload refactoring via natural language instructions.\n3. SOC Countermeasures: Monitor AI API telemetry, enforce strict agent container sandboxing, and audit runtime process tree anomalies.',
-    tags: ['Claude', 'AIAgents', 'ZeroDay', 'CyberattackAutomation', 'EDREvasion', 'Anthropic', 'MITRE_ATLAS', 'ThreatIntel'],
-    scrapedAt: new Date().toISOString(),
-  },
-  {
-    id: 'learn-001',
-    url: 'https://thehackernews.com',
-    title: 'Zero-Day Remote Code Execution Discovered in Enterprise Edge Routers',
-    source: 'The Hacker News',
-    category: 'ZERO_DAY',
-    cveId: 'CVE-2026-99812',
-    severity: 'CRITICAL',
-    summary: 'Unauthenticated boundary overflow in edge gateway firmware allows remote shell access.',
-    contentSnippet: 'Independent security researchers published proof-of-concept for heap overflow in WAN interface daemon.',
-    trainingPrompt: 'Analyze zero-day threat on Enterprise Edge Router (CVE-2026-99812). Provide containment strategy.',
-    trainingCompletion: '### Containment Playbook:\n1. Apply ingress filter blocking WAN port 8443.\n2. Isolate edge gateway switchport.\n3. Ingest firmware syslog into SIEM to audit Heap Allocation anomalies.',
-    tags: ['Zero-Day', 'RCE', 'HackerNews', 'Firmware'],
-    scrapedAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-  },
-  {
-    id: 'learn-002',
-    url: 'http://breached27onion4x.onion/thread/credential-dump-enterprise-2026',
-    title: 'Dark Web Tor Forum: Enterprise Credential & Database Leak Briefing',
-    source: 'Dark Web Breach Forum (.onion)',
-    category: 'DARK_WEB',
-    cveId: 'CVE-2026-8810',
-    severity: 'CRITICAL',
-    summary: 'Tor onion leak marketplace thread advertising compromised Active Directory hashes and SQL dumps.',
-    contentSnippet: 'Threat actor released 500MB sample of bcrypt hashes and NTLM tokens harvested via Kerberoasting.',
-    trainingPrompt: 'Evaluate Dark Web onion threat intelligence report regarding Active Directory Kerberoasting leak.',
-    trainingCompletion: '### Dark Web Threat Assessment:\n**Threat Actor**: ShadowCorrupt\n**Impact**: High risk of Domain Admin takeover.\n**Mitigation**: Enforce 25+ character service account passwords, disable RC4 encryption, and roll krbtgt account password twice.',
-    tags: ['DarkWeb', 'Tor', 'Leak', 'ActiveDirectory'],
-    scrapedAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(),
-  },
-  {
-    id: 'learn-003',
-    url: 'https://t.me/s/threat_intel_dark_leaks',
-    title: 'Telegram Cyber Threat Intel Channel: Zero-Day Exploit Market Monitor',
-    source: 'Telegram Threat Channel',
-    category: 'DARK_WEB',
-    cveId: 'CVE-2026-7492',
-    severity: 'HIGH',
-    summary: 'Automated monitoring of underground Telegram channels for zero-day weaponization alerts.',
-    contentSnippet: 'Channel payload sample includes obfuscated PowerShell script leveraging Windows ALPC local privilege escalation.',
-    trainingPrompt: 'Summarize Telegram dark web zero-day exploit payload analysis.',
-    trainingCompletion: '### Exploit Payload Signature:\n**Vulnerability**: ALPC Privilege Escalation\n**Behavior**: Drops DLL in %TEMP% and invokes Rundll32 with elevated token privileges.',
-    tags: ['DarkWeb', 'Telegram', 'ZeroDay', 'PrivEsc'],
-    scrapedAt: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
-  },
-  {
-    id: 'learn-004',
-    url: 'https://www.securityweek.com',
-    title: 'Global Cybersecurity News: Ransomware Canary Honey-Tokens Active Across Cloud DBs',
-    source: 'SecurityWeek Global',
-    category: 'NEWS',
-    cveId: 'CVE-2026-9821',
-    severity: 'CRITICAL',
-    summary: 'Widespread automated scanning for DB honey-tokens detected across multi-cloud environments.',
-    contentSnippet: 'Threat groups are using automated port 445 SMB probes to discover unmapped SQL database shares.',
-    trainingPrompt: 'Explain how honey-token canary files detect ransomware activity on database servers.',
-    trainingCompletion: '### Honey-Token Detection Mechanics:\nHoney-tokens are dummy credentials or files placed in decoy directories. When an automated ransomware process reads or encrypts the file, a high-priority EDR trigger alerts the SOC immediately.',
-    tags: ['SecurityWeek', 'News', 'Ransomware', 'Honey-Token'],
-    scrapedAt: new Date(Date.now() - 1000 * 60 * 50).toISOString(),
-  },
+  }
 ];
 
 const INITIAL_LOGS: LearningLog[] = [
@@ -275,65 +141,13 @@ export function getLearningScheduleInfo() {
 
 export function loadLearningStore(): LearningStore {
   if (inMemoryStore && inMemoryStore.articles.length > 0) return inMemoryStore;
-
-  const file = getDataFilePath();
-  try {
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, 'utf-8');
-      const parsed = JSON.parse(raw);
-      if (parsed && Array.isArray(parsed.articles) && parsed.articles.length > 0) {
-        inMemoryStore = parsed;
-        return inMemoryStore!;
-      }
-    }
-  } catch (err) {
-    console.error('Failed to read learning store file', err);
-  }
-
   inMemoryStore = generateDefaultStore();
-  saveLearningStore(inMemoryStore);
   return inMemoryStore;
 }
 
 export function saveLearningStore(store: LearningStore) {
   inMemoryStore = store;
-  try {
-    const file = getDataFilePath();
-    const dir = path.dirname(file);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(file, JSON.stringify(store, null, 2), 'utf-8');
-
-    // Also export JSONL model training dataset
-    const datasetFile = getTrainingDatasetPath();
-    const jsonlLines = store.articles.map((a) => {
-      const cti = a.ctiRecord || processRawContentToCtiRecord({
-        id: a.id,
-        title: a.title,
-        url: a.url,
-        source: a.source,
-        content: `${a.summary} ${a.contentSnippet}`,
-        publishedAt: a.scrapedAt,
-      });
-      return JSON.stringify({
-        id: a.id,
-        source_url: a.url,
-        source_name: a.source,
-        category: a.category,
-        prompt: a.trainingPrompt,
-        completion: a.trainingCompletion,
-        confidence_score: cti.confidenceScore,
-        verification_status: cti.verificationStatus,
-        stix_2_1: cti.stix21Representation,
-        entities: cti.entities,
-        metadata: { cveId: a.cveId, severity: a.severity, tags: a.tags },
-      });
-    });
-    fs.writeFileSync(datasetFile, jsonlLines.join('\n'), 'utf-8');
-  } catch (err) {
-    console.error('Failed to write learning store / dataset file', err);
-  }
+  // In-memory only — no filesystem on edge runtime
 }
 
 export async function runUnrestrictedWebScraperPass(): Promise<LearningStore> {
@@ -912,21 +726,4 @@ export function ingestOcrData(ocrResult: any, filename = 'Threat Image'): Learni
 }
 
 
-// 24/7 Overnight Scraper Daemon (18:00 to 09:00 IST schedule, 3 min interval)
-if (typeof window === 'undefined') {
-  const g = globalThis as any;
-  if (!g.__learningCronStarted) {
-    g.__learningCronStarted = true;
-    console.log('[CYBERMIND] 24/7 Unrestricted Web Learning Engine Daemon started (Active Window: 18:00 - 09:00, Interval: 3 min)');
 
-    const checkOvernightWindow = async () => {
-      if (isWithinLearningWindow()) {
-        console.log('[CYBERMIND] Within 18:00 - 09:00 Window. Surfing web & generating model training dataset...');
-        await runUnrestrictedWebScraperPass();
-      }
-    };
-
-    setTimeout(checkOvernightWindow, 10000);
-    setInterval(checkOvernightWindow, 3 * 60 * 1000); // Check every 3 minutes
-  }
-}

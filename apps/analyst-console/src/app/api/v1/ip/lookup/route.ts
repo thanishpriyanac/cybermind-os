@@ -1,6 +1,6 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { ipStore, IpInvestigation, IpReport } from '../../../../../lib/ip-store';
-import crypto from 'crypto';
 
 const CATEGORY_MAP: Record<number, string> = {
   1: 'DNS Compromise', 2: 'DNS Poisoning', 3: 'Fraud Orders', 4: 'DDoS Attack',

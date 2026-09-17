@@ -1,0 +1,75 @@
+name: Deploy - CyberMind OS Production Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  # 1. GITHUB → CLOUDFLARE PAGES (Frontend)
+  deploy-frontend-cloudflare:
+    name: 🌐 Deploy Frontend to Cloudflare Pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: Build Analyst Console (Frontend)
+        run: |
+          cd apps/analyst-console
+          npm run build
+
+      - name: Deploy to Cloudflare Pages via Wrangler
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: 'cybermind-console'
+          directory: 'apps/analyst-console/out'
+          gitBranch: 'main'
+
+  # 2. GITHUB → LINUX SERVER (Backend API & Services)
+  deploy-backend-server:
+    name: 🛡️ Deploy Backend to Linux Server
+    runs-on: ubuntu-latest
+    needs: deploy-frontend-cloudflare
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_SSH_PORT || 22 }}
+          script: |
+            set -e
+            echo "🚀 Pulling latest code..."
+            cd ~/CyberMind/cybermind-os
+            git pull origin main
+
+            echo "📦 Installing backend dependencies..."
+            pnpm install --frozen-lockfile
+
+            echo "🏗️ Building backend services..."
+            pnpm --filter gateway build
+
+            echo "🔄 Gracefully reloading PM2 backend process..."
+            pm2 reload gateway || pm2 start services/gateway/dist/main.js --name "cybermind-api"
+
+            echo "✅ Verifying local health endpoint..."
+            curl -s http://127.0.0.1:4000/api/health || curl -s http://127.0.0.1:3000/api/health
+
+            echo "🔒 Verifying Cloudflare Tunnel service..."
+            sudo systemctl is-active cloudflared

@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { getVendorControls } from '@/lib/vendors';
 import { Vendor } from '@/lib/firewall-store';

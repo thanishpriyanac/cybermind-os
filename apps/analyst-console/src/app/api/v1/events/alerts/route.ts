@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextResponse } from 'next/server';
 import { loadAlerts, acknowledgeAllAlerts, updateAlertStatus } from '@/lib/alert-store';
 

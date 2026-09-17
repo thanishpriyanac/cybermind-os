@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { getVendorControls } from './vendors';
 
 export type Vendor = 'fortinet' | 'paloalto' | 'sophos' | 'cisco' | 'checkpoint';
@@ -57,16 +55,7 @@ let inMemoryStore: FirewallStore | null = null;
 function loadStore(): FirewallStore {
   if (inMemoryStore) return inMemoryStore;
 
-  try {
-    const file = getStoreFilePath();
-    if (fs.existsSync(file)) {
-      const raw = fs.readFileSync(file, 'utf-8');
-      inMemoryStore = JSON.parse(raw);
-      return inMemoryStore!;
-    }
-  } catch (err) {
-    console.error('Failed to read firewall store file, using defaults', err);
-  }
+  
 
   inMemoryStore = { assessments: [] };
   saveStore(inMemoryStore);
@@ -75,12 +64,7 @@ function loadStore(): FirewallStore {
 
 function saveStore(store: FirewallStore) {
   inMemoryStore = store;
-  try {
-    const file = getStoreFilePath();
-    writeJsonAtomic(file, store);
-  } catch (err) {
-    console.error('Failed to write firewall store file', err);
-  }
+  
 }
 
 export const firewallStore = {

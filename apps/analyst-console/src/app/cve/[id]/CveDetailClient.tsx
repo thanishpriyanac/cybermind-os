@@ -12,9 +12,9 @@ import Link from 'next/link';
 import { ArrowLeft, Bot, ShieldAlert, ExternalLink, Shield, ShieldCheck, Cpu } from 'lucide-react';
 import { useParams } from 'next/navigation';
 
-export default function CveDetailPage() {
+export default function CveDetailPage({ routeId }: { routeId?: string } = {}) {
   const params = useParams();
-  const id = params.id as string;
+  const id = routeId || (params?.id as string);
 
   const { data: cve, isLoading, isError } = useQuery({
     queryKey: ['cve', id],
@@ -318,3 +318,4 @@ export default function CveDetailPage() {
     </div>
   );
 }
+

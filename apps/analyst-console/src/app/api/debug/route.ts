@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 
 async function testProvider(name: string, url: string, headers: Record<string, string>, body: object) {
@@ -75,7 +76,7 @@ export async function GET() {
       ? `🟢 ${working}/${results.length} providers working — Cloud AI is active`
       : `🔴 0/${results.length} providers working — All failing, RAG will answer`,
     results,
-    cwd: process.cwd(),
+    cwd: "",
     timestamp: new Date().toISOString(),
   }, { headers: { 'Cache-Control': 'no-store' } });
 }

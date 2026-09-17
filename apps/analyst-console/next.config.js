@@ -2,6 +2,7 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Cloudflare Workers edge runtime via @cloudflare/next-on-pages
   // ⚠️  Removed: AI Gateway proxy rewrite to port 3010.
   // All /api/v1/ai/* routes are now handled DIRECTLY by Next.js route handlers
   // in src/app/api/v1/ai/chat/stream/route.ts — no external gateway needed.
@@ -15,6 +16,17 @@ const nextConfig = {
     OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
     GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
     DISABLE_LOCAL_RAG: process.env.DISABLE_LOCAL_RAG || 'false',
+  },
+
+  async rewrites() {
+    return [
+      { source: '/cve/:id', destination: '/view/cve/:id' },
+      { source: '/firewall/:id', destination: '/view/firewall/:id' },
+      { source: '/firewall/:id/qbr', destination: '/view/firewall/:id/qbr' },
+      { source: '/investigations/:id', destination: '/view/investigations/:id' },
+      { source: '/qbr/:id', destination: '/view/qbr/:id' },
+      { source: '/vapt/:id', destination: '/view/vapt/:id' },
+    ];
   },
 };
 

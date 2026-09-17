@@ -1,3 +1,4 @@
+export const runtime = 'edge';
 import { NextRequest, NextResponse } from 'next/server';
 import { enforceApiPermission } from '@/lib/rbac';
 import { logAuditEvent } from '@/lib/audit-logger';

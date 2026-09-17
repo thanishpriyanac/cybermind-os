@@ -1,6 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-
 export type QbrReportStatus = 'DRAFT' | 'GENERATED' | 'IN_REVIEW' | 'FINALIZED';
 export type OverallRiskLevel = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
@@ -37,14 +34,14 @@ export interface QbrReport {
   assessmentDate: string;
   reportDate: string;
   preparedBy: string;
-  overallScore: number; // Compliance % (0-100)
+  overallScore: number;
   overallRisk: OverallRiskLevel;
   compliancePercentage: number;
   categoryScores: Record<string, number>;
   executiveSummary: string;
   findings: QbrFinding[];
   remediationPlan: RemediationItem[];
-  format: string[]; // e.g. ['DOCX', 'PDF']
+  format: string[];
   status: QbrReportStatus;
   createdAt: string;
   severityCounts: {
@@ -54,23 +51,6 @@ export interface QbrReport {
     low: number;
     info: number;
   };
-}
-
-function getDataFilePath(): string {
-  const cwd = process.cwd();
-  const candidates = [
-    path.join(cwd, 'data', 'qbr_store.json'),
-    path.join(cwd, '..', 'data', 'qbr_store.json'),
-    path.join(cwd, '..', '..', 'data', 'qbr_store.json'),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(path.dirname(c))) return c;
-  }
-  const fallbackDir = path.join(cwd, 'data');
-  try {
-    fs.mkdirSync(fallbackDir, { recursive: true });
-  } catch { /* skip */ }
-  return path.join(fallbackDir, 'qbr_store.json');
 }
 
 let inMemoryStore: QbrReport[] | null = null;
@@ -98,7 +78,7 @@ const INITIAL_QBR_REPORTS: QbrReport[] = [
       'Security Profiles': 92,
       VPN: 84,
     },
-    executiveSummary: 'Acme Corp FortiGate 600F perimeter firewall assessment completed. Overall CIS compliance score is 88/100 (LOW Risk). 2 minor configuration items requiring admin MFA enforcement and SSL VPN split-tunneling adjustment.',
+    executiveSummary: 'Acme Corp FortiGate 600F perimeter firewall assessment completed. Overall CIS compliance score is 88/100.',
     status: 'FINALIZED',
     format: ['DOCX', 'PDF'],
     createdAt: '2026-09-10T14:30:00Z',
@@ -126,147 +106,17 @@ const INITIAL_QBR_REPORTS: QbrReport[] = [
       },
     ],
   },
-  {
-    id: 'qbr-002',
-    assessmentNumber: 'FGT-2026-00002',
-    customerName: 'Globex Enterprise Inc',
-    siteName: 'Cloud Gateway West',
-    vendor: 'paloalto',
-    model: 'PA-3260',
-    serialNumber: 'PA01992837112',
-    firmwareVersion: 'PAN-OS 11.1',
-    assessmentDate: '2026-09-05',
-    reportDate: '2026-09-12',
-    preparedBy: 'Security Architect',
-    overallScore: 68,
-    overallRisk: 'HIGH',
-    compliancePercentage: 68,
-    categoryScores: {
-      Administration: 70,
-      'Firmware & System': 65,
-      'Firewall Policies': 60,
-      'Security Profiles': 75,
-      VPN: 70,
-    },
-    executiveSummary: 'Globex Inc Palo Alto PA-3260 perimeter review identified 3 HIGH priority policy vulnerabilities including overly permissive inbound rules and disabled WildFire inspection.',
-    status: 'IN_REVIEW',
-    format: ['DOCX'],
-    createdAt: '2026-09-12T11:20:00Z',
-    severityCounts: { critical: 1, high: 3, medium: 4, low: 2, info: 0 },
-    findings: [
-      {
-        controlId: 'FH-PA-P01',
-        category: 'Firewall Policies',
-        name: 'Overly Permissive Inbound Security Rule',
-        severity: 'CRITICAL',
-        status: 'FAIL',
-        observation: 'Rule "Allow-DMZ-Any" allows any protocol from untrusted WAN zone to internal app servers.',
-        risk: 'Critical risk of perimeter bypass and unauthenticated RCE.',
-        recommendation: 'Restrict rule to specific TCP ports 443/8443 and enable App-ID.',
-        evidence: 'rulebase security rules Allow-DMZ-Any service any source any',
-      },
-    ],
-    remediationPlan: [
-      {
-        priority: 'immediate',
-        finding: 'Overly Permissive Inbound Security Rule',
-        recommendation: 'Restrict rule to explicit HTTPS service objects.',
-        targetDate: '2026-09-18',
-        status: 'open',
-      },
-    ],
-  },
-  {
-    id: 'qbr-003',
-    assessmentNumber: 'FGT-2026-00003',
-    customerName: 'Initech Financial',
-    siteName: 'HQ Branch Office',
-    vendor: 'cisco',
-    model: 'Firepower 2130',
-    serialNumber: 'FTD99102834',
-    firmwareVersion: 'FTD 7.2.5',
-    assessmentDate: '2026-09-08',
-    reportDate: '2026-09-14',
-    preparedBy: 'CyberAI Automated Engine',
-    overallScore: 94,
-    overallRisk: 'LOW',
-    compliancePercentage: 94,
-    categoryScores: {
-      Administration: 95,
-      'Firmware & System': 92,
-      'Firewall Policies': 96,
-      'Security Profiles': 94,
-      VPN: 93,
-    },
-    executiveSummary: 'Initech Financial Cisco Firepower audit completed with 94/100 score. All critical controls compliant.',
-    status: 'GENERATED',
-    format: ['DOCX', 'PDF'],
-    createdAt: '2026-09-14T09:15:00Z',
-    severityCounts: { critical: 0, high: 0, medium: 2, low: 1, info: 0 },
-    findings: [],
-    remediationPlan: [],
-  },
-  {
-    id: 'qbr-004',
-    assessmentNumber: 'FGT-2026-00004',
-    customerName: 'Stark Security Systems',
-    siteName: 'R&D Datacenter',
-    vendor: 'fortinet',
-    model: 'FortiGate-100F',
-    serialNumber: 'FG100FTK230911',
-    firmwareVersion: 'v7.4.2',
-    assessmentDate: '2026-09-11',
-    reportDate: '2026-09-15',
-    preparedBy: 'Analyst (admin@cybermind.local)',
-    overallScore: 78,
-    overallRisk: 'MEDIUM',
-    compliancePercentage: 78,
-    categoryScores: {
-      Administration: 80,
-      'Firmware & System': 75,
-      'Firewall Policies': 78,
-      'Security Profiles': 80,
-      VPN: 76,
-    },
-    executiveSummary: 'Draft assessment report for Stark Security Systems FortiGate 100F appliance.',
-    status: 'DRAFT',
-    format: ['DOCX'],
-    createdAt: '2026-09-15T16:00:00Z',
-    severityCounts: { critical: 0, high: 2, medium: 3, low: 1, info: 0 },
-    findings: [],
-    remediationPlan: [],
-  },
 ];
 
 export const qbrStore = {
   loadStore(): QbrReport[] {
     if (inMemoryStore) return inMemoryStore;
-    const filePath = getDataFilePath();
-    try {
-      if (fs.existsSync(filePath)) {
-        const raw = fs.readFileSync(filePath, 'utf-8');
-        const parsed = JSON.parse(raw);
-        inMemoryStore = Array.isArray(parsed) ? parsed : INITIAL_QBR_REPORTS;
-        return inMemoryStore;
-      }
-    } catch (err) {
-      console.error('Failed to read qbr_store.json:', err);
-    }
     inMemoryStore = INITIAL_QBR_REPORTS;
-    this.saveStore(inMemoryStore);
     return inMemoryStore;
   },
 
   saveStore(data: QbrReport[]): void {
     inMemoryStore = data;
-    const filePath = getDataFilePath();
-    try {
-      const tmp = `${filePath}.tmp.${Date.now()}`;
-      fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf-8');
-      fs.renameSync(tmp, filePath);
-    } catch (err) {
-      console.error('Failed to write qbr_store.json:', err);
-    }
   },
 
   listReports(filters?: { status?: string; search?: string }): QbrReport[] {

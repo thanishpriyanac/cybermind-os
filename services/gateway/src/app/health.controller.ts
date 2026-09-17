@@ -2,6 +2,11 @@ import { Controller, Get } from '@nestjs/common';
 
 @Controller('health')
 export class HealthController {
+  @Get()
+  index() {
+    return { status: 'ok', service: 'cybermind-api', timestamp: new Date().toISOString() };
+  }
+
   @Get('live')
   live() {
     return { status: 'ok', type: 'liveness', timestamp: new Date().toISOString() };

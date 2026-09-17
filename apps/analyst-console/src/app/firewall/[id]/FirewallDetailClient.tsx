@@ -13,8 +13,9 @@ import { Shield, FileText, CheckCircle2, AlertTriangle, XCircle, Info, Save } fr
 import { api } from '@/lib/api';
 import { CheckControl, FindingRecord, FirewallAssessment } from '@/lib/firewall-store';
 
-export default function AssessmentDetailPage() {
-  const { id } = useParams();
+export default function AssessmentDetailPage({ routeId }: { routeId?: string } = {}) {
+  const params = useParams();
+  const id = routeId || (params?.id as string);
   const router = useRouter();
   const queryClient = useQueryClient();
   
@@ -280,3 +281,4 @@ export default function AssessmentDetailPage() {
     </div>
   );
 }
+

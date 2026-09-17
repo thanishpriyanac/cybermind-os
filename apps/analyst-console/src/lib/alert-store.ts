@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 
 export interface AlertItem {
   id: string;
@@ -11,9 +9,6 @@ export interface AlertItem {
   asset: string;
 }
 
-const PROJECT_ROOT = path.resolve(process.cwd(), '../../../../');
-const DATA_DIR = path.join(PROJECT_ROOT, 'data');
-const STORE_FILE = path.join(DATA_DIR, 'alert_store.json');
 
 let inMemoryAlerts: AlertItem[] | null = null;
 
@@ -76,32 +71,13 @@ const INITIAL_ALERTS: AlertItem[] = [
 
 export function loadAlerts(): AlertItem[] {
   if (inMemoryAlerts) return inMemoryAlerts;
-
-  try {
-    if (fs.existsSync(STORE_FILE)) {
-      const raw = fs.readFileSync(STORE_FILE, 'utf-8');
-      inMemoryAlerts = JSON.parse(raw);
-      return inMemoryAlerts!;
-    }
-  } catch (err) {
-    console.error('Failed to read alert store file', err);
-  }
-
   inMemoryAlerts = [...INITIAL_ALERTS];
-  saveAlerts(inMemoryAlerts);
   return inMemoryAlerts;
 }
 
 export function saveAlerts(alerts: AlertItem[]) {
   inMemoryAlerts = alerts;
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    fs.writeFileSync(STORE_FILE, JSON.stringify(alerts, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Failed to write alert store file', err);
-  }
+  // In-memory only — no filesystem on edge runtime
 }
 
 export function acknowledgeAllAlerts(): AlertItem[] {
