@@ -6,7 +6,7 @@ import { api } from '../../lib/api';
 import {
   HeartPulse, RefreshCw, Server, Cpu, HardDrive, MemoryStick,
   Bot, Database, CheckCircle2, AlertTriangle, XCircle, Activity,
-  Wifi, ShieldAlert, Zap, Network, Flame, ArrowDown, ArrowUp, Fan
+  Wifi, ShieldAlert, Zap, Network, ArrowDown, ArrowUp
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';

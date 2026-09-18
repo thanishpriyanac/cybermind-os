@@ -23,8 +23,6 @@ import {
   Bot,
   Terminal,
   Zap,
-  Flame,
-  Fan,
   Globe,
   Wifi,
   Smartphone,
@@ -411,8 +409,8 @@ export default function AdminPage() {
                 {healthLoading ? <Skeleton className="h-8 w-20" /> : (
                   <>
                     <div className="text-2xl font-bold text-foreground">{health?.cpu?.usagePct ?? 0}%</div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {health?.sensors?.cpuCores ?? health?.server?.cpuCount ?? 4} Cores · {health?.sensors?.clockSpeedGHz ?? '2.30'} GHz
+                    <p className="text-xs text-muted-foreground mt-1 truncate" title={health?.server?.cpuModel || 'vCPU'}>
+                      {health?.cpu?.count ?? health?.server?.cpuCount ?? 4} Cores · {health?.server?.cpuModel || 'vCPU'}
                     </p>
                   </>
                 )}
@@ -513,17 +511,17 @@ export default function AdminPage() {
             <Card className="bg-card border-border">
               <CardHeader>
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Flame className="w-4 h-4 text-amber-500" /> Thermal Sensors
+                  <Server className="w-4 h-4 text-primary" /> Host Architecture
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 font-mono text-xs">
                 <div className="flex justify-between items-center p-2 rounded bg-muted/40">
-                  <span className="text-muted-foreground">CPU Package</span>
-                  <span className="font-bold text-amber-400">{health?.sensors?.cpuTempC ?? 'N/A'}°C</span>
+                  <span className="text-muted-foreground">Platform / Arch</span>
+                  <span className="font-bold text-foreground">{health?.server?.platform || 'linux'} / {health?.server?.arch || 'x64'}</span>
                 </div>
                 <div className="flex justify-between items-center p-2 rounded bg-muted/40">
-                  <span className="text-muted-foreground">Cooling Fan Mode</span>
-                  <span className="font-bold text-cyan-400">{health?.sensors?.fanSpeed ?? 'Auto (PWM)'}</span>
+                  <span className="text-muted-foreground">Kernel Release</span>
+                  <span className="font-bold text-cyan-400 truncate max-w-[140px]" title={health?.server?.kernel || 'Linux'}>{health?.server?.kernel || 'Linux'}</span>
                 </div>
               </CardContent>
             </Card>
