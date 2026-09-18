@@ -6,20 +6,16 @@ export const dynamic = 'force-dynamic';
 
 export async function POST() {
   try {
-    const store = loadLearningStore();
-
-    // Fire background scraping pass non-blocking so the API response returns instantly without socket timeouts or browser UI freeze
-    runUnrestrictedWebScraperPass().catch((err) => {
-      console.error('Background web scraping pass error:', err);
-    });
+    const updatedStore = await runUnrestrictedWebScraperPass();
 
     return NextResponse.json({
       success: true,
-      message: 'Unrestricted web scraping pass triggered in background. Model training dataset is updating.',
-      totalArticles: store.totalArticles,
-      totalTrainingPairs: store.totalTrainingPairs,
-      lastRunAt: new Date().toISOString(),
-      status: 'active',
+      message: 'Unrestricted web scraping pass completed. Model training dataset updated with live cybersecurity intelligence.',
+      totalArticles: updatedStore.totalArticles,
+      totalTrainingPairs: updatedStore.totalTrainingPairs,
+      lastRunAt: updatedStore.lastRunAt,
+      status: 'idle',
+      liveLogs: updatedStore.liveLogs.slice(0, 10),
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Scrape trigger failed' }, { status: 500 });

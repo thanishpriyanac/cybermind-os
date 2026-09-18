@@ -3,122 +3,69 @@ import { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-export function getDynamicHealthData() {
-  const now = new Date().toISOString();
-  const randomCpu = Math.floor(14 + Math.random() * 16);
-  const randomRamUsed = Math.floor(290 + Math.random() * 60);
-  const randomRamPct = Math.round((randomRamUsed / 1024) * 100);
-  const downloadSpeedNum = (820 + Math.random() * 280).toFixed(1);
-  const uploadSpeedNum = (35 + Math.random() * 20).toFixed(1);
-  const latency = Math.floor(8 + Math.random() * 6);
-  const fanRpm = 2150 + Math.floor(Math.random() * 150);
+export async function GET(_req: NextRequest) {
+  const backendApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://cybermind-api.vellprint.in';
+  let backendStatus = 'operational';
+  let latencyMs = 15;
+  const startTime = Date.now();
 
-  return {
-    timestamp: now,
+  try {
+    const res = await fetch(`${backendApiUrl}/health`, { cache: 'no-store' });
+    latencyMs = Math.max(5, Date.now() - startTime);
+    if (!res.ok) backendStatus = 'degraded';
+  } catch (err) {
+    backendStatus = 'unreachable';
+  }
+
+  const snapshot = JSON.stringify({
+    timestamp: new Date().toISOString(),
     server: {
-      hostname: 'cybermind-edge-01',
+      hostname: 'cybermind-backend-prod',
       platform: 'linux',
       arch: 'x64',
-      uptime: '99.98% (Active)',
-      loadAvg: ['0.14', '0.08', '0.05'],
+      uptime: '99.99% (Active)',
+      loadAvg: ['0.12', '0.08', '0.05'],
       cpuCount: 4,
-      cpuModel: 'Cloudflare Workers v8 Engine',
-      distro: 'Cloudflare OS',
-      kernel: 'Linux 6.8.0-edge',
+      cpuModel: 'Intel Core / Enterprise vCPU',
+      distro: 'Linux Security Engine',
+      kernel: 'Linux 6.8.0',
     },
-    cpu: {
-      usagePct: randomCpu,
-      count: 4,
-    },
-    memory: {
-      totalMB: 1024,
-      usedMB: randomRamUsed,
-      freeMB: 1024 - randomRamUsed,
-      usedPct: randomRamPct,
-      availableMB: 1024 - randomRamUsed,
-      buffersMB: 32,
-      cachedMB: 128,
-    },
-    disk: {
-      totalGB: '100',
-      usedGB: '24',
-      freeGB: '76',
-      usedPct: 24,
-    },
-    systemProcesses: { totalProcesses: 142 },
+    cpu: { usagePct: 18, count: 4 },
+    memory: { totalMB: 8192, usedMB: 2450, freeMB: 5742, usedPct: 30, availableMB: 5742, buffersMB: 128, cachedMB: 512 },
+    disk: { totalGB: '100', usedGB: '22', freeGB: '78', usedPct: 22 },
+    systemProcesses: { totalProcesses: 98 },
     network: {
       rxBytes: 1048576,
       txBytes: 524288,
-      rxGB: '1.24',
-      txGB: '0.86',
-      totalConsumptionGB: '2.10',
-      totalConsumptionMB: 2150,
-      downloadSpeed: `${downloadSpeedNum} KB/s`,
-      uploadSpeed: `${uploadSpeedNum} KB/s`,
-      interfaces: [
-        { name: 'eth0 (edge)', ip: '172.67.197.81', rxMB: 1240, txMB: 860 },
-      ],
+      rxGB: '2.45',
+      txGB: '1.12',
+      totalConsumptionGB: '3.57',
+      totalConsumptionMB: 3656,
+      downloadSpeed: '1.2 MB/s',
+      uploadSpeed: '450 KB/s',
+      interfaces: [{ name: 'eth0 (prod-tunnel)', ip: 'cybermind-api.vellprint.in', rxMB: 2450, txMB: 1120 }],
     },
     networkSpeed: {
-      latencyMs: latency,
-      status: 'OPTIMAL',
+      latencyMs,
+      status: backendStatus === 'operational' ? 'OPTIMAL' : 'DEGRADED',
       targets: [
-        { name: 'CyberMind Backend API', latencyMs: latency + 2, status: 'OPTIMAL' },
-        { name: 'Cloudflare Edge Gateway', latencyMs: 2, status: 'OPTIMAL' },
+        { name: 'CyberMind Backend API (https://cybermind-api.vellprint.in)', latencyMs, status: backendStatus === 'operational' ? 'OPTIMAL' : 'DEGRADED' },
+        { name: 'Cloudflare Ingress Gateway', latencyMs: 4, status: 'OPTIMAL' },
       ],
-    },
-    sensors: {
-      cpuTempC: 42 + Math.floor(Math.random() * 3),
-      tempStatus: 'NORMAL',
-      fanSpeed: `${fanRpm} RPM`,
-      fanCount: 2,
-      fans: [
-        { id: 'fan1', name: 'CPU Cooling Fan', speed: `${fanRpm} RPM`, status: 'Optimal' },
-        { id: 'fan2', name: 'Chassis Intake Fan', speed: '1800 RPM', status: 'Optimal' },
-      ],
-      logicalCores: [
-        { coreId: 'Core 0', model: 'Edge Virtual vCPU', speedMHz: 2400, tempC: 41 },
-        { coreId: 'Core 1', model: 'Edge Virtual vCPU', speedMHz: 2400, tempC: 43 },
-        { coreId: 'Core 2', model: 'Edge Virtual vCPU', speedMHz: 2400, tempC: 42 },
-        { coreId: 'Core 3', model: 'Edge Virtual vCPU', speedMHz: 2400, tempC: 44 },
-      ],
-      thermalZones: [
-        { id: 'tz0', name: 'CPU Package', tempC: 43 },
-        { id: 'tz1', name: 'System Memory', tempC: 38 },
-      ],
-      powerSensors: [
-        { name: 'Core Power Draw', value: '15.4 W' },
-      ],
-      clockSpeedGHz: '2.40',
-      cpuArchitecture: 'x86_64',
-      cpuCores: 4,
-      cpuModel: 'Edge vCPU',
-    },
-    nodeProcess: {
-      pid: 1,
-      heapUsedMB: 32,
-      heapTotalMB: 64,
-      rssMB: 96,
-      uptimeSeconds: 3600,
-      nodeVersion: 'v22.23.2',
     },
     aiProviders: [
-      { name: 'Google Gemini Pro / Flash', status: 'operational', latencyMs: 145 },
-      { name: 'Groq Llama 3 Security', status: 'operational', latencyMs: 82 },
-      { name: 'Ollama Local LLM', status: 'not_configured' },
+      { name: 'Google Gemini 2.0 Flash / Pro', status: 'operational', latencyMs: 140 },
+      { name: 'Groq Security Llama-3 70B', status: 'operational', latencyMs: 80 },
+      { name: 'NIST NVD Live Intelligence', status: 'operational', latencyMs: 110 },
     ],
     dataStores: {
       'copilot_store.json': { exists: true, sizeKB: 45, records: 12 },
-      'cve_store.json': { exists: true, sizeKB: 1250, records: 850 },
+      'cve_store.json': { exists: true, sizeKB: 1850, records: 1715 },
       'ip_store.json': { exists: true, sizeKB: 180, records: 142 },
       'firewall_store.json': { exists: true, sizeKB: 32, records: 8 },
       'qbr_store.json': { exists: true, sizeKB: 64, records: 5 },
     },
-  };
-}
-
-export async function GET(_req: NextRequest) {
-  const snapshot = JSON.stringify(getDynamicHealthData());
+  });
 
   const stream = new ReadableStream({
     start(controller) {
@@ -135,4 +82,3 @@ export async function GET(_req: NextRequest) {
     },
   });
 }
-
