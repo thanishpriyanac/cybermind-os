@@ -65,12 +65,28 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const userRole = typeof window !== 'undefined' 
     ? (localStorage.getItem('user_role') || 'ADMIN').toUpperCase() 
     : 'ADMIN';
+  const userEmail = typeof window !== 'undefined'
+    ? (localStorage.getItem('email') || '').toLowerCase()
+    : '';
+  const restrictedPaths: string[] = typeof window !== 'undefined'
+    ? JSON.parse(localStorage.getItem('restricted_paths') || '[]')
+    : [];
+
+  const isSaravanan = userEmail.includes('saravanan') || userRole === 'RESTRICTED_ANALYST';
 
   const renderNavItems = () => (
     <nav className="flex-1 px-3 py-3 space-y-4">
       {navigationGroups.map((group) => {
         const visibleItems = group.items.filter((item) => {
           if (item.adminOnly && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
+            return false;
+          }
+          if (isSaravanan) {
+            if (item.href.startsWith('/qbr') || item.href.startsWith('/firewall')) {
+              return false;
+            }
+          }
+          if (restrictedPaths.some((p) => item.href.startsWith(p))) {
             return false;
           }
           return true;

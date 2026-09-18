@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { api } from '../lib/api';
 
 interface User {
   email: string;
@@ -17,17 +16,12 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
-const DEFAULT_USER: User = {
-  email: 'admin@cybermind.local',
-  tenantId: 'cybermind-master-tenant',
-};
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(DEFAULT_USER);
-  const [token, setToken] = useState<string | null>('demo-token');
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
@@ -37,18 +31,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const storedEmail = localStorage.getItem('email');
         const storedTenantId = localStorage.getItem('tenantId');
 
-        if (storedToken && storedEmail && storedTenantId) {
+        if (storedToken && storedEmail && storedTenantId && storedToken !== 'demo-token') {
           setToken(storedToken);
           setUser({ email: storedEmail, tenantId: storedTenantId });
+          // Ensure cookies stay in sync for Edge middleware
+          document.cookie = `token=${storedToken}; path=/; max-age=86400; SameSite=Lax`;
+          document.cookie = `user_email=${storedEmail}; path=/; max-age=86400; SameSite=Lax`;
         } else {
-          localStorage.setItem('email', DEFAULT_USER.email);
-          localStorage.setItem('tenantId', DEFAULT_USER.tenantId);
-          localStorage.setItem('token', 'demo-token');
-          localStorage.setItem('user_role', 'ADMIN');
+          // Clear lingering demo or invalid tokens
+          localStorage.removeItem('token');
+          localStorage.removeItem('email');
+          localStorage.removeItem('tenantId');
+          localStorage.removeItem('user_role');
+          localStorage.removeItem('restricted_paths');
+          setToken(null);
+          setUser(null);
         }
       }
     } catch (e) {
       console.error('Auth context sync error:', e);
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -57,6 +60,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('token', newToken);
       localStorage.setItem('email', email);
       localStorage.setItem('tenantId', tenantId);
+
+      const userRole = localStorage.getItem('user_role') || 'ADMIN';
+      document.cookie = `token=${newToken}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `user_email=${email}; path=/; max-age=86400; SameSite=Lax`;
+      document.cookie = `user_role=${userRole}; path=/; max-age=86400; SameSite=Lax`;
     }
     setToken(newToken);
     setUser({ email, tenantId });
@@ -68,6 +76,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem('token');
       localStorage.removeItem('email');
       localStorage.removeItem('tenantId');
+      localStorage.removeItem('user_role');
+      localStorage.removeItem('restricted_paths');
+      document.cookie = 'token=; path=/; max-age=0;';
+      document.cookie = 'user_email=; path=/; max-age=0;';
+      document.cookie = 'user_role=; path=/; max-age=0;';
     }
     setToken(null);
     setUser(null);
@@ -88,3 +101,4 @@ export function useAuth() {
   }
   return context;
 }
+

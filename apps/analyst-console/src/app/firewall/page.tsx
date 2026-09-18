@@ -16,6 +16,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Plus, Shield, Activity, AlertTriangle, FileText, Server } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { api } from '../../lib/api';
 
 interface AssessmentSummary {
@@ -34,6 +35,17 @@ interface AssessmentSummary {
 }
 
 export default function FirewallAssessmentsPage() {
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const email = (localStorage.getItem('email') || '').toLowerCase();
+      const role = (localStorage.getItem('user_role') || '').toUpperCase();
+      if (email.includes('saravanan') || role === 'RESTRICTED_ANALYST') {
+        router.replace('/dashboard');
+      }
+    }
+  }, [router]);
   const { data: assessments, isLoading, error } = useQuery<AssessmentSummary[]>({
     queryKey: ['firewall-assessments'],
     queryFn: async () => {

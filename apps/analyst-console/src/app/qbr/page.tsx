@@ -16,6 +16,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FileText, Download, Sparkles, Search, ShieldCheck, CheckCircle2, Clock } from 'lucide-react';
 
@@ -34,11 +35,22 @@ interface QbrReport {
 }
 
 export default function QbrReportsPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [customerNameInput, setCustomerNameInput] = useState<string>('');
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const email = (localStorage.getItem('email') || '').toLowerCase();
+      const role = (localStorage.getItem('user_role') || '').toUpperCase();
+      if (email.includes('saravanan') || role === 'RESTRICTED_ANALYST') {
+        router.replace('/dashboard');
+      }
+    }
+  }, [router]);
 
   const { data: reports, isLoading } = useQuery({
     queryKey: ['qbr-reports', selectedStatus, searchQuery],

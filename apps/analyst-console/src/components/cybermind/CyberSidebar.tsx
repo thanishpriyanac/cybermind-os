@@ -112,6 +112,11 @@ export function CyberSidebar({
   const userRole = typeof window !== 'undefined' 
     ? (localStorage.getItem('user_role') || 'ADMIN').toUpperCase() 
     : 'ADMIN';
+  const userEmail = typeof window !== 'undefined'
+    ? (localStorage.getItem('email') || '').toLowerCase()
+    : '';
+
+  const isSaravanan = userEmail.includes('saravanan') || userRole === 'RESTRICTED_ANALYST';
 
   const renderNavItems = (isCollapsedMode = false) => (
     <nav className="flex-1 px-2.5 py-3 space-y-4">
@@ -119,6 +124,15 @@ export function CyberSidebar({
         const visibleItems = group.items.filter((item) => {
           if (item.adminOnly && userRole !== 'ADMIN' && userRole !== 'SUPER_ADMIN') {
             return false;
+          }
+          if (isSaravanan) {
+            if (
+              item.href.startsWith('/qbr') ||
+              item.href.startsWith('/firewall') ||
+              item.href.startsWith('/toolkit/firewall')
+            ) {
+              return false;
+            }
           }
           return true;
         });

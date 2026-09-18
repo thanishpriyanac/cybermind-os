@@ -41,7 +41,18 @@ export default function LoginPage() {
         password: data.password,
       });
       const token = response.data.accessToken || response.data.token || response.data.access_token;
+      const user = response.data.user;
       if (token) {
+        if (user?.restrictedPaths && Array.isArray(user.restrictedPaths)) {
+          localStorage.setItem('restricted_paths', JSON.stringify(user.restrictedPaths));
+          localStorage.setItem('user_role', user.role || 'ANALYST');
+        } else if (data.email.toLowerCase().includes('saravanan')) {
+          localStorage.setItem('restricted_paths', JSON.stringify(['/qbr', '/firewall', '/toolkit/firewall-rules', '/toolkit/firewall-simulator']));
+          localStorage.setItem('user_role', 'RESTRICTED_ANALYST');
+        } else {
+          localStorage.setItem('restricted_paths', JSON.stringify([]));
+          localStorage.setItem('user_role', 'ADMIN');
+        }
         login(token, data.email, data.tenantId);
       } else {
         setError('Invalid response from server.');

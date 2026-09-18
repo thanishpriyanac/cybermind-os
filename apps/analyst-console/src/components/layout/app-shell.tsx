@@ -8,7 +8,7 @@ import { useAuth } from '../../contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -16,13 +16,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   useEffect(() => {
-    if (!user && pathname !== '/login') {
+    if (!isLoading && !user && pathname !== '/login') {
       router.push('/login');
     }
-  }, [user, pathname, router]);
+  }, [user, isLoading, pathname, router]);
 
   if (pathname === '/login') {
     return <>{children}</>;
+  }
+
+  if (isLoading || (!user && pathname !== '/login')) {
+    return (
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-background font-mono text-xs text-muted-foreground space-y-3">
+        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <span>Authenticating CyberMind OS Session...</span>
+      </div>
+    );
   }
 
   const isFullHeightPage = pathname === '/copilot';

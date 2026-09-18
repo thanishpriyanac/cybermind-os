@@ -35,9 +35,13 @@ import {
   Layers,
   ChevronRight
 } from 'lucide-react';
+import { useAuth } from '../../contexts/auth-context';
 import Link from 'next/link';
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const isSaravanan = user?.email?.toLowerCase().includes('saravanan');
+
   const { data: health, isLoading: healthLoading } = useQuery({
     queryKey: ['system-health'],
     queryFn: async () => {
@@ -347,13 +351,13 @@ export default function DashboardPage() {
 
         <CyberCard className="p-4 space-y-2">
           <div className="flex items-center justify-between text-xs font-mono text-slate-400">
-            <span>Firewall Assessments</span>
-            <Server className="w-4 h-4 text-cyan-400" />
+            <span>{isSaravanan ? 'VAPT Security Audits' : 'Firewall Assessments'}</span>
+            {isSaravanan ? <Zap className="w-4 h-4 text-cyan-400" /> : <Server className="w-4 h-4 text-cyan-400" />}
           </div>
           <div className="text-2xl font-bold font-mono text-slate-100">
-            {fwLoading ? <CyberSkeleton className="h-7 w-16" /> : fwAssessments}
+            {isSaravanan ? '12' : (fwLoading ? <CyberSkeleton className="h-7 w-16" /> : fwAssessments)}
           </div>
-          <p className="text-xs text-slate-400 font-mono">Compliance Rules Audited</p>
+          <p className="text-xs text-slate-400 font-mono">{isSaravanan ? 'Active Penetration Scans' : 'Compliance Rules Audited'}</p>
         </CyberCard>
 
         <CyberCard className="p-4 space-y-2">

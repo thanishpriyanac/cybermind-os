@@ -83,6 +83,14 @@ export function CyberCommandPalette({ isOpen, onClose }: CyberCommandPaletteProp
     { label: 'Toolkit: Explain This Command', path: '/toolkit/command-explainer', category: 'TOOLKIT', icon: Bot },
   ];
 
+  const userRole = typeof window !== 'undefined' 
+    ? (localStorage.getItem('user_role') || 'ADMIN').toUpperCase() 
+    : 'ADMIN';
+  const userEmail = typeof window !== 'undefined'
+    ? (localStorage.getItem('email') || '').toLowerCase()
+    : '';
+  const isSaravanan = userEmail.includes('saravanan') || userRole === 'RESTRICTED_ANALYST';
+
   const quickActions = [
     { label: 'Launch New VAPT Security Assessment', path: '/vapt/new', category: 'ACTION', icon: Plus },
     { label: 'Start CyberAI Security Prompt', path: '/copilot', category: 'ACTION', icon: Bot },
@@ -90,10 +98,21 @@ export function CyberCommandPalette({ isOpen, onClose }: CyberCommandPaletteProp
   ];
 
   const allItems = [...quickActions, ...navCommands];
-  const filtered = allItems.filter((item) =>
-    item.label.toLowerCase().includes(query.toLowerCase()) ||
-    item.path.toLowerCase().includes(query.toLowerCase())
-  );
+  const filtered = allItems.filter((item) => {
+    if (isSaravanan) {
+      if (
+        item.path.startsWith('/qbr') ||
+        item.path.startsWith('/firewall') ||
+        item.path.startsWith('/toolkit/firewall')
+      ) {
+        return false;
+      }
+    }
+    return (
+      item.label.toLowerCase().includes(query.toLowerCase()) ||
+      item.path.toLowerCase().includes(query.toLowerCase())
+    );
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 px-4">
