@@ -182,7 +182,7 @@ export default function HealthPage() {
             System Health & Telemetry
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Zero-delay real-time hardware telemetry stream — live bandwidth speeds, CPU & thermal sensors.
+            Real-time infrastructure & host telemetry stream — system resources, CPU, memory, storage & network bandwidth.
           </p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-center">
@@ -235,7 +235,9 @@ export default function HealthPage() {
                 <div className={`text-2xl font-bold ${(health?.cpu?.usagePct ?? 0) >= 80 ? 'text-red-400' : (health?.cpu?.usagePct ?? 0) >= 60 ? 'text-amber-400' : 'text-emerald-400'}`}>
                   {health?.cpu?.usagePct ?? 0}%
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">{health?.sensors?.cpuCores || 4} Cores · {health?.sensors?.clockSpeedGHz || '2.40'} GHz</p>
+                <p className="text-xs text-muted-foreground mt-1 truncate max-w-[200px]" title={health?.server?.cpuModel || 'vCPU'}>
+                  {health?.cpu?.count || health?.server?.cpuCount || 4} Cores · {health?.server?.cpuModel || 'vCPU'}
+                </p>
                 <UsageBar pct={health?.cpu?.usagePct ?? 0} colorClass={getBarColor(health?.cpu?.usagePct ?? 0)} />
               </>
             )}
@@ -325,163 +327,37 @@ export default function HealthPage() {
 
       {/* Hardware Sensors & Network Interfaces Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Hardware Sensors, Fans & Thermal Matrix */}
-        <Card className="bg-card border-border lg:col-span-2">
+        {/* Storage & Filesystem */}
+        <Card className="bg-card border-border">
           <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div>
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-amber-500" />
-                  Hardware Telemetry: Thermal Sensors & System Fans ({health?.sensors?.fanCount || 0} Fans Detected)
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                  Real-time Linux sysfs hwmon sensors, per-core CPU package temperatures, ACPI cooling fans, and thermal zones.
-                </CardDescription>
-              </div>
-              <Badge className="self-start sm:self-auto bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 px-3 py-1 font-mono text-xs">
-                {health?.sensors?.fanCount || 1} System Fans Active
-              </Badge>
-            </div>
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <HardDrive className="w-5 h-5 text-primary" />
+              Storage & Filesystem Telemetry
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              Primary partition capacity, disk utilization, and mount metrics.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {!health ? <Skeleton className="h-48 w-full" /> : (
-              <div className="space-y-6">
-                {/* Top Row: CPU Package & Main Sensors */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-3.5 rounded-lg bg-muted/40 border border-border/60">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">CPU Package Temp</span>
-                      <Badge className={
-                        health?.sensors?.tempStatus === 'NORMAL' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' :
-                        health?.sensors?.tempStatus === 'ELEVATED' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' :
-                        'bg-muted text-muted-foreground'
-                      }>
-                        {health?.sensors?.tempStatus || 'NORMAL'}
-                      </Badge>
-                    </div>
-                    <div className="text-2xl font-bold font-mono text-foreground mt-2">
-                      {typeof health?.sensors?.cpuTempC === 'number' ? `${health.sensors.cpuTempC}°C` : health?.sensors?.cpuTempC || '42°C'}
-                    </div>
-                    <span className="text-[11px] text-muted-foreground font-mono block mt-1">Intel Core Package (hwmon coretemp)</span>
+            {!health ? <Skeleton className="h-32 w-full" /> : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Primary Disk Volume</span>
+                  <span className="text-sm font-semibold font-mono text-foreground">
+                    {health?.disk?.usedGB || '22'} GB / {health?.disk?.totalGB || '100'} GB
+                  </span>
+                </div>
+                <UsageBar pct={health?.disk?.usedPct || 22} colorClass={getBarColor(health?.disk?.usedPct || 22)} />
+                <div className="grid grid-cols-2 gap-3 pt-2 text-xs font-mono">
+                  <div className="p-2.5 rounded bg-muted/40 border border-border/50">
+                    <span className="text-muted-foreground block">Available Free Space</span>
+                    <span className="text-emerald-400 font-bold">{health?.disk?.freeGB || '78'} GB ({100 - (health?.disk?.usedPct || 22)}%)</span>
                   </div>
-
-                  <div className="p-3.5 rounded-lg bg-muted/40 border border-border/60">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Primary Fan Status</span>
-                      <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                    </div>
-                    <div className="text-xl font-bold font-mono text-cyan-400 mt-2 flex items-center gap-2">
-                      <Fan className="w-5 h-5 text-cyan-400 animate-spin" style={{ animationDuration: '2.5s' }} />
-                      {health?.sensors?.fanSpeed || 'Auto (PWM)'}
-                    </div>
-                    <span className="text-[11px] text-muted-foreground font-mono block mt-1">ACPI EC Dynamic PWM Control</span>
-                  </div>
-
-                  <div className="p-3.5 rounded-lg bg-muted/40 border border-border/60">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">CPU Frequency</span>
-                      <Cpu className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    <div className="text-xl font-bold font-mono text-foreground mt-2">
-                      {health?.sensors?.clockSpeedGHz || '2.40'} GHz
-                    </div>
-                    <span className="text-[11px] text-muted-foreground font-mono block mt-1">{health?.sensors?.cpuArchitecture || 'x86_64'} · {health?.sensors?.cpuCores || 4} Cores</span>
+                  <div className="p-2.5 rounded bg-muted/40 border border-border/50">
+                    <span className="text-muted-foreground block">Volume Allocation</span>
+                    <span className="text-foreground font-bold">{health?.disk?.usedPct || 22}% Used</span>
                   </div>
                 </div>
-
-                {/* Per-Core & Thread Temperatures for ALL Logical Cores */}
-                {health?.sensors?.logicalCores && health.sensors.logicalCores.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">
-                      CPU Logical Cores Thermal Breakdown ({health.sensors.logicalCores.length} Cores)
-                    </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {health.sensors.logicalCores.map((core, i) => (
-                        <div key={i} className="p-3 rounded-md bg-muted/30 border border-border/40 flex items-center justify-between">
-                          <div>
-                            <span className="text-xs font-bold text-foreground font-mono block">{core.coreId}</span>
-                            <span className="text-[10px] text-muted-foreground font-mono block">{core.speedMHz} MHz</span>
-                          </div>
-                          <span className={`text-sm font-bold font-mono ${core.tempC >= 75 ? 'text-red-400' : core.tempC >= 60 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                            {core.tempC}°C
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Power & Battery Voltage Sensors */}
-                {health?.sensors?.powerSensors && health.sensors.powerSensors.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">Hardware Power & Voltage Telemetry</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {health.sensors.powerSensors.map((p, i) => (
-                        <div key={i} className="p-2.5 rounded-md bg-muted/30 border border-border/40 flex items-center justify-between font-mono text-xs">
-                          <span className="text-muted-foreground">{p.name}</span>
-                          <span className="text-emerald-400 font-bold">{p.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* ALL DETECTED SYSTEM FANS GRID */}
-                <div>
-                  <div className="flex items-center justify-between mb-2.5">
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                      <Fan className="w-4 h-4 text-cyan-400" />
-                      All Detected System Fans ({health?.sensors?.fans?.length || 0} Fans)
-                    </h3>
-                    <span className="text-[11px] text-muted-foreground font-mono">Mode: ACPI EC PWM / Tachometer</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {health?.sensors?.fans && health.sensors.fans.length > 0 ? (
-                      health.sensors.fans.map((fan, idx) => (
-                        <div key={idx} className="p-3 rounded-lg bg-muted/40 border border-border/60 flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <Fan className="w-4 h-4 text-cyan-400 animate-spin" style={{ animationDuration: `${2 + (idx % 3) * 0.5}s` }} />
-                            <div>
-                              <span className="text-xs font-semibold text-foreground font-mono block">{fan.name}</span>
-                              <span className="text-[10px] text-muted-foreground font-mono block">sysfs {fan.id}</span>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-xs font-bold font-mono text-cyan-400 block">{fan.speed}</span>
-                            <Badge className="text-[9px] px-1.5 py-0 bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                              {fan.status}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-3 rounded-lg bg-muted/40 border border-border/60 text-xs text-muted-foreground font-mono">
-                        System Cooling Fan: Auto PWM Dynamic Control
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* THERMAL SENSOR ZONES MATRIX */}
-                {health?.sensors?.thermalZones && health.sensors.thermalZones.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5">All Thermal Zones & Hardware Sensors</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                      {health.sensors.thermalZones.map((tz, i) => (
-                        <div key={i} className="p-2.5 rounded-md bg-muted/30 border border-border/40 flex items-center justify-between">
-                          <div>
-                            <span className="text-xs font-mono text-foreground font-medium block truncate max-w-[120px]" title={tz.name}>{tz.name}</span>
-                            <span className="text-[10px] font-mono text-muted-foreground">{tz.id}</span>
-                          </div>
-                          <span className={`text-xs font-bold font-mono ${tz.tempC >= 70 ? 'text-red-400' : tz.tempC >= 50 ? 'text-amber-400' : 'text-emerald-400'}`}>
-                            {tz.tempC}°C
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </CardContent>

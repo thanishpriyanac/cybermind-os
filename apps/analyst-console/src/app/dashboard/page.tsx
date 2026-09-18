@@ -94,67 +94,75 @@ export default function DashboardPage() {
     refetchInterval: 60000,
   });
 
-  // Sample operational active alerts for triage overview
-  const activeAlerts = [
-    {
-      id: 'ALT-2026-8801',
-      title: 'High-Volume Port Scan Detected',
-      source: '185.220.101.5',
-      asset: 'fw-edge-01.cybermind.internal',
-      severity: 'CRITICAL',
-      status: 'INVESTIGATING',
-      time: '12m ago',
+  const { data: alertsData } = useQuery({
+    queryKey: ['dashboard-alerts'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/v1/events/alerts');
+        return res.data?.data || [];
+      } catch {
+        return [];
+      }
     },
-    {
-      id: 'ALT-2026-8802',
-      title: 'Unusual SSH Authentication Spikes',
-      source: '194.26.29.112',
-      asset: 'auth-server-02.prod',
-      severity: 'HIGH',
-      status: 'OPEN',
-      time: '34m ago',
-    },
-    {
-      id: 'ALT-2026-8803',
-      title: 'Known Exploited CVE Attempt (CVE-2024-21762)',
-      source: '45.148.10.92',
-      asset: 'vpn-gateway-primary',
-      severity: 'CRITICAL',
-      status: 'INVESTIGATING',
-      time: '1h ago',
-    },
-    {
-      id: 'ALT-2026-8804',
-      title: 'Outbound Traffic to Suspicious ASN',
-      source: 'workstation-fin-04',
-      asset: 'internal-net-vlan4',
-      severity: 'MEDIUM',
-      status: 'OPEN',
-      time: '2h ago',
-    },
-  ];
+    refetchInterval: 15000,
+  });
 
-  // Recent active investigations
-  const recentInvestigations = [
-    {
-      id: 'INC-2026-0192',
-      title: 'Fortinet SSL VPN RCE Attempt (CVE-2024-21762)',
-      riskScore: 92,
-      severity: 'CRITICAL',
-      status: 'ACTIVE',
-      assignedTo: 'Analyst (You)',
-      updatedAt: '10m ago',
+  const { data: ipHistoryData } = useQuery({
+    queryKey: ['dashboard-ip-history'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/v1/ip/history');
+        return Array.isArray(res.data) ? res.data : (res.data?.data || []);
+      } catch {
+        return [];
+      }
     },
-    {
-      id: 'INC-2026-0188',
-      title: 'Suspicious Administrative API Token Generation',
-      riskScore: 74,
-      severity: 'HIGH',
-      status: 'INVESTIGATING',
-      assignedTo: 'SOC Lead',
-      updatedAt: '1h ago',
-    },
-  ];
+    refetchInterval: 15000,
+  });
+
+  interface DashboardAlert {
+    id: string;
+    title: string;
+    source: string;
+    asset: string;
+    severity: string;
+    status: string;
+    time: string;
+  }
+
+  interface DashboardInvestigation {
+    id: string;
+    title: string;
+    riskScore: number;
+    severity: string;
+    status: string;
+    assignedTo: string;
+    updatedAt: string;
+  }
+
+  const activeAlerts: DashboardAlert[] = (alertsData && alertsData.length > 0)
+    ? alertsData.slice(0, 5).map((a: any) => ({
+        id: a.id,
+        title: a.title,
+        source: a.source || 'Sensor',
+        asset: a.asset || 'Network Gateway',
+        severity: (a.severity || 'HIGH').toUpperCase(),
+        status: (a.status || 'NEW').toUpperCase(),
+        time: a.createdAt ? new Date(a.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Active',
+      }))
+    : [];
+
+  const recentInvestigations: DashboardInvestigation[] = (ipHistoryData && ipHistoryData.length > 0)
+    ? ipHistoryData.slice(0, 4).map((inv: any) => ({
+        id: inv.id ? `INV-${String(inv.id).slice(0, 6)}` : `IP-${inv.ip}`,
+        title: `IP Reputation Sweep: ${inv.ip} (${inv.threatClassification?.toUpperCase() || 'ANALYSIS'})`,
+        riskScore: inv.abuseScore ?? 50,
+        severity: inv.threatClassification === 'malicious' ? 'CRITICAL' : inv.threatClassification === 'suspicious' ? 'HIGH' : 'MEDIUM',
+        status: inv.threatClassification === 'malicious' ? 'ACTIVE' : 'RESOLVED',
+        assignedTo: 'SOC Lead',
+        updatedAt: inv.investigatedAt ? new Date(inv.investigatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+      }))
+    : [];
 
   return (
     <div className="space-y-6">
