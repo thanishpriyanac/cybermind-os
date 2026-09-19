@@ -35,6 +35,14 @@ export class HealthController {
       });
     });
 
+    let totalProcesses = 0;
+    try {
+      const psOut = require('child_process').execSync('ps -e --no-headers 2>/dev/null | wc -l', { encoding: 'utf-8' });
+      totalProcesses = parseInt(psOut.trim(), 10) || 0;
+    } catch {
+      totalProcesses = 0;
+    }
+
     return {
       status: 'operational',
       service: 'cybermind-api',
@@ -66,9 +74,9 @@ export class HealthController {
         cachedMB: 512,
       },
       processMemory: process.memoryUsage(),
-      systemProcesses: { totalProcesses: 42 },
+      systemProcesses: { totalProcesses },
       network: {
-        interfaces: ifacesList.length > 0 ? ifacesList : [{ name: 'eth0 (prod-tunnel)', ip: 'cybermind-api.vellprint.in' }],
+        interfaces: ifacesList,
       },
     };
   }
