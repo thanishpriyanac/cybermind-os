@@ -1,6 +1,5 @@
 export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
-
 function createEdgeJwt(payload: Record<string, any>, secretStr: string): string {
   try {
     const header = { alg: 'HS256', typ: 'JWT' };
