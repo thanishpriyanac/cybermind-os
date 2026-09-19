@@ -32,8 +32,8 @@ cd "$REPO_DIR/apps/analyst-console"
 npm run build >> "$LOG_FILE" 2>&1
 
 # Restart PM2
-echo "[$(date)] 🔄 Restarting PM2 process (cybermind-console)..." | tee -a "$LOG_FILE"
-(pm2 restart cybermind-console || pm2 restart all) >> "$LOG_FILE" 2>&1
+echo "[$(date)] 🔄 Restarting PM2 process (analyst-console)..." | tee -a "$LOG_FILE"
+(pm2 restart analyst-console || pm2 restart cybermind-console || pm2 restart all) >> "$LOG_FILE" 2>&1
 pm2 save >> "$LOG_FILE" 2>&1
 
 echo "[$(date)] ✅ Auto-deploy complete and live!" | tee -a "$LOG_FILE"
