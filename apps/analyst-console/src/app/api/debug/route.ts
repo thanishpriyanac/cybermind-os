@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 async function testProvider(name: string, url: string, headers: Record<string, string>, body: object) {

@@ -26,7 +26,7 @@ export interface CopilotConversation {
   messages: CopilotMessage[];
 }
 
-import { getDataFilePath, writeJsonAtomic } from './atomic-store';
+import { getDataFilePath, writeJsonAtomic, readJsonStore } from './atomic-store';
 
 function getStoreFilePath(): string {
   return getDataFilePath('copilot_store.json');
@@ -39,17 +39,13 @@ let inMemoryStore: CopilotConversation[] | null = null;
 
 function loadStore(): CopilotConversation[] {
   if (inMemoryStore) return inMemoryStore;
-
-  
-
-  inMemoryStore = [...DEFAULT_CONVERSATIONS];
-  saveStore(inMemoryStore);
+  inMemoryStore = readJsonStore<CopilotConversation[]>('copilot_store.json', DEFAULT_CONVERSATIONS);
   return inMemoryStore;
 }
 
 function saveStore(store: CopilotConversation[]) {
   inMemoryStore = store;
-  
+  writeJsonAtomic(getStoreFilePath(), inMemoryStore);
 }
 
 export const copilotStore = {

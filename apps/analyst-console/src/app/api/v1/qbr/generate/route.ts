@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateExecutiveQbrReport, generateFirewallQbrReport, formatQbrHtmlReport, generateFortiGateStructuredJsonQbrReport } from '@/lib/qbr-generator';
 import { firewallStore } from '@/lib/firewall-store';

@@ -1,4 +1,4 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 import { copilotStore } from '@/lib/copilot-store';
 import { sanitizeAndInspectPrompt } from '@/lib/llm-security-proxy';
 import { chunkDocument, queryHybridVectorRag } from '@/lib/rag-engine';

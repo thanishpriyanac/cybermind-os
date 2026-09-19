@@ -220,9 +220,10 @@ export function calculateExplainableRisk(vulnerabilities: VaptVulnerability[]): 
   };
 }
 
+import { getDataFilePath, writeJsonAtomic, readJsonStore } from './atomic-store';
+
 function getStoreFilePath(): string {
-  // No filesystem on edge runtime
-  return '/data/vapt_store.json';
+  return getDataFilePath('vapt_store.json');
 }
 
 let inMemoryStore: VaptStore | null = null;
@@ -365,16 +366,16 @@ const DEMO_ASSESSMENTS: VaptAssessment[] = [
 
 export function loadVaptStore(): VaptStore {
   if (inMemoryStore) return inMemoryStore;
-  inMemoryStore = {
+  inMemoryStore = readJsonStore<VaptStore>('vapt_store.json', {
     assessments: DEMO_ASSESSMENTS,
     executions: [],
-  };
+  });
   return inMemoryStore;
 }
 
 export function saveVaptStore(store: VaptStore): void {
   inMemoryStore = store;
-  // In-memory only — no filesystem on edge runtime
+  writeJsonAtomic(getStoreFilePath(), inMemoryStore);
 }
 
 export function getAssessments(tenantId: string = 'cybermind-master-tenant'): VaptAssessment[] {

@@ -1,7 +1,18 @@
 const { NxAppWebpackPlugin } = require('@nx/webpack/app-plugin');
 const { join } = require('path');
+const nodeExternals = require('webpack-node-externals');
 
 module.exports = {
+  target: 'node',
+  externals: [
+    nodeExternals({
+      modulesDir: join(__dirname, '../../node_modules'),
+    }),
+  ],
+  resolve: {
+    modules: [join(__dirname, '../../node_modules'), 'node_modules'],
+    extensions: ['.ts', '.js', '.json'],
+  },
   output: {
     path: join(__dirname, '../../dist/services/gateway'),
     clean: true,

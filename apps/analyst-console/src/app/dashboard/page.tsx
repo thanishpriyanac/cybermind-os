@@ -152,6 +152,32 @@ export default function DashboardPage() {
       }))
     : [];
 
+  const { data: vaptAssessmentsCount, isLoading: vaptLoading } = useQuery({
+    queryKey: ['dashboard-vapt-count'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/v1/vapt/assessments');
+        return Array.isArray(res.data?.data) ? res.data.data.length : (Array.isArray(res.data) ? res.data.length : 0);
+      } catch {
+        return 0;
+      }
+    },
+    refetchInterval: 60000,
+  });
+
+  const criticalAlertsCount = Array.isArray(alertsData)
+    ? alertsData.filter((a: any) => (a.severity || '').toUpperCase() === 'CRITICAL').length
+    : 0;
+  const highAlertsCount = Array.isArray(alertsData)
+    ? alertsData.filter((a: any) => (a.severity || '').toUpperCase() === 'HIGH').length
+    : 0;
+
+  const calculatedRisk = Math.min(98, Math.max(12,
+    20 + (criticalAlertsCount * 25) + (highAlertsCount * 10) + Math.min(20, (cveStatus?.kevCount || 0) * 2)
+  ));
+  const riskSeverity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' =
+    calculatedRisk >= 75 ? 'CRITICAL' : calculatedRisk >= 50 ? 'HIGH' : calculatedRisk >= 30 ? 'MEDIUM' : 'LOW';
+
   const recentInvestigations: DashboardInvestigation[] = (ipHistoryData && ipHistoryData.length > 0)
     ? ipHistoryData.slice(0, 4).map((inv: any) => ({
         id: inv.id ? `INV-${String(inv.id).slice(0, 6)}` : `IP-${inv.ip}`,
@@ -199,48 +225,54 @@ export default function DashboardPage() {
       {/* 2. Top Section: SECURITY POSTURE (Visual Weight Tier 1) */}
       <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {/* Risk Score Gauge */}
-        <CyberCard className="p-4 border-l-4 border-l-red-500 relative overflow-hidden">
+        <CyberCard className={`p-4 border-l-4 ${riskSeverity === 'CRITICAL' ? 'border-l-red-500' : riskSeverity === 'HIGH' ? 'border-l-orange-500' : 'border-l-yellow-500'} relative overflow-hidden`}>
           <div className="flex items-center justify-between text-xs font-mono text-slate-400">
             <span className="uppercase tracking-wider">Enterprise Risk Index</span>
-            <ShieldAlert className="w-4 h-4 text-red-400 shrink-0" />
+            <ShieldAlert className={`w-4 h-4 ${riskSeverity === 'CRITICAL' ? 'text-red-400' : 'text-orange-400'} shrink-0`} />
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <div className="text-3xl font-bold font-mono text-slate-100">
-              74 <span className="text-xs text-slate-500 font-normal">/ 100</span>
+              {calculatedRisk} <span className="text-xs text-slate-500 font-normal">/ 100</span>
             </div>
-            <CyberSeverityBadge severity="HIGH" />
+            <CyberSeverityBadge severity={riskSeverity} />
           </div>
-          <p className="mt-1 text-xs text-slate-400 font-mono">Elevated threat level • 2 Criticals active</p>
+          <p className="mt-1 text-xs text-slate-400 font-mono">
+            {riskSeverity === 'CRITICAL' || riskSeverity === 'HIGH' ? 'Elevated threat level' : 'Nominal threat level'} • {criticalAlertsCount} Critical{criticalAlertsCount === 1 ? '' : 's'} active
+          </p>
         </CyberCard>
 
         {/* Critical Alerts */}
         <CyberMetric
           title="Active Critical Alerts"
-          value="2"
-          subtitle="Triage required immediately"
+          value={String(criticalAlertsCount)}
+          subtitle={criticalAlertsCount > 0 ? "Triage required immediately" : "No unaddressed critical alerts"}
           icon={<AlertTriangle className="w-4 h-4 text-red-400" />}
           accentColor="red"
-          badge={<Badge variant="destructive" className="font-mono text-[10px] bg-red-500/20 text-red-400 border-red-500/40">ACTION NEEDED</Badge>}
+          badge={criticalAlertsCount > 0 ? (
+            <Badge variant="destructive" className="font-mono text-[10px] bg-red-500/20 text-red-400 border-red-500/40">ACTION NEEDED</Badge>
+          ) : (
+            <Badge variant="outline" className="font-mono text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30">ALL CLEAR</Badge>
+          )}
         />
 
         {/* CISA KEV Vulnerabilities */}
         <CyberMetric
           title="Exploited CVE Exposure"
-          value={cveLoading ? '...' : (cveStatus?.kevCount ?? 14)}
+          value={cveLoading ? '...' : String(cveStatus?.kevCount ?? 0)}
           subtitle="CISA KEV correlated in fleet"
           icon={<Shield className="w-4 h-4 text-orange-400" />}
           accentColor="orange"
-          badge={<CyberSeverityBadge severity="HIGH" showIcon={false} />}
+          badge={<CyberSeverityBadge severity={(cveStatus?.kevCount ?? 0) > 0 ? "HIGH" : "LOW"} showIcon={false} />}
         />
 
         {/* System Telemetry & Hardware */}
         <CyberMetric
           title="Engine CPU / RAM Load"
-          value={healthLoading ? '...' : `${health?.cpu?.usagePct ?? 14}%`}
-          subtitle={`RAM: ${health?.memory?.usedPct ?? 28}% • ${health?.server?.cpuCount ?? 4} Cores`}
+          value={healthLoading ? '...' : `${health?.cpu?.usagePct ?? 0}%`}
+          subtitle={`RAM: ${health?.memory?.usedPct ?? 0}% • ${health?.server?.cpuCount ?? 1} Cores`}
           icon={<Cpu className="w-4 h-4 text-cyan-400" />}
           accentColor="cyan"
-          badge={<span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">ONLINE</span>}
+          badge={<span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">{health?.status === 'ok' ? 'ONLINE' : 'DEGRADED'}</span>}
         />
       </div>
 
@@ -341,7 +373,7 @@ export default function DashboardPage() {
             <Shield className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-slate-100">
-            {cveLoading ? <CyberSkeleton className="h-7 w-20" /> : (cveStatus?.totalCVEs || cveStatus?.totalCount || 3324).toLocaleString()}
+            {cveLoading ? <CyberSkeleton className="h-7 w-20" /> : (cveStatus?.totalCVEs || cveStatus?.totalCount || 0).toLocaleString()}
           </div>
           <p className="text-xs text-slate-400 font-mono">NVD v2.0 Sync Active</p>
         </CyberCard>
@@ -352,7 +384,7 @@ export default function DashboardPage() {
             <Globe className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-slate-100">
-            {ipLoading ? <CyberSkeleton className="h-7 w-16" /> : (ipStatus?.total || 142)}
+            {ipLoading ? <CyberSkeleton className="h-7 w-16" /> : (ipStatus?.total ?? (ipHistoryData?.length || 0))}
           </div>
           <p className="text-xs text-slate-400 font-mono">AbuseIPDB Integration Ready</p>
         </CyberCard>
@@ -363,7 +395,7 @@ export default function DashboardPage() {
             {isSaravanan ? <Zap className="w-4 h-4 text-cyan-400" /> : <Server className="w-4 h-4 text-cyan-400" />}
           </div>
           <div className="text-2xl font-bold font-mono text-slate-100">
-            {isSaravanan ? '12' : (fwLoading ? <CyberSkeleton className="h-7 w-16" /> : fwAssessments)}
+            {isSaravanan ? (vaptLoading ? <CyberSkeleton className="h-7 w-16" /> : (vaptAssessmentsCount ?? 0)) : (fwLoading ? <CyberSkeleton className="h-7 w-16" /> : fwAssessments)}
           </div>
           <p className="text-xs text-slate-400 font-mono">{isSaravanan ? 'Active Penetration Scans' : 'Compliance Rules Audited'}</p>
         </CyberCard>
@@ -374,7 +406,7 @@ export default function DashboardPage() {
             <Bot className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="text-2xl font-bold font-mono text-slate-100">
-            1,248
+            {healthLoading ? <CyberSkeleton className="h-7 w-16" /> : (health?.dataStores?.['copilot_store.json']?.records ?? 0)}
           </div>
           <p className="text-xs text-slate-400 font-mono">Context-Enriched SOC Copilot</p>
         </CyberCard>

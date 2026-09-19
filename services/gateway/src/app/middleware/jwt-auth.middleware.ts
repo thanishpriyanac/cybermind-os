@@ -30,7 +30,13 @@ export class JwtAuthMiddleware implements NestMiddleware {
 
   use(req: Request, res: Response, next: NextFunction) {
     // Exclude certain paths from JWT validation (e.g., login, jwks, health)
-    const publicPaths = ['/api/v1/identity/auth/login', '/api/v1/identity/auth/.well-known/jwks.json', '/health'];
+    const publicPaths = [
+      '/api/v1/identity/auth/login',
+      '/api/v1/identity/auth/.well-known/jwks.json',
+      '/api/health',
+      '/health',
+      '/api/v1/health',
+    ];
     if (publicPaths.some(p => req.path.startsWith(p))) {
       return next();
     }

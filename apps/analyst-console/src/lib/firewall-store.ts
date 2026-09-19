@@ -44,7 +44,7 @@ export interface FirewallStore {
   assessments: FirewallAssessment[];
 }
 
-import { getDataFilePath, writeJsonAtomic } from './atomic-store';
+import { getDataFilePath, writeJsonAtomic, readJsonStore } from './atomic-store';
 
 function getStoreFilePath(): string {
   return getDataFilePath('firewall_store.json');
@@ -54,17 +54,13 @@ let inMemoryStore: FirewallStore | null = null;
 
 function loadStore(): FirewallStore {
   if (inMemoryStore) return inMemoryStore;
-
-  
-
-  inMemoryStore = { assessments: [] };
-  saveStore(inMemoryStore);
+  inMemoryStore = readJsonStore<FirewallStore>('firewall_store.json', { assessments: [] });
   return inMemoryStore;
 }
 
 function saveStore(store: FirewallStore) {
   inMemoryStore = store;
-  
+  writeJsonAtomic(getStoreFilePath(), inMemoryStore);
 }
 
 export const firewallStore = {

@@ -44,25 +44,29 @@ export interface IpStoreData {
   blacklist: BlacklistEntry[];
 }
 
+import { getDataFilePath, writeJsonAtomic, readJsonStore } from './atomic-store';
+
+function getStoreFilePath(): string {
+  return getDataFilePath('ip_store.json');
+}
+
 let inMemoryStore: IpStoreData | null = null;
+
+const DEFAULT_IP_STORE: IpStoreData = {
+  investigations: [],
+  lastBlacklistFetch: null,
+  blacklist: [],
+};
 
 function loadStore(): IpStoreData {
   if (inMemoryStore) return inMemoryStore;
-
-  
-
-  inMemoryStore = {
-    investigations: [],
-    lastBlacklistFetch: null,
-    blacklist: [],
-  };
-  saveStore(inMemoryStore);
+  inMemoryStore = readJsonStore<IpStoreData>('ip_store.json', DEFAULT_IP_STORE);
   return inMemoryStore;
 }
 
 function saveStore(store: IpStoreData) {
   inMemoryStore = store;
-  
+  writeJsonAtomic(getStoreFilePath(), inMemoryStore);
 }
 
 export const ipStore = {

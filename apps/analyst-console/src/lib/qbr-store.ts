@@ -53,6 +53,12 @@ export interface QbrReport {
   };
 }
 
+import { getDataFilePath, writeJsonAtomic, readJsonStore } from './atomic-store';
+
+function getStoreFilePath(): string {
+  return getDataFilePath('qbr_store.json');
+}
+
 let inMemoryStore: QbrReport[] | null = null;
 
 const INITIAL_QBR_REPORTS: QbrReport[] = [
@@ -111,12 +117,13 @@ const INITIAL_QBR_REPORTS: QbrReport[] = [
 export const qbrStore = {
   loadStore(): QbrReport[] {
     if (inMemoryStore) return inMemoryStore;
-    inMemoryStore = INITIAL_QBR_REPORTS;
+    inMemoryStore = readJsonStore<QbrReport[]>('qbr_store.json', INITIAL_QBR_REPORTS);
     return inMemoryStore;
   },
 
   saveStore(data: QbrReport[]): void {
     inMemoryStore = data;
+    writeJsonAtomic(getStoreFilePath(), inMemoryStore);
   },
 
   listReports(filters?: { status?: string; search?: string }): QbrReport[] {

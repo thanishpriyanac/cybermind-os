@@ -69,15 +69,21 @@ const INITIAL_ALERTS: AlertItem[] = [
   },
 ];
 
+import { getDataFilePath, writeJsonAtomic, readJsonStore } from './atomic-store';
+
+function getStoreFilePath(): string {
+  return getDataFilePath('alert_store.json');
+}
+
 export function loadAlerts(): AlertItem[] {
   if (inMemoryAlerts) return inMemoryAlerts;
-  inMemoryAlerts = [...INITIAL_ALERTS];
+  inMemoryAlerts = readJsonStore<AlertItem[]>('alert_store.json', INITIAL_ALERTS);
   return inMemoryAlerts;
 }
 
 export function saveAlerts(alerts: AlertItem[]) {
   inMemoryAlerts = alerts;
-  // In-memory only — no filesystem on edge runtime
+  writeJsonAtomic(getStoreFilePath(), inMemoryAlerts);
 }
 
 export function acknowledgeAllAlerts(): AlertItem[] {

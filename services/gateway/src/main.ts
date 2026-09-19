@@ -10,7 +10,7 @@ import rateLimit from 'express-rate-limit';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
-  setupObservability(app, 'gateway-service');
+  setupObservability(app as any, 'gateway-service');
 
   // Security Hardening (v0.8.0-alpha)
   app.use(helmet());

@@ -23,6 +23,7 @@ export default function AdminModelsPage() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ id: string; success: boolean; message: string } | null>(null);
   const [activeModel, setActiveModel] = useState('NVIDIA DeepSeek V4 Pro');
 
   useEffect(() => {
@@ -36,12 +37,35 @@ export default function AdminModelsPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  const handleTestConnection = (id: string) => {
+  const handleTestConnection = async (id: string) => {
     setTestingId(id);
-    setTimeout(() => {
+    setTestResult(null);
+    const t0 = performance.now();
+    try {
+      const res = await fetch('/api/v1/ai/health');
+      const latency = Math.round(performance.now() - t0);
+      if (res.ok) {
+        setTestResult({
+          id,
+          success: true,
+          message: `Provider connection verified (${latency}ms round-trip). Gateway operational.`,
+        });
+      } else {
+        setTestResult({
+          id,
+          success: false,
+          message: `Provider probe returned HTTP ${res.status} (${latency}ms).`,
+        });
+      }
+    } catch (err: any) {
+      setTestResult({
+        id,
+        success: false,
+        message: `Connection failed: ${err?.message || 'Network error'}`,
+      });
+    } finally {
       setTestingId(null);
-      alert(`Connection test to provider '${id}' succeeded! Latency: ${Math.floor(100 + Math.random() * 150)}ms.`);
-    }, 800);
+    }
   };
 
   const handleSetDefault = (id: string, name: string) => {
@@ -130,7 +154,18 @@ export default function AdminModelsPage() {
 
       {/* Providers Table */}
       <Card className="p-3 sm:p-6 bg-card border-border space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Configured AI Providers & Models</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-foreground">Configured AI Providers & Models</h2>
+          {testResult && (
+            <div className={`text-xs font-mono px-3 py-1.5 rounded border ${
+              testResult.success 
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' 
+                : 'bg-red-500/10 text-red-400 border-red-500/30'
+            }`}>
+              {testResult.message}
+            </div>
+          )}
+        </div>
 
         {loading ? (
           <div className="text-center py-8 text-muted-foreground">Loading AI Provider configuration...</div>

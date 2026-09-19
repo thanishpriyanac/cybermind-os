@@ -31,7 +31,7 @@ export default function IpIntelligencePage() {
         const res = await api.get('/v1/ip/status');
         return res.data;
       } catch {
-        return { configured: true, total: 142 };
+        return { configured: false, total: 0 };
       }
     }
   });
@@ -41,12 +41,9 @@ export default function IpIntelligencePage() {
     queryFn: async () => {
       try {
         const res = await api.get('/v1/ip/history');
-        return res.data;
+        return Array.isArray(res.data) ? res.data : (res.data?.data || []);
       } catch {
-        return [
-          { id: '1', ip: '185.220.101.5', countryName: 'Germany', isp: 'Tor Exit Node', abuseScore: 98, threatClassification: 'malicious', investigatedAt: new Date().toISOString() },
-          { id: '2', ip: '194.26.29.112', countryName: 'Netherlands', isp: 'Hostinger B.V.', abuseScore: 82, threatClassification: 'malicious', investigatedAt: new Date(Date.now() - 3600000).toISOString() },
-        ];
+        return [];
       }
     }
   });
@@ -67,6 +64,11 @@ export default function IpIntelligencePage() {
     lookupMutation.mutate(ipInput);
   };
 
+  const investigationsList: any[] = Array.isArray(history) ? history : (history?.data || []);
+  const maliciousCount = investigationsList.filter(inv => inv.threatClassification === 'malicious' || (inv.abuseScore || 0) >= 80).length;
+  const suspiciousCount = investigationsList.filter(inv => inv.threatClassification === 'suspicious' || ((inv.abuseScore || 0) >= 40 && (inv.abuseScore || 0) < 80)).length;
+  const torCount = investigationsList.filter(inv => (inv.isp || '').toLowerCase().includes('tor') || (inv.usageType || '').toLowerCase().includes('exit node')).length;
+
   return (
     <div className="space-y-6">
       {/* 1. Header */}
@@ -80,7 +82,7 @@ export default function IpIntelligencePage() {
         ]}
         badge={
           <Badge variant="outline" className="font-mono text-xs border-cyan-500/40 text-cyan-400 bg-cyan-500/10 font-bold">
-            AbuseIPDB Integration Active
+            {status?.configured ? 'AbuseIPDB Integration Active' : 'Local Threat Store Ready'}
           </Badge>
         }
         actions={
@@ -95,10 +97,10 @@ export default function IpIntelligencePage() {
 
       {/* 2. Top Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <CyberMetric title="Total IP Lookups" value={status?.total || 142} icon={<Globe className="w-4 h-4 text-cyan-400" />} />
-        <CyberMetric title="Malicious IPs Blocked" value="38" accentColor="red" />
-        <CyberMetric title="Active Tor Exit Nodes" value="12" accentColor="orange" />
-        <CyberMetric title="Avg Response Latency" value="48ms" accentColor="emerald" />
+        <CyberMetric title="Total IP Lookups" value={status?.total ?? investigationsList.length} icon={<Globe className="w-4 h-4 text-cyan-400" />} />
+        <CyberMetric title="Malicious IPs Identified" value={String(maliciousCount)} accentColor="red" />
+        <CyberMetric title="Suspicious Threat IPs" value={String(suspiciousCount)} accentColor="orange" />
+        <CyberMetric title="Tor / Anonymous Nodes" value={String(torCount)} accentColor="blue" />
       </div>
 
       {/* 3. IP Lookup Search Bar */}
