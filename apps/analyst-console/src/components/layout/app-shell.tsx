@@ -16,7 +16,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && !user && pathname !== '/login') {
+    if (!isLoading && !user && pathname !== '/login' && pathname !== '/health') {
       router.push('/login');
     }
   }, [user, isLoading, pathname, router]);
@@ -25,7 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  if (isLoading || (!user && pathname !== '/login')) {
+  if (isLoading || (!user && pathname !== '/login' && pathname !== '/health')) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-background font-mono text-xs text-muted-foreground space-y-3">
         <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />

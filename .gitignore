@@ -54,4 +54,5 @@ apps/analyst-console/.env.local
 .env
 kind
 *.tsbuildinfo
+data/
 

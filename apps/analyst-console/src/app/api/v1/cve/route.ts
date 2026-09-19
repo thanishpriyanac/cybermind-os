@@ -1,10 +1,12 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getCves, updateFromNvdData } from '../../../../lib/cve-store';
+import { getCves, updateFromNvdData, ensureBootstrapped } from '../../../../lib/cve-store';
 
 export async function GET(request: NextRequest) {
+  await ensureBootstrapped();
+
   const searchParams = request.nextUrl.searchParams;
   const search = searchParams.get('search') || undefined;
   const severity = searchParams.get('severity') || undefined;

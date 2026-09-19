@@ -1,8 +1,8 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { runUnrestrictedWebScraperPass, loadLearningStore } from '@/lib/learning-store';
-
-export const dynamic = 'force-dynamic';
 
 export async function POST() {
   try {

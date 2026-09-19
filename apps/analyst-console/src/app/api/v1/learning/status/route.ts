@@ -1,34 +1,58 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
 import { loadLearningStore, getLearningScheduleInfo } from '@/lib/learning-store';
 import { getCtiRegistrySummary, CYBERMIND_CTI_REGISTRY } from '@/lib/cti-pipeline';
 import { getRagStats } from '@/lib/rag-engine';
 
 function getStorageMetrics() {
+  const dataDir = path.join(process.cwd(), 'data');
+  const learningStorePath = path.join(dataDir, 'learning_store.json');
+  const modelDatasetPath = path.join(dataDir, 'model_training_dataset.jsonl');
+
+  const getFileStats = (filePath: string, filename: string, desc: string) => {
+    try {
+      if (fs.existsSync(filePath)) {
+        const stats = fs.statSync(filePath);
+        const bytes = stats.size;
+        const size = bytes > 1048576 ? `${(bytes / 1048576).toFixed(2)} MB` : `${(bytes / 1024).toFixed(1)} KB`;
+        return {
+          filename,
+          path: `data/${filename}`,
+          size,
+          bytes,
+          exists: true,
+          description: desc,
+        };
+      }
+    } catch { /* ignore */ }
+    return {
+      filename,
+      path: `data/${filename}`,
+      size: '0 KB',
+      bytes: 0,
+      exists: false,
+      description: desc,
+    };
+  };
+
+  const learningStore = getFileStats(learningStorePath, 'learning_store.json', 'Persistent JSON database storing crawled cybersecurity knowledge & metadata');
+  const modelDataset = getFileStats(modelDatasetPath, 'model_training_dataset.jsonl', 'JSONL instruction-tuning prompt-completion pairs formatted for LLM model fine-tuning');
+
+  const totalBytes = learningStore.bytes + modelDataset.bytes;
+  const totalStorageUsed = totalBytes > 1048576 ? `${(totalBytes / 1048576).toFixed(2)} MB` : `${(totalBytes / 1024).toFixed(1)} KB`;
+
   return {
     isStoredOnServer: true,
-    serverStoragePath: '/data',
-    totalStorageUsed: '1.2 MB',
-    totalStorageBytes: 1258291,
+    serverStoragePath: dataDir,
+    totalStorageUsed,
+    totalStorageBytes: totalBytes,
     files: {
-      learningStore: {
-        filename: 'learning_store.json',
-        path: '/data/learning_store.json',
-        size: '512 KB',
-        bytes: 524288,
-        exists: true,
-        description: 'Persistent JSON database storing crawled cybersecurity knowledge & metadata',
-      },
-      modelDataset: {
-        filename: 'model_training_dataset.jsonl',
-        path: '/data/model_training_dataset.jsonl',
-        size: '716 KB',
-        bytes: 734003,
-        exists: true,
-        description: 'JSONL instruction-tuning prompt-completion pairs formatted for LLM model fine-tuning',
-      },
+      learningStore,
+      modelDataset,
     },
   };
 }
@@ -63,11 +87,12 @@ export async function GET() {
       currentUrl: store.currentUrl,
       currentQuery: store.currentQuery,
       totalArticles: store.totalArticles,
-      totalTrainingPairs: store.totalTrainingPairs || 1428,
+      totalTrainingPairs: store.totalTrainingPairs ?? store.articles.length,
       sourcesCrawled: store.sourcesCrawled,
       liveLogs: store.liveLogs.slice(0, 25),
       articles: store.articles.slice(0, 30),
       serverStorage: storageMetrics,
+      storage: storageMetrics,
     });
   } catch (error: any) {
     return NextResponse.json(

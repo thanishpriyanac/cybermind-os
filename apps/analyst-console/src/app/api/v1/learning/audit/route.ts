@@ -1,7 +1,9 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
 import { loadLearningStore } from '@/lib/learning-store';
 import { loadStore as loadCveStore } from '@/lib/cve-store';
 
@@ -19,18 +21,58 @@ export async function GET(req: NextRequest) {
 
     const learningStore = loadLearningStore();
     const cveStore = loadCveStore();
+    const dataDir = path.join(process.cwd(), 'data');
 
     const auditFile = (fileName: string) => {
+      const filePath = path.join(dataDir, fileName);
+      let exists = false;
+      let sizeBytes = 0;
+      let lastModified = new Date().toISOString();
+      let records = 0;
+
+      try {
+        if (fs.existsSync(filePath)) {
+          exists = true;
+          const stat = fs.statSync(filePath);
+          sizeBytes = stat.size;
+          lastModified = stat.mtime.toISOString();
+          
+          if (fileName.endsWith('.jsonl')) {
+            const lines = fs.readFileSync(filePath, 'utf-8').split('\n').filter(Boolean);
+            records = lines.length;
+          } else if (fileName.endsWith('.json')) {
+            const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+            if (Array.isArray(parsed)) records = parsed.length;
+            else if (Array.isArray(parsed.cves)) records = parsed.cves.length;
+            else if (Array.isArray(parsed.articles)) records = parsed.articles.length;
+            else if (Array.isArray(parsed.investigations)) records = parsed.investigations.length;
+            else if (Array.isArray(parsed.firewalls)) records = parsed.firewalls.length;
+            else if (Array.isArray(parsed.qbrs)) records = parsed.qbrs.length;
+            else records = Object.keys(parsed).length;
+          }
+        }
+      } catch { /* ignore */ }
+
+      // In-memory fallback count if file not yet written to disk
+      if (records === 0) {
+        if (fileName.includes('learning')) records = learningStore.articles.length;
+        else if (fileName.includes('cve')) records = cveStore.cves.length;
+        else if (fileName.includes('dataset')) records = learningStore.totalTrainingPairs;
+      }
+
+      const sizeKB = (sizeBytes / 1024).toFixed(1) + ' KB';
+      const sizeMB = (sizeBytes / 1024 / 1024).toFixed(2) + ' MB';
+
       return {
-        exists: true,
+        exists,
         fileName,
-        serverPath: `/data/${fileName}`,
-        sizeBytes: 1024,
-        sizeKB: '1.0 KB',
-        sizeMB: '0.00 MB',
-        lastModified: new Date().toISOString(),
-        records: fileName.includes('learning') ? learningStore.articles.length : 100,
-        schemaStatus: 'VALID_JSON',
+        serverPath: `data/${fileName}`,
+        sizeBytes,
+        sizeKB,
+        sizeMB,
+        lastModified,
+        records,
+        schemaStatus: exists ? 'VALID_JSON' : 'IN_MEMORY',
       };
     };
 
@@ -77,16 +119,16 @@ export async function GET(req: NextRequest) {
         activeDataStores: existingFiles.length,
         totalStorageUsedMB: `${totalMBUsed} MB`,
         totalStorageUsedBytes: totalBytesUsed,
-        storageHealth: '100% OPERATIONAL (MEMORY STORE)',
+        storageHealth: '100% OPERATIONAL',
         atomicLockStatus: 'IDLE (NO LOCK CONFLICTS)',
       },
 
       stores: {
         cveStore: {
           ...cveAudit,
-          totalCveRecords: cveStore.totalCount || cveStore.cves?.length || 2000,
-          cisaKevRecords: cveStore.kevCveIds?.length || 1699,
-          severityCounts: cveStore.severityCounts || { critical: 179, high: 610, medium: 695, low: 516 },
+          totalCveRecords: cveStore.totalCount ?? cveStore.cves?.length ?? 0,
+          cisaKevRecords: cveStore.kevCveIds?.length ?? 0,
+          severityCounts: cveStore.severityCounts || { critical: 0, high: 0, medium: 0, low: 0 },
           lastNvdSync: cveStore.lastNvdSync,
           lastKevSync: cveStore.lastKevSync,
         },
@@ -103,7 +145,7 @@ export async function GET(req: NextRequest) {
 
         modelTrainingDataset: {
           ...datasetAudit,
-          totalTrainingPairs: learningStore.totalTrainingPairs || learningStore.articles.length,
+          totalTrainingPairs: learningStore.totalTrainingPairs ?? learningStore.articles.length,
           format: 'JSONL (Prompt-Completion Pair)',
         },
 

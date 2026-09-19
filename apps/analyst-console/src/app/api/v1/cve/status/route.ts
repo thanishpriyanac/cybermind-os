@@ -1,10 +1,11 @@
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-import { getSyncStatus } from '../../../../../lib/cve-store';
+import { getSyncStatus, ensureBootstrapped } from '../../../../../lib/cve-store';
 
 export async function GET() {
+  await ensureBootstrapped();
   const status = getSyncStatus();
   return NextResponse.json(status);
 }

@@ -213,10 +213,10 @@ export default function HealthPage() {
         <div className="p-3 bg-muted/30 border border-border rounded-lg flex flex-wrap gap-4 text-xs text-muted-foreground font-mono">
           <span>🐧 Distro: <strong className="text-emerald-400">{health?.server?.distro || 'Linux OS'}</strong></span>
           <span>🖥 Host: <strong className="text-foreground">{health?.server?.hostname || 'localhost'}</strong> ({health?.server?.kernel || health?.server?.platform || 'linux'})</span>
-          <span>⚙️ Processes: <strong className="text-cyan-400">{health?.systemProcesses?.totalProcesses || 142} Active</strong></span>
+          <span>⚙️ Processes: <strong className="text-cyan-400">{health?.systemProcesses?.totalProcesses ? `${health.systemProcesses.totalProcesses} Active` : 'Measuring...'}</strong></span>
           <span>⏱ Uptime: <strong className="text-foreground">{health?.server?.uptime || 'Active'}</strong></span>
-          <span>🔧 Node {health?.nodeProcess?.nodeVersion || 'v22'} (PID {health?.nodeProcess?.pid || 1})</span>
-          <span>⚡ Load: {health?.server?.loadAvg?.join(' / ') || '0.14 / 0.08 / 0.05'}</span>
+          <span>🔧 Node {health?.nodeProcess?.nodeVersion || 'v22'} (PID {health?.nodeProcess?.pid ?? '—'})</span>
+          <span>⚡ Load: {health?.server?.loadAvg?.length ? health.server.loadAvg.join(' / ') : 'Measuring...'}</span>
           <span className="ml-auto text-[10px]">Updated: {health?.timestamp ? new Date(health.timestamp).toLocaleTimeString() : 'Just now'}</span>
         </div>
       )}
@@ -257,7 +257,7 @@ export default function HealthPage() {
                   {health?.memory?.usedMB ?? 0} MB
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {health?.memory?.usedPct ?? 0}% of {health?.memory?.totalMB ?? 1024} MB
+                  {health?.memory?.usedPct ?? 0}% of {health?.memory?.totalMB ? `${health.memory.totalMB} MB` : '—'}
                 </p>
                 {health?.memory?.availableMB && (
                   <p className="text-[10px] font-mono text-emerald-400 mt-0.5">
@@ -304,7 +304,7 @@ export default function HealthPage() {
                     {health?.network?.totalConsumptionGB || '0.0'} GB
                   </div>
                   <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] px-2 py-0.5 font-mono">
-                    Avg {health?.networkSpeed?.latencyMs || 10}ms
+                    {health?.networkSpeed?.latencyMs ? `Avg ${health.networkSpeed.latencyMs}ms` : health?.networkSpeed?.status || 'Active'}
                   </Badge>
                 </div>
                 <div className="mt-2 space-y-1">
@@ -315,7 +315,7 @@ export default function HealthPage() {
                     </div>
                   )) || (
                     <p className="text-xs text-muted-foreground mt-1 font-mono">
-                      Ping: <span className="text-emerald-400 font-semibold">{health?.networkSpeed?.latencyMs || 10} ms</span> ({health?.networkSpeed?.status || 'OK'})
+                      Ping: <span className="text-emerald-400 font-semibold">{health?.networkSpeed?.latencyMs ? `${health.networkSpeed.latencyMs} ms` : 'Live'}</span> ({health?.networkSpeed?.status || 'OK'})
                     </p>
                   )}
                 </div>
@@ -344,18 +344,18 @@ export default function HealthPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Primary Disk Volume</span>
                   <span className="text-sm font-semibold font-mono text-foreground">
-                    {health?.disk?.usedGB || '22'} GB / {health?.disk?.totalGB || '100'} GB
+                    {health?.disk?.usedGB ?? '0'} GB / {health?.disk?.totalGB ?? '0'} GB
                   </span>
                 </div>
-                <UsageBar pct={health?.disk?.usedPct || 22} colorClass={getBarColor(health?.disk?.usedPct || 22)} />
+                <UsageBar pct={health?.disk?.usedPct ?? 0} colorClass={getBarColor(health?.disk?.usedPct ?? 0)} />
                 <div className="grid grid-cols-2 gap-3 pt-2 text-xs font-mono">
                   <div className="p-2.5 rounded bg-muted/40 border border-border/50">
                     <span className="text-muted-foreground block">Available Free Space</span>
-                    <span className="text-emerald-400 font-bold">{health?.disk?.freeGB || '78'} GB ({100 - (health?.disk?.usedPct || 22)}%)</span>
+                    <span className="text-emerald-400 font-bold">{health?.disk?.freeGB ?? '0'} GB ({100 - (health?.disk?.usedPct ?? 0)}%)</span>
                   </div>
                   <div className="p-2.5 rounded bg-muted/40 border border-border/50">
                     <span className="text-muted-foreground block">Volume Allocation</span>
-                    <span className="text-foreground font-bold">{health?.disk?.usedPct || 22}% Used</span>
+                    <span className="text-foreground font-bold">{health?.disk?.usedPct ?? 0}% Used</span>
                   </div>
                 </div>
               </div>

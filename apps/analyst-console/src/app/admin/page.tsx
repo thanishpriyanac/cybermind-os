@@ -572,15 +572,15 @@ export default function AdminPage() {
             <Card className="bg-card border-border">
               <CardContent className="p-4">
                 <span className="text-xs font-semibold text-muted-foreground uppercase">Model Fine-Tuning Pairs</span>
-                <div className="text-2xl font-bold text-purple-400 font-mono mt-1">{(learningStatus?.totalTrainingPairs ?? 1428).toLocaleString()}</div>
+                <div className="text-2xl font-bold text-purple-400 font-mono mt-1">{(learningStatus?.totalTrainingPairs ?? 0).toLocaleString()}</div>
                 <span className="text-[11px] text-muted-foreground font-mono">In model_training_dataset.jsonl</span>
               </CardContent>
             </Card>
             <Card className="bg-card border-border">
               <CardContent className="p-4">
                 <span className="text-xs font-semibold text-muted-foreground uppercase">Target Web Sources</span>
-                <div className="text-2xl font-bold text-emerald-400 font-mono mt-1">{learningStatus?.sourcesCrawled ?? 30} Feeds</div>
-                <span className="text-[11px] text-muted-foreground font-mono truncate block" title="The Hacker News, BleepingComputer, MITRE ATT&CK/ATLAS, CISA KEV, NIST NVD, Zscaler ThreatLabz (help.zscaler.com), Unit 42, Cisco Talos, OWASP, Krebs, Dark Web">
+                <div className="text-2xl font-bold text-emerald-400 font-mono mt-1">{learningStatus?.sourcesCrawled ?? 0} Feeds</div>
+                <span className="text-[11px] text-muted-foreground font-mono truncate block" title="The Hacker News, BleepingComputer, MITRE ATT&CK/ATLAS, CISA KEV, NIST NVD, Zscaler ThreatLabz (help.zscaler.com), Unit 42, Cisco Talos, OWASP, Krebs">
                   THN, Bleeping, ATT&CK, CISA, NVD, Zscaler, Unit42, OWASP
                 </span>
               </CardContent>
@@ -588,7 +588,7 @@ export default function AdminPage() {
             <Card className="bg-card border-border">
               <CardContent className="p-4">
                 <span className="text-xs font-semibold text-muted-foreground uppercase">Server Storage Used</span>
-                <div className="text-xl font-bold text-amber-400 font-mono mt-1">{learningStatus?.storage?.totalStorageUsed || '1.85 MB'}</div>
+                <div className="text-xl font-bold text-amber-400 font-mono mt-1">{learningStatus?.storage?.totalStorageUsed || '0 KB'}</div>
                 <span className="text-[11px] text-emerald-400 font-mono flex items-center gap-1">● Stored on Server Disk</span>
               </CardContent>
             </Card>
@@ -646,11 +646,11 @@ export default function AdminPage() {
                   <div className="text-[11px] font-bold text-cyan-400 uppercase flex justify-between">
                     <span>💾 cve_store.json</span>
                     <Badge variant="outline" className="text-[9px] border-cyan-500/40 text-cyan-300">
-                      {learningAudit?.stores?.cveStore?.sizeMB || '2.40 MB'}
+                      {learningAudit?.stores?.cveStore?.sizeMB || '0 MB'}
                     </Badge>
                   </div>
-                  <div className="text-[10px] text-muted-foreground">CVE Records: <span className="text-cyan-300 font-bold">{learningAudit?.stores?.cveStore?.totalCveRecords || 2000}</span></div>
-                  <div className="text-[10px] text-muted-foreground">CISA KEV: <span className="text-amber-400 font-bold">{learningAudit?.stores?.cveStore?.cisaKevRecords || 1699}</span></div>
+                  <div className="text-[10px] text-muted-foreground">CVE Records: <span className="text-cyan-300 font-bold">{learningAudit?.stores?.cveStore?.totalCveRecords ?? 0}</span></div>
+                  <div className="text-[10px] text-muted-foreground">CISA KEV: <span className="text-amber-400 font-bold">{learningAudit?.stores?.cveStore?.cisaKevRecords ?? 0}</span></div>
                   <div className="text-[10px] text-emerald-400 font-bold mt-1">● NVD API Key: ACTIVE</div>
                 </div>
 
@@ -659,11 +659,11 @@ export default function AdminPage() {
                   <div className="text-[11px] font-bold text-purple-400 uppercase flex justify-between">
                     <span>📚 learning_store.json</span>
                     <Badge variant="outline" className="text-[9px] border-purple-500/40 text-purple-300">
-                      {learningAudit?.stores?.learningStore?.sizeMB || '1.85 MB'}
+                      {learningAudit?.stores?.learningStore?.sizeMB || '0 MB'}
                     </Badge>
                   </div>
-                  <div className="text-[10px] text-muted-foreground">Articles: <span className="text-purple-300 font-bold">{learningAudit?.stores?.learningStore?.totalArticlesStored || 25}</span></div>
-                  <div className="text-[10px] text-muted-foreground">Sources: <span className="text-emerald-400 font-bold">{learningAudit?.stores?.learningStore?.totalSourcesCrawled || 30} Feeds</span></div>
+                  <div className="text-[10px] text-muted-foreground">Articles: <span className="text-purple-300 font-bold">{learningAudit?.stores?.learningStore?.totalArticlesStored ?? 0}</span></div>
+                  <div className="text-[10px] text-muted-foreground">Sources: <span className="text-emerald-400 font-bold">{learningAudit?.stores?.learningStore?.totalSourcesCrawled ?? 0} Feeds</span></div>
                   <div className="text-[10px] text-purple-400 font-bold mt-1">● STIX 2.1 Graph Compliant</div>
                 </div>
 
@@ -672,10 +672,10 @@ export default function AdminPage() {
                   <div className="text-[11px] font-bold text-amber-400 uppercase flex justify-between">
                     <span>🤖 model_training_dataset</span>
                     <Badge variant="outline" className="text-[9px] border-amber-500/40 text-amber-300">
-                      {learningAudit?.stores?.modelTrainingDataset?.sizeMB || '0.85 MB'}
+                      {learningAudit?.stores?.modelTrainingDataset?.sizeMB || '0 MB'}
                     </Badge>
                   </div>
-                  <div className="text-[10px] text-muted-foreground">Training Pairs: <span className="text-amber-300 font-bold">{(learningAudit?.stores?.modelTrainingDataset?.totalTrainingPairs || 1428).toLocaleString()}</span></div>
+                  <div className="text-[10px] text-muted-foreground">Training Pairs: <span className="text-amber-300 font-bold">{(learningAudit?.stores?.modelTrainingDataset?.totalTrainingPairs ?? 0).toLocaleString()}</span></div>
                   <div className="text-[10px] text-muted-foreground">Format: <span className="text-foreground font-bold">JSONL (Prompt/Completion)</span></div>
                   <div className="text-[10px] text-amber-400 font-bold mt-1">● Ready for Fine-Tuning</div>
                 </div>
@@ -821,7 +821,7 @@ export default function AdminPage() {
                       learning_store.json
                     </span>
                     <Badge variant="outline" className="text-[10px] border-cyan-500/30 text-cyan-400">
-                      {learningStatus?.storage?.files?.learningStore?.size || '485.2 KB'}
+                      {learningStatus?.storage?.files?.learningStore?.size || '0 KB'}
                     </Badge>
                   </div>
                   <p className="text-[11px] text-muted-foreground font-sans">
@@ -834,7 +834,7 @@ export default function AdminPage() {
                     </div>
                     <div className="flex justify-between">
                       <span>Stored Entries:</span>
-                      <span className="text-cyan-400 font-bold">{learningStatus?.totalArticles ?? 15} Articles</span>
+                      <span className="text-cyan-400 font-bold">{learningStatus?.totalArticles ?? 0} Articles</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Persistence Status:</span>
@@ -851,7 +851,7 @@ export default function AdminPage() {
                       model_training_dataset.jsonl
                     </span>
                     <Badge variant="outline" className="text-[10px] border-purple-500/30 text-purple-400">
-                      {learningStatus?.storage?.files?.modelDataset?.size || '820.6 KB'}
+                      {learningStatus?.storage?.files?.modelDataset?.size || '0 KB'}
                     </Badge>
                   </div>
                   <p className="text-[11px] text-muted-foreground font-sans">
@@ -864,7 +864,7 @@ export default function AdminPage() {
                     </div>
                     <div className="flex justify-between">
                       <span>Compiled Training Samples:</span>
-                      <span className="text-purple-400 font-bold">{(learningStatus?.totalTrainingPairs ?? 1428).toLocaleString()} Pairs</span>
+                      <span className="text-purple-400 font-bold">{(learningStatus?.totalTrainingPairs ?? 0).toLocaleString()} Pairs</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Model Fine-Tuning Status:</span>
@@ -1101,7 +1101,7 @@ export default function AdminPage() {
                   </CardDescription>
                 </div>
                 <Badge className="bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-mono">
-                  ● {(learningStatus?.totalTrainingPairs ?? 1428).toLocaleString()} SAMPLES READY
+                  ● {(learningStatus?.totalTrainingPairs ?? 0).toLocaleString()} SAMPLES READY
                 </Badge>
               </div>
             </CardHeader>

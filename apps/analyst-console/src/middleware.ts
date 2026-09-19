@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/_next', '/favicon.ico', '/api/v1/identity/auth/login'];
+const PUBLIC_PATHS = ['/login', '/_next', '/favicon.ico', '/api/v1/identity/auth/login', '/health'];
 const ADMIN_ONLY_PATHS = ['/admin', '/admin/models', '/settings', '/users', '/api/v1/ai/models'];
 const ANALYST_AND_ADMIN_PATHS = ['/cve/sync', '/api/v1/cve/sync', '/api/v1/firewall/upload'];
 const SARAVANAN_RESTRICTED_PATHS = ['/qbr', '/firewall', '/toolkit/firewall-rules', '/toolkit/firewall-simulator', '/api/v1/qbr', '/api/v1/firewall'];
@@ -9,9 +9,10 @@ const SARAVANAN_RESTRICTED_PATHS = ['/qbr', '/firewall', '/toolkit/firewall-rule
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
-  // Allow public static assets and auth API
+  // Allow public static assets, auth API, and health dashboard
   if (
     pathname === '/login' ||
+    pathname === '/health' ||
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico' ||
     pathname.startsWith('/api/v1/identity/auth/login')

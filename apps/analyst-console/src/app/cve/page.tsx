@@ -81,7 +81,7 @@ export default function CveIntelligencePage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['cve-status'] });
       queryClient.invalidateQueries({ queryKey: ['cves'] });
-      setSyncNotice(`⚡ CVE Intelligence Database Synchronized (${data.total || 3324} CVEs, ${data.kevCount || 789} CISA KEV entries)`);
+      setSyncNotice(`⚡ CVE Intelligence Database Synchronized (${data.total ?? 0} CVEs, ${data.kevCount ?? 0} CISA KEV entries)`);
       setTimeout(() => setSyncNotice(null), 5000);
     },
   });
@@ -124,12 +124,12 @@ export default function CveIntelligencePage() {
 
       {/* 2. Metrics Bar */}
       <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-6">
-        <CyberMetric title="Total CVEs" value={statusData?.totalCount || '3,324'} icon={<Shield className="w-4 h-4 text-cyan-400" />} />
-        <CyberMetric title="Critical" value={statusData?.severityCounts?.critical || 412} accentColor="red" />
-        <CyberMetric title="High" value={statusData?.severityCounts?.high || 980} accentColor="orange" />
-        <CyberMetric title="Medium" value={statusData?.severityCounts?.medium || 1240} accentColor="yellow" />
-        <CyberMetric title="Low" value={statusData?.severityCounts?.low || 692} accentColor="blue" />
-        <CyberMetric title="CISA KEV" value={statusData?.kevCount || 789} accentColor="orange" badge={<Badge variant="destructive" className="text-[9px]">KEV</Badge>} />
+        <CyberMetric title="Total CVEs" value={statusData?.totalCount ?? 0} icon={<Shield className="w-4 h-4 text-cyan-400" />} />
+        <CyberMetric title="Critical" value={statusData?.severityCounts?.critical ?? 0} accentColor="red" />
+        <CyberMetric title="High" value={statusData?.severityCounts?.high ?? 0} accentColor="orange" />
+        <CyberMetric title="Medium" value={statusData?.severityCounts?.medium ?? 0} accentColor="yellow" />
+        <CyberMetric title="Low" value={statusData?.severityCounts?.low ?? 0} accentColor="blue" />
+        <CyberMetric title="CISA KEV" value={statusData?.kevCount ?? 0} accentColor="orange" badge={<Badge variant="destructive" className="text-[9px]">KEV</Badge>} />
       </div>
 
       {/* 3. Filters Bar */}
